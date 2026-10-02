@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>CTRL + RN</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #101010; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; }
+  #stage { position: fixed; inset: 0 0 56px 0; display: flex; align-items: center; justify-content: center; cursor: none; touch-action: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #333; background: #181818; white-space: nowrap; overflow: auto; }
+  #shell b { color: #f4f4f4; }
+  #shell .ok { color: #22a62f; } #shell .ko { color: #d12c2c; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="shell">
+  <span>Coquille de test · <b id="title"></b></span>
+  <span>État : <b id="state">idle</b></span>
+  <span>Dernier résultat : <b id="result">—</b></span>
+</div>
+<script type="module">
+  /* The minimal shell: sizes the canvas, translates pointer and keyboard into the module's
+     actions, and shows what the site would receive (result, validation, grade). */
+  import { manifest, create, validate, grade } from './game.js'
+
+  const canvas = document.getElementById('c')
+  const stage = document.getElementById('stage')
+  const $ = (id) => document.getElementById(id)
+  $('title').textContent = manifest.title + ' — ' + manifest.tagline
+
+  const game = create({
+    canvas,
+    onState: (state) => { $('state').textContent = state },
+    onEnd: (result) => {
+      const ok = validate(result, manifest.settings)
+      $('result').innerHTML = `${result.score} démentis · rang ${grade(result)} · validation <span class="${ok ? 'ok' : 'ko'}">${ok ? 'acceptée' : 'refusée'}</span>`
+      console.log('onEnd', result)
+    },
+  })
+
+  function fit() {
+    const { width, height } = manifest.size
+    const scale = Math.max(1, Math.floor(Math.min(stage.clientWidth / width, stage.clientHeight / height)))
+    canvas.style.width = width * scale + 'px'
+    canvas.style.height = height * scale + 'px'
+  }
+  addEventListener('resize', fit)
+  fit()
+
+  function toInternal(event) {
+    const r = canvas.getBoundingClientRect()
+    return {
+      x: ((event.clientX - r.left) / r.width) * manifest.size.width,
+      y: ((event.clientY - r.top) / r.height) * manifest.size.height,
+    }
+  }
+  stage.addEventListener('pointermove', (e) => game.input('pointer', { type: 'move', ...toInternal(e) }))
+  stage.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    game.input('pointer', { type: 'move', ...toInternal(e) })
+    game.input('pointer', { type: 'down', ...toInternal(e) })
+  })
+  addEventListener('keydown', (e) => {
+    if (e.repeat) return
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); game.input('confirm') }
+    if (e.code === 'Escape') { game.state === 'paused' ? game.resume() : game.pause() }
+  })
+  stage.addEventListener('pointerdown', () => game.start(), { once: true })
+</script>
+</body>
+</html>
