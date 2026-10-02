@@ -174,7 +174,7 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
   let lastFrame = performance.now()
   let clock = 0 // real time since module creation, for blinking
   let phaseAt = 0 // clock when the phase started
-  const pointer = { x: 160, y: 90, cx: 160, cy: 90, inside: false }
+  const pointer = { x: 160, y: 90, cx: 160, cy: 90, inside: false, touch: false }
   let titleTyped = 0
 
   function setPhase(next) {
@@ -297,8 +297,10 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
 
   /* ---------- input ---------- */
   function hitButton(win, x, y) {
+    // A finger is wider than a pixel cursor: buttons get a margin on touch screens.
+    const m = pointer.touch ? 5 : 0
     for (const b of win.buttons) {
-      if (x >= win.x + b.x && x < win.x + b.x + b.w && y >= win.y + b.y && y < win.y + b.y + b.h) return b
+      if (x >= win.x + b.x - m && x < win.x + b.x + b.w + m && y >= win.y + b.y - m && y < win.y + b.y + b.h + m) return b
     }
     return null
   }
@@ -325,6 +327,13 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
       const win = G.windows[i]
       if (x < win.x || x >= win.x + win.w || y < win.y || y >= win.y + win.h) continue
       const b = hitButton(win, x, y)
+      if (b && win.dodge && pointer.touch && !win.dodgedOnce) {
+        win.dodgedOnce = true
+        win.dodged = !win.dodged
+        layoutButtons(win)
+        audio.key()
+        return
+      }
       if (b) {
         audio.click()
         if (b.action === 'delete') {
@@ -388,6 +397,11 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
       pointer.x = payload.x
       pointer.y = payload.y
       pointer.inside = true
+      pointer.touch = !!payload.touch
+      if (pointer.touch) {
+        pointer.cx = payload.x
+        pointer.cy = payload.y
+      }
       if (G && (phase === 'playing' || phase === 'hope')) move(Math.round(pointer.cx), Math.round(pointer.cy))
       if (payload.type === 'down') {
         // In panic mode the drawn cursor lags: clicks land where it is drawn, not where you are.
@@ -405,7 +419,7 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
   function update(dt) {
     clock += dt
     // Cursor easing: instant normally, sluggish in panic mode.
-    const lag = G && G.panic && (phase === 'playing' || phase === 'hope') ? 0.22 : 1
+    const lag = G && G.panic && !pointer.touch && (phase === 'playing' || phase === 'hope') ? 0.22 : 1
     pointer.cx += (pointer.x - pointer.cx) * lag
     pointer.cy += (pointer.y - pointer.cy) * lag
     if (lag === 1) {
@@ -668,7 +682,7 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
   }
 
   function drawCursor() {
-    if (!pointer.inside) return
+    if (!pointer.inside || pointer.touch) return
     blit(ctx, CURSOR, Math.round(pointer.cx), Math.round(pointer.cy))
   }
 
@@ -685,7 +699,7 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
       ctx.restore()
       drawTextC(ctx, "IMPOSSIBLE DE VIDER L'HISTORIQUE", 160, 92, P.grey)
     }
-    if (since > 3.2 && Math.floor(clock * 1.5) % 2) drawTextC(ctx, 'CLIQUEZ POUR COMMENCER', 160, 118, P.yellow)
+    if (since > 3.2 && Math.floor(clock * 1.5) % 2) drawTextC(ctx, pointer.touch ? 'TAPOTE POUR COMMENCER' : 'CLIQUE POUR COMMENCER', 160, 118, P.yellow)
     if (since > 3.2) drawTextC(ctx, 'TOUTE RESSEMBLANCE AVEC UN LOGICIEL POLITIQUE EXISTANT', 160, 160, P.dark)
     if (since > 3.2) drawTextC(ctx, 'SERAIT PUREMENT CATASTROPHIQUE.', 160, 169, P.dark)
   }
@@ -708,7 +722,7 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
     })
     if (since > 2.5) {
       drawTextC(ctx, 'QUE SOUHAITEZ-VOUS FAIRE ?', 160, 128, P.white)
-      if (Math.floor(clock * 1.5) % 2) drawTextC(ctx, '[ CLIC ] PORTER PLAINTE', 160, 142, P.yellow)
+      if (Math.floor(clock * 1.5) % 2) drawTextC(ctx, pointer.touch ? '[ TAP ] PORTER PLAINTE' : '[ CLIC ] PORTER PLAINTE', 160, 142, P.yellow)
     }
   }
 

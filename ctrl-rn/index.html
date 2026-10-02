@@ -2,17 +2,24 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#101010">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>CTRL + RN</title>
 <style>
   :root { color-scheme: dark; }
-  html, body { margin: 0; height: 100%; background: #101010; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; }
-  #stage { position: fixed; inset: 0 0 56px 0; display: flex; align-items: center; justify-content: center; cursor: none; touch-action: none; }
+  html, body { margin: 0; height: 100%; background: #101010; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; cursor: none; touch-action: none; }
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
-  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #333; background: #181818; white-space: nowrap; overflow: auto; }
+  /* Portrait phone: the game is landscape, so it is rotated to fill the screen. */
+  #stage.rotated canvas { transform: rotate(90deg); transform-origin: center center; }
+  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #333; background: #181818; white-space: nowrap; overflow: auto; font-size: 12px; }
   #shell b { color: #f4f4f4; }
   #shell .ok { color: #22a62f; } #shell .ko { color: #d12c2c; }
+  @media (pointer: coarse), (max-width: 760px) { #shell { display: none; } }
+  @media (pointer: fine) and (min-width: 761px) { #stage { inset: 0 0 40px 0; } }
 </style>
 </head>
 <body>
@@ -23,14 +30,15 @@
   <span>Dernier résultat : <b id="result">—</b></span>
 </div>
 <script type="module">
-  /* The minimal shell: sizes the canvas, translates pointer and keyboard into the module's
-     actions, and shows what the site would receive (result, validation, grade). */
+  /* The minimal shell: sizes (and on phones rotates) the canvas, translates pointer and
+     keyboard into the module's actions, and shows what the site would receive. */
   import { manifest, create, validate, grade } from './game.js'
 
   const canvas = document.getElementById('c')
   const stage = document.getElementById('stage')
   const $ = (id) => document.getElementById(id)
   $('title').textContent = manifest.title + ' — ' + manifest.tagline
+  const { width: GW, height: GH } = manifest.size
 
   const game = create({
     canvas,
@@ -38,38 +46,60 @@
     onEnd: (result) => {
       const ok = validate(result, manifest.settings)
       $('result').innerHTML = `${result.score} démentis · rang ${grade(result)} · validation <span class="${ok ? 'ok' : 'ko'}">${ok ? 'acceptée' : 'refusée'}</span>`
-      console.log('onEnd', result)
     },
   })
 
+  let rotated = false
   function fit() {
-    const { width, height } = manifest.size
-    const scale = Math.max(1, Math.floor(Math.min(stage.clientWidth / width, stage.clientHeight / height)))
-    canvas.style.width = width * scale + 'px'
-    canvas.style.height = height * scale + 'px'
+    const sw = stage.clientWidth
+    const sh = stage.clientHeight
+    // A portrait phone shows the landscape game sideways: the player turns the phone.
+    rotated = sh > sw && sw < 700
+    stage.classList.toggle('rotated', rotated)
+    const availW = rotated ? sh : sw
+    const availH = rotated ? sw : sh
+    let scale = Math.min(availW / GW, availH / GH)
+    // Whole or half pixels keep the art even; below 2× any scale beats an unreadable game.
+    scale = scale >= 2 ? Math.floor(scale * 2) / 2 : Math.max(1, scale)
+    canvas.style.width = GW * scale + 'px'
+    canvas.style.height = GH * scale + 'px'
   }
   addEventListener('resize', fit)
+  if (screen.orientation) screen.orientation.addEventListener('change', fit)
   fit()
 
+  /** Screen point → game pixels, whatever the rotation. */
   function toInternal(event) {
     const r = canvas.getBoundingClientRect()
-    return {
-      x: ((event.clientX - r.left) / r.width) * manifest.size.width,
-      y: ((event.clientY - r.top) / r.height) * manifest.size.height,
+    if (!rotated) {
+      return { x: ((event.clientX - r.left) / r.width) * GW, y: ((event.clientY - r.top) / r.height) * GH }
     }
+    // Rotated 90° clockwise: the game's x axis runs down the screen, its y axis runs leftwards.
+    return { x: ((event.clientY - r.top) / r.height) * GW, y: ((r.right - event.clientX) / r.width) * GH }
   }
-  stage.addEventListener('pointermove', (e) => game.input('pointer', { type: 'move', ...toInternal(e) }))
+
+  const payload = (event, type) => ({ type, touch: event.pointerType !== 'mouse', ...toInternal(event) })
+  stage.addEventListener('pointermove', (e) => game.input('pointer', payload(e, 'move')))
   stage.addEventListener('pointerdown', (e) => {
     e.preventDefault()
-    game.input('pointer', { type: 'move', ...toInternal(e) })
-    game.input('pointer', { type: 'down', ...toInternal(e) })
+    game.input('pointer', payload(e, 'move'))
+    game.input('pointer', payload(e, 'down'))
   })
   addEventListener('keydown', (e) => {
     if (e.repeat) return
     if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); game.input('confirm') }
     if (e.code === 'Escape') { game.state === 'paused' ? game.resume() : game.pause() }
   })
-  stage.addEventListener('pointerdown', () => game.start(), { once: true })
+
+  // First tap: unlock audio, and on phones go full screen in landscape when the browser allows it.
+  stage.addEventListener('pointerdown', async (e) => {
+    game.start()
+    if (e.pointerType !== 'mouse') {
+      try { await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }) } catch {}
+      try { await screen.orientation?.lock?.('landscape') } catch {}
+      setTimeout(fit, 300)
+    }
+  }, { once: true })
 </script>
 </body>
 </html>
