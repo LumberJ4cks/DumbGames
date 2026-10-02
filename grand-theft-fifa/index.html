@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#101010">
+<title>GRAND THEFT FIFA</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #101010; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; -webkit-user-select: none; user-select: none; }
+  #stage { position: fixed; inset: 0 0 40px 0; display: flex; align-items: center; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #333; background: #181818; white-space: nowrap; overflow: auto; font-size: 12px; }
+  #shell b { color: #f4f4f4; }
+  #shell .ok { color: #22a62f; } #shell .ko { color: #d12c2c; }
+  #touch { display: none; }
+  @media (pointer: coarse) {
+    #shell { display: none; }
+    #stage { inset: 0; }
+    #touch { display: block; position: fixed; inset: 0; pointer-events: none; }
+    #touch button { pointer-events: auto; position: absolute; width: 56px; height: 56px; border: 2px solid #c0c0c0; border-radius: 50%; background: rgba(16,16,16,.6); color: #f4f4f4; font: 20px ui-monospace, monospace; touch-action: none; }
+    #touch .l { left: 16px; bottom: 24px; } #touch .r { left: 84px; bottom: 24px; }
+    #touch .u { right: 16px; bottom: 90px; } #touch .d { right: 16px; bottom: 24px; }
+    #touch .h { right: 84px; bottom: 24px; font-size: 12px; } #touch .e { right: 84px; bottom: 90px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="touch">
+  <button class="l" data-code="ArrowLeft" aria-label="Gauche">←</button>
+  <button class="r" data-code="ArrowRight" aria-label="Droite">→</button>
+  <button class="u" data-code="ArrowUp" aria-label="Accélérer">▲</button>
+  <button class="d" data-code="ArrowDown" aria-label="Freiner">▼</button>
+  <button class="h" data-code="Space" aria-label="Frein à main">FREIN</button>
+  <button class="e" data-code="KeyE" aria-label="Interagir">E</button>
+</div>
+<div id="shell">
+  <span>Coquille de test · <b id="title"></b></span>
+  <span>État : <b id="state">idle</b></span>
+  <span>Dernier résultat : <b id="result">—</b></span>
+</div>
+<script type="module">
+  import { manifest, create, validate, grade } from './game.js'
+
+  const canvas = document.getElementById('c')
+  const stage = document.getElementById('stage')
+  const $ = (id) => document.getElementById(id)
+  $('title').textContent = manifest.title + ' — ' + manifest.tagline
+  const { width: GW, height: GH } = manifest.size
+
+  const game = create({
+    canvas,
+    onState: (state) => { $('state').textContent = state },
+    onEnd: (result) => {
+      const ok = validate(result)
+      $('result').innerHTML = `${result.score.toLocaleString('fr-FR')} pts · rang ${grade(result)} · validation <span class="${ok ? 'ok' : 'ko'}">${ok ? 'acceptée' : 'refusée'}</span>`
+    },
+  })
+
+  function fit() {
+    let scale = Math.min(stage.clientWidth / GW, stage.clientHeight / GH)
+    scale = scale >= 2 ? Math.floor(scale * 2) / 2 : Math.max(1, scale)
+    canvas.style.width = GW * scale + 'px'
+    canvas.style.height = GH * scale + 'px'
+  }
+  addEventListener('resize', fit)
+  fit()
+
+  // Physical keys so that AZERTY (ZQSD) and QWERTY (WASD) both work.
+  const CODES = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyE', 'Enter'])
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') { game.state === 'paused' ? game.resume() : game.pause(); return }
+    if (!CODES.has(e.code)) return
+    e.preventDefault()
+    if (e.repeat) return
+    game.unlock()
+    game.input('key', { code: e.code, down: true })
+  })
+  addEventListener('keyup', (e) => {
+    if (CODES.has(e.code)) game.input('key', { code: e.code, down: false })
+  })
+  addEventListener('blur', () => { for (const code of CODES) game.input('key', { code, down: false }) })
+
+  // Touch buttons act like held keys.
+  for (const b of document.querySelectorAll('#touch button')) {
+    const code = b.dataset.code
+    const press = (e) => { e.preventDefault(); game.unlock(); game.input('key', { code, down: true }) }
+    const release = (e) => { e.preventDefault(); game.input('key', { code, down: false }) }
+    b.addEventListener('pointerdown', press)
+    b.addEventListener('pointerup', release)
+    b.addEventListener('pointercancel', release)
+    b.addEventListener('pointerleave', release)
+  }
+  stage.addEventListener('pointerdown', () => game.unlock())
+</script>
+</body>
+</html>
