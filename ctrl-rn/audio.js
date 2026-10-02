@@ -15,6 +15,10 @@ export function createAudio() {
 
   function init() {
     if (ac) return
+    // Safari 17+: a "playback" session keeps playing when the iPhone's silent switch is on.
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback'
+    } catch {}
     ac = new AudioContext()
     master = ac.createGain()
     master.gain.value = 0.35

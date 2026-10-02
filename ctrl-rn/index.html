@@ -100,6 +100,23 @@
       setTimeout(fit, 300)
     }
   }, { once: true })
+
+  // iOS only accepts the END of a touch (or a click) as the gesture that may start audio, and
+  // Web Audio obeys the silent switch unless an HTML audio element has played first. So every
+  // touchend/click resumes the context, and the first one also plays a silent clip.
+  const silence = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=')
+  silence.setAttribute('playsinline', '')
+  silence.volume = 0.01
+  let silenced = false
+  function unlock() {
+    game.unlock()
+    if (!silenced) {
+      silenced = true
+      silence.play().catch(() => {})
+    }
+  }
+  stage.addEventListener('touchend', unlock, { passive: true })
+  stage.addEventListener('click', unlock)
 </script>
 </body>
 </html>

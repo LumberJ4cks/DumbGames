@@ -828,6 +828,8 @@ export function create({ canvas, settings = manifest.settings, onState, onEnd })
     resume,
     stop,
     destroy,
+    /** Resumes the audio context; the shell calls it from every kind of user gesture. */
+    unlock: () => audio.resume(),
     get state() {
       return phase === 'playing' || phase === 'hope' ? 'playing' : pausedPhase ? 'paused' : phase === 'over' ? 'over' : 'idle'
     },
