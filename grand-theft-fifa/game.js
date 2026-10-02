@@ -296,6 +296,7 @@ export function create({ canvas, onState, onEnd }) {
       mult: 1,
       wanted: 0,
       bustTimer: 0,
+      immuneUntil: 0,
       lastInfraction: -10,
       roadblockAt: 0,
       offroad: 0,
@@ -401,6 +402,8 @@ export function create({ canvas, onState, onEnd }) {
   function closeDialog() {
     const d = G.dialog
     G.dialog = null
+    // A few seconds to leave before the police can pin the car down.
+    G.immuneUntil = G.t + 4
     if (phase === 'dialog') setPhase('playing')
     d.onClose?.()
   }
@@ -762,13 +765,13 @@ export function create({ canvas, onState, onEnd }) {
       audio.crash(r.crashed / 200)
       damage(pl, r.crashed * 0.12)
       if (r.crashed > 120) say('GROS DÉGÂTS !', P.red)
-      infraction(6)
+      infraction(3)
     }
     // Off-road: sidewalks and parks are shortcuts, and infractions
     const tile = tileAt(pl.x, pl.y)
     if ((tile === 'S' || tile === 'G' || tile === 'T') && r.speed > 30) {
       G.offroad += dt
-      infraction(dt * 9)
+      infraction(dt * 4)
       if (G.offroad > 1.2) {
         G.offroad = 0
         addScore(500, 'RACCOURCI')
@@ -788,7 +791,7 @@ export function create({ canvas, onState, onEnd }) {
       }
     }
     if (r.speed > 150) infraction(dt * 4)
-    if (G.t - G.lastInfraction > 4) G.wanted = Math.max(0, G.wanted - dt * 4)
+    if (G.t - G.lastInfraction > 3) G.wanted = Math.max(0, G.wanted - dt * 6)
 
     // Props
     for (const p of G.props) {
@@ -799,7 +802,7 @@ export function create({ canvas, onState, onEnd }) {
         G.debris.push({ x: p.x, y: p.y, vx: pl.vx * 0.8 + (Math.random() - 0.5) * 60, vy: pl.vy * 0.8 + (Math.random() - 0.5) * 60, spin: Math.random() * 10, kind: p.kind, born: G.t })
         addScore(spec.points, spec.label, p.x, p.y)
         audio.clink()
-        infraction(3)
+        infraction(1.5)
         damage(pl, 1)
       }
     }
@@ -928,7 +931,7 @@ export function create({ canvas, onState, onEnd }) {
         audio.crash(impact / 200)
         audio.horn()
         damage(pl, impact * 0.08)
-        infraction(12)
+        infraction(8)
         addScore(0)
         if (impact > 90) say('GROS DÉGÂTS !', P.red)
       }
@@ -980,7 +983,7 @@ export function create({ canvas, onState, onEnd }) {
     }
     for (let i = 0; i < G.police.length; i++) for (let j = i + 1; j < G.police.length; j++) carsCollide(G.police[i], G.police[j], dt)
     for (const cop of G.police) for (const car of G.traffic) { const imp = carsCollide(cop, car, dt); if (imp > 30) car.stall = 3 }
-    if (near && r.speed < 18 && wanted) {
+    if (near && r.speed < 18 && wanted && G.t > G.immuneUntil) {
       G.bustTimer += dt
       if (G.bustTimer > 1.6) {
         G.bustTimer = 0
