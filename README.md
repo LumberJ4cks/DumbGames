@@ -2,6 +2,7 @@
 
 Des jeux à la con, un à la fois. Sites statiques, pixel art dessiné au code, zéro dépendance.
 
+- **OÙ EST LA VOITURE ?** — *Elle était là il y a deux secondes.* Un bonneteau avec une berline FIFA : tu la trouves toujours, une main la déplace toujours.
 - **CTRL + RN** — *Impossible de vider l'historique.* Un clicker absurde de soixante secondes.
 
 Prototypes gardés hors de l'accueil (dossier présent, non listé) :
