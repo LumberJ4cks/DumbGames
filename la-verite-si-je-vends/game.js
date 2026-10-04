@@ -201,6 +201,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   ctx.imageSmoothingEnabled = false
   const audio = createAudio()
   const debug = !!settings.debug
+  // Debug only: override any CONFIG value for a run (e.g. a short RUN_DURATION), never in play.
+  const C = { ...CONFIG, ...(debug && settings.config ? settings.config : {}) }
   const seedValue = settings.seed ?? null
   let random = seedValue !== null ? mulberry32(Number(seedValue)) : Math.random
   const durations = Array.isArray(settings.durations) ? [...settings.durations] : null
@@ -247,7 +249,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function newGame() {
     return {
-      remainingTime: CONFIG.RUN_DURATION,
+      remainingTime: C.RUN_DURATION,
       revenue: 0,
       bestSale: 0,
       perfectDeals: 0,
@@ -265,8 +267,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function nextDuration() {
     if (durations && durations.length) return durations.shift()
-    if (G.customersSeen === 0) return CONFIG.FIRST_NEGOTIATION
-    return CONFIG.MIN_NEGOTIATION + random() * (CONFIG.MAX_NEGOTIATION - CONFIG.MIN_NEGOTIATION)
+    if (G.customersSeen === 0) return C.FIRST_NEGOTIATION
+    return C.MIN_NEGOTIATION + random() * (C.MAX_NEGOTIATION - C.MIN_NEGOTIATION)
   }
 
   function spawnCustomer() {
@@ -287,9 +289,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   const progress = () => (customer ? Math.max(0, Math.min(1, customer.elapsed / customer.duration)) : 0)
   function phaseFor(p) {
     if (p >= 1) return 'gone'
-    if (p >= CONFIG.PHASES.leaving) return 'leaving'
-    if (p >= CONFIG.PHASES.impatient) return 'impatient'
-    if (p >= CONFIG.PHASES.hesitant) return 'hesitant'
+    if (p >= C.PHASES.leaving) return 'leaving'
+    if (p >= C.PHASES.impatient) return 'impatient'
+    if (p >= C.PHASES.hesitant) return 'hesitant'
     return 'confident'
   }
 
@@ -303,10 +305,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     G.revenue += amount
     G.bestSale = Math.max(G.bestSale, amount)
     G.successfulSales++
-    G.tier = Math.min(CONFIG.MAX_TIER, G.tier + 1)
-    const perfect = p >= CONFIG.PERFECT_THRESHOLD
+    G.tier = Math.min(C.MAX_TIER, G.tier + 1)
+    const perfect = p >= C.PERFECT_THRESHOLD
     if (perfect) G.perfectDeals++
-    const kind = perfect ? 'perfect' : p >= CONFIG.PHASES.impatient ? 'two-hands' : p >= CONFIG.PHASES.hesitant ? 'strong' : 'weak'
+    const kind = perfect ? 'perfect' : p >= C.PHASES.impatient ? 'two-hands' : p >= C.PHASES.hesitant ? 'strong' : 'weak'
     reaction = { kind, p, amount, line: kind === 'weak' ? 'BON. T’AS PAYÉ LE CINTRE.' : perfect ? 'AFFAIRE DU SIÈCLE !' : null }
     bubble = LINES[Math.floor(random() * LINES.length)]
     if (kind === 'weak') audio.handshake(0.2)
@@ -359,7 +361,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         sales: G.successfulSales,
         missed: G.missedCustomers,
       },
-      durationMs: Math.round((CONFIG.RUN_DURATION - Math.min(0, G.remainingTime)) * 1000),
+      durationMs: Math.round((C.RUN_DURATION - Math.min(0, G.remainingTime)) * 1000),
     })
   }
 
@@ -385,7 +387,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       return
     }
     if (state === 'RESULTS') {
-      if (now - stateAt < CONFIG.RESULTS_LOCK) return
+      if (now - stateAt < C.RESULTS_LOCK) return
       G = null
       customer = null
       setState('TITLE')
@@ -419,7 +421,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     switch (state) {
       case 'CUSTOMER_ENTER':
-        if (now - stateAt >= CONFIG.ENTRY_DURATION) {
+        if (now - stateAt >= C.ENTRY_DURATION) {
           customer.elapsed = 0
           setState('NEGOTIATING')
         }
@@ -442,7 +444,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
       case 'SUCCESS':
       case 'FAILURE': {
-        const dur = state === 'SUCCESS' ? CONFIG.SUCCESS_DURATION : CONFIG.FAILURE_DURATION
+        const dur = state === 'SUCCESS' ? C.SUCCESS_DURATION : C.FAILURE_DURATION
         if (now - stateAt >= dur) {
           reaction = null
           if (G.closingRequested) finishRun()
@@ -452,7 +454,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
     }
     // Escalation: the employee crossing the back room
-    if (G.successfulSales >= CONFIG.ESCALATION.employee) {
+    if (G.successfulSales >= C.ESCALATION.employee) {
       if (G.employeeX === null) G.employeeX = W + 20
       G.employeeX -= dt * 18
       if (G.employeeX < -30) G.employeeX = W + 20
@@ -520,24 +522,24 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     rect(102, 114, 12, 2, P.grey)
     // Escalation
     const sales = G ? G.successfulSales : 0
-    if (sales >= CONFIG.ESCALATION.bills) {
+    if (sales >= C.ESCALATION.bills) {
       for (let i = 0; i < 4; i++) outlined(226, 112 - i * 3, 22, 3, P.green)
     }
-    if (sales >= CONFIG.ESCALATION.phones) {
+    if (sales >= C.ESCALATION.phones) {
       for (let i = 0; i < 3; i++) {
         const shake = Math.floor(now * 20 + i) % 2
         outlined(44 + i * 20 + shake, 110, 14, 8, P.ink)
         rect(46 + i * 20 + shake, 112, 10, 2, P.grey)
       }
     }
-    if (sales >= CONFIG.ESCALATION.sign) {
+    if (sales >= C.ESCALATION.sign) {
       outlined(190, 30, 118, 12, P.yellow)
       drawTextC(ctx, 'OUVERTURE EXCEPTIONNELLE', 249, 32, P.ink)
     } else {
       outlined(200, 30, 100, 12, P.red)
       drawTextC(ctx, 'LIQUIDATION TOTALE', 250, 32, P.white)
     }
-    if (sales >= CONFIG.ESCALATION.accounting) {
+    if (sales >= C.ESCALATION.accounting) {
       outlined(266, 86, 40, 16, P.card)
       drawText(ctx, 'COMPTA', 270, 90, P.woodDark)
       for (let i = 0; i < 6; i++) rect(264 + i * 7, 80 + (i % 2) * 3, 6, 4, P.green)
@@ -583,14 +585,14 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const r = reaction
     let x = 258
     let y = 62
-    if (state === 'CUSTOMER_ENTER') x += Math.round((1 - (now - stateAt) / CONFIG.ENTRY_DURATION) * 40)
+    if (state === 'CUSTOMER_ENTER') x += Math.round((1 - (now - stateAt) / C.ENTRY_DURATION) * 40)
     if (state === 'NEGOTIATING' && customer.phase === 'leaving') x += 4
     if (r && r.kind === 'perfect') {
-      const k = Math.min(1, (now - stateAt) / CONFIG.SUCCESS_DURATION)
+      const k = Math.min(1, (now - stateAt) / C.SUCCESS_DURATION)
       x -= Math.round(Math.sin(k * Math.PI) * 40)
       y -= Math.round(Math.sin(k * Math.PI) * 18)
     }
-    if (r && r.kind === 'fail') x += Math.round(((now - stateAt) / CONFIG.FAILURE_DURATION) * 70)
+    if (r && r.kind === 'fail') x += Math.round(((now - stateAt) / C.FAILURE_DURATION) * 70)
     // Body: suit too large / tracksuit / huge coat
     const bodyW = customer.appearanceId === 2 ? 46 : customer.appearanceId === 0 ? 40 : 32
     const bx = x + 17 - bodyW / 2
@@ -663,14 +665,14 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         cx += 4
       }
       if (customer.phase === 'leaving') {
-        const k = (p - CONFIG.PHASES.leaving) / (1 - CONFIG.PHASES.leaving)
+        const k = (p - C.PHASES.leaving) / (1 - C.PHASES.leaving)
         cx += 8 + Math.round(k * 22)
       }
     }
-    if (state === 'CUSTOMER_ENTER') cx += Math.round((1 - (now - stateAt) / CONFIG.ENTRY_DURATION) * 60)
+    if (state === 'CUSTOMER_ENTER') cx += Math.round((1 - (now - stateAt) / C.ENTRY_DURATION) * 60)
     if (r && r.kind !== 'fail') {
       // Contact: both hands meet at the centre, shaking
-      const k = (now - stateAt) / CONFIG.SUCCESS_DURATION
+      const k = (now - stateAt) / C.SUCCESS_DURATION
       const shake = Math.round(Math.sin(k * Math.PI * (r.kind === 'weak' ? 2 : 6)) * (r.kind === 'weak' ? 1 : 3))
       sx = 126
       cx = 166
@@ -711,7 +713,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function drawHud() {
     drawText(ctx, 'CAISSE ' + euros(G ? G.revenue : 0), 4, 8, P.white)
-    const left = G ? Math.max(0, Math.ceil(G.remainingTime)) : CONFIG.RUN_DURATION
+    const left = G ? Math.max(0, Math.ceil(G.remainingTime)) : C.RUN_DURATION
     const timeText = String(left).padStart(2, '0') + ' S'
     drawText(ctx, timeText, W - 36 - textWidth(timeText), 8, left <= 10 && G ? P.red : P.white)
     drawSoundButton()
@@ -831,7 +833,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       if (G.newRecord) drawTextC(ctx, 'NOUVEAU RECORD !', 190, 110, P.yellow)
       else drawTextC(ctx, 'RECORD : ' + euros(best), 190, 110, P.white)
     }
-    if (since > CONFIG.RESULTS_LOCK && Math.floor(now * 1.5) % 2) drawTextC(ctx, pointerTouch ? 'TAPOTE POUR RECOMMENCER' : 'ESPACE POUR RECOMMENCER', 190, 130, P.yellow)
+    if (since > C.RESULTS_LOCK && Math.floor(now * 1.5) % 2) drawTextC(ctx, pointerTouch ? 'TAPOTE POUR RECOMMENCER' : 'ESPACE POUR RECOMMENCER', 190, 130, P.yellow)
     rect(0, 158, W, 22, P.ink)
     drawText(ctx, 'CAISSE ' + euros(G.revenue), 4, 8, P.white)
     drawSoundButton()

@@ -42,7 +42,12 @@
 
   const game = create({
     canvas,
-    settings: { debug: params.get('debug') === '1', seed: params.has('seed') ? params.get('seed') : null },
+    settings: {
+      debug: params.get('debug') === '1',
+      seed: params.has('seed') ? params.get('seed') : null,
+      // Debug only: ?run=8 shortens the run to eight seconds to reach the results quickly.
+      config: params.has('run') ? { RUN_DURATION: Number(params.get('run')) } : null,
+    },
     onState: (state) => { $('state').textContent = state },
     onEnd: (result) => {
       const ok = validate(result)
