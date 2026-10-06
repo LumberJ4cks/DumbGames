@@ -28,7 +28,7 @@
   .bar { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 10px 16px; }
   .logo { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 30px; letter-spacing: 1px; line-height: 1; }
   .logo .a { color: var(--night); } .logo .b { color: var(--cyan); }
-  .logo canvas { width: 36px; height: 36px; }
+  .logo canvas { width: 40px; height: 40px; }
   .logo sup { font-size: 9px; color: var(--slate); }
   .sep { width: 2px; height: 36px; background: var(--night); opacity: .3; }
   .verified { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
@@ -147,7 +147,7 @@
 <body>
 <header>
   <div class="bar">
-    <div class="logo"><span class="a">ONLY</span><span class="b">FEET</span><canvas id="logoIcon" class="pixel" width="16" height="16" aria-hidden="true"></canvas><sup>™</sup></div>
+    <div class="logo"><span class="a">ONLY</span><span class="b">FEET</span><canvas id="logoIcon" class="pixel" width="16" height="16" aria-hidden="true"></canvas></div>
     <span class="sep"></span>
     <span class="verified"><canvas id="verifiedIcon" class="pixel" width="12" height="12" aria-hidden="true"></canvas>Créateur vérifié</span>
     <div class="stat" id="money"><canvas class="pixel" width="12" height="12" aria-hidden="true"></canvas><b>0 €</b></div>
@@ -160,7 +160,7 @@
   <section id="title" class="screen active">
     <div class="box hero">
       <div>
-        <h1><span class="a">ONLY </span><span class="b">FEET</span></h1>
+        <h1><span class="a">ONLY </span><span class="b">FEET</span> <canvas id="titleIcon" class="pixel" width="16" height="16" aria-hidden="true" style="width:40px;height:40px;vertical-align:-6px"></canvas></h1>
         <p class="tag">Deux minutes pour payer ton loyer.</p>
         <p><i>« Sublime le pire. Facture le reste. »</i></p>
         <ol>
@@ -187,7 +187,7 @@
         <h2><canvas class="pixel" data-icon="mail" width="12" height="12" aria-hidden="true"></canvas>Messages privés</h2>
         <div class="inner">
           <div class="client">
-            <canvas id="avatar" class="pixel" width="8" height="8" aria-hidden="true"></canvas>
+            <canvas id="avatar" class="pixel" width="24" height="24" aria-hidden="true"></canvas>
             <div><div class="pseudo" id="pseudo">—</div><span class="premium">PREMIUM</span></div>
           </div>
           <div class="message" id="message">—</div>
@@ -423,9 +423,23 @@ const ACC = { rouge: '#D6213A', or: '#F2C230', violet: '#7B2FA3', hair: '#1E1A1C
 const SKIN = { base: '#F2B98F', shade: '#D9976A', dark: '#17213A', light: '#F8CFAA', nail: '#F6E096' };
 function px(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
 
+/* ---------- sprites fournis (images incrustées, fond transparent) ---------- */
+const SPRITES = {"avatar":{"w":24,"h":24,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAACoklEQVR4nH2Vu2sUURjF78ym2WR9LIGoRbC0819QFGtdFo1iEyxMk8oqndhpYZdGEVEk4IOwsV4M8V+ws9qVFBpBVnGjVRz5fXfOzL2zO3tgmDv3cb7Xud8k9x5tZYkLwVc2ZVyHuj1+Lg0//VS4OQu+Jler8/Gad3su/vSbwogSl7nx6MA9ff4iOn73zqprtU/lPsZulFxJaWC6ocz1tt+4L/v7buHYCZs//P3L3s9evnJnl5fdlUsX3UL7dOSQWBink6koAfn3HyPXnG+5pcW2PcK/oyNb6+/uGVFSVCOOv6gBm5RHnp3t10awlJMyJpIQRMM8jijqKtI4JG/ocPTNviGH4O+fsZHhdR3G+ZlYkZGK4iWIRQ5x2mhETzUKpSqrM1B6cuC23vWKw4ACU1BqwcOYORnCCYxwdkKmeK4CVbMIgZSCJC+fP2nzHz79tLcUNh3BRStpEwtVXuEt5FcvnCvIAWMe1tgjKPIQxT2o5k4H+7lBvUNgwIQwIwZTkXSMesilIpBE8WwwHBakjHla7TOFEATkrWwUEagOoZeS5OaDNff+42cbkyqP1TxVx11vse0GuRiq/icqchVSDwWkoCWxR/itiDmjdhIi9QryRq51b1paJEGi0C0FRKJowPr9J0bMXpF3uivFlTUDYUEwRI7DIg+GQyOS5/IeQ6qL9vqaxf+Hotn5tvzV6qCiKRJSFXrOWJKU5zrjW4Y6mrVrb41bSAsGpEY5beadFM9vrD+09bebG66/W8ozrBmG2d/p3iojUHtQKxDkFYWk2BDfvt6JihhKNCw82QDJ2sbjrNp7JpTQ8C2DgzLAmbr9Sht707A11KE537L7APh1kq7w51OFDMOdqlnN6vXCLNJpgHtOBZ0F1pGqLlUo0VlnWPsPN7uWFsV4NGoAAAAASUVORK5CYII="},"cravate":{"w":14,"h":30,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAeCAYAAAAcni9KAAAB3ElEQVR4nJWUPywDURzHf3chMWDpICppz6UGofVvY0DCZJEykpgk/sQgNrPNJMQqqZFGiIUmZcBUoiIWOa2BiIihBlMr35++y7u7d1XfpH2/3P0+733f7/feaURE4aG10tvzJVWjplA/5c9WNU2GWjrnKdQa8YWs2z1CLmC9WgiqaezmEUwNAswgoJxlkb90zgWof1vHmrBRGSIqFq55BKMjSG7EKRCM2i/8oEAwyrm/axNRX6xd621j10q4WH6GHOQi5j+hTPahNDC+Qs0diw7w9X6TLg7WbYgLpbKFxH8Lq9aZYyX0Fz/EeObO81iNLyU51ht6HftDUWSrXBxZ3KMyBCFWHUddXm17/4kbLMswTX6Gd7Jluzh4sZvYclTUME2KhOspEp6hk8Md9YpuGWUIesx/+VutBOUsy7NPBoV37EUFQWLvIpfLi35hNLsmlZCQaA0usm0VB7gS9Oce/SDDNHly5Vn1g0aGYzxm3skLfrzc0Weh1hdyS3k7IEOqrnCDyYXsL8DoYI9dNTeUSmfp6miZczxfAIxosruPqXTW4UTkOqqKJlfbEl0EcxOtbCWxOeuB8EWYml7gHCHPRcYtOT2/cVxkTAhIvsgOUEgcQSEcMV/PKtg9gawf9A39dTWej0IAAAAASUVORK5CYII="},"pansement":{"w":28,"h":17,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAARCAYAAADOk8xKAAACdklEQVR4nK2VT0iUURTF7xdDTDKLihGNCIkpKPpjkIrQX6uNhLWIoIgIKZHARZvATS2shdCmhVARrloURIuScGMaZSBq4FRiUENERMkMOYuhJIKJ3x3O9M0YITYHZt735r3vnXfuPfdOYBXGxOP+POPlvoc+P1C/xto7zlk80RgwDypJ9PT5uA0nvzhJ0+YaS9RG7e7IR1/fv6fJGg+fDYJKEElNZ0u1NdQnrCoWs+XRFZbNpP352Yuk3RpJ252+S0tXeK27M48aER062OwEK+PV9vLNJ9u2Ie5rEP+c/2Gnrg75fNliCTKpiTxqWluP+AcyiAgf4NDU13l/3rl1nb1+n3GyoSdj/tvtC80+BoshOt11pTiHYOPqX7aqZq1Vxets/abtNvrgpocSdRCglguEFX7P5azj+tjfCSH58PZVidPKSaLZqeJBKJub/exEIBxa1DKOz8z6WhAmYZQakQCIeDEMKSB0rN24P2knW+qcqDyXUtfTddQivERuwkTnjzcUN/cPTFv7sTaz7FQJGc579y3il8rWRr0MJpMp27sr5ooTlvaykEM5l7KIyNYkVbfiQDYTfw6aHh1wFdwcsK8cXnMzEWvI5Yr1JxejDDIPKY7DbYSNjRym3Ai8jGr9rj2EE5A/gGIgIupOHUbwHXIYCnSQFFG4hE0GkClkFEiGkwXlUnOxt6Amnni0IBJOqNgDwohShY85F1KLEklBSWFP94kdtmV3m6sZHFxIEkYQziFqUKcuIRcyJ/kAA8hc6o//ZChDoMJWH5QhFEKUhg2Amn1nepbcEgO+RKoujyKUUazq/uG/mP9BSeFj/957f+qtkkTCb2j0fnIEHYIGAAAAAElFTkSuQmCC"},"mouche":{"w":18,"h":19,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAATCAYAAACdkl3yAAACJ0lEQVR4nGNgwAL2Hrvyf8b8tf8ZSABM2ARv37yJVfGLt1/+gzBeE09ef4miwMwp7n9RVd9/kOtgYgmJFThdCnfR9K5+BpBGEBtEP7j/kOHd81cMeSlFcNeA6IzEYEa8Bi2Y38EI0qit5fb/yIkLDAqK8gzbDhyHG+JsG8QQmxpDXBgJSYoxmJobMYBcA8Ig8Pr7Twa/0Cwwm0dQFKdBKM4EhcHpk+fAmkEuAgEteSmwy2Ii/eHqwmOjGcw1xVH0onBAXgDZDnKNl4Mlw7WHz8DiX1+8YOCWkGBobykD87du2YVhICMoVhbPXgLWlBQLsXXe4o1gw0Q52cGugxkKcl1mWSGDvBg3w9WbD8DJRFVdncHZSoeRERTNIJtA/l+5eCkDKKBBfJDhIC8pKMqDXQQD89YuRgmb8yeOgA1jOrVvESPIRJATvX3cGGwsDMCGgmwGueQBNNBBkQDTCHIRDAT4uYMtRYk1WJoBAZBiUHSLcrKD+SCvgbw5uXsm2Fswwx6++ooa2KAUe+v2Q3ggghSCFH15/5ohMjobLA7yJsiFIBrkcuRYZILF1olDpxnKitPgroHZxCMoCo96WFiBAh0EQOpBGBQsYINATgV5Q0KYh1FNVR5uCMz53j5uYBoWgx09NeDsA9IH0oMS+shpCZTXQDQoabx4++U/KKGC5GB8mDqCRQ1IAUwTCIOSCHrpQDQAGQazFWQoyDCCZRE+L8LKIxAbn1cAMzFLjCzirwkAAAAASUVORK5CYII="},"bague":{"w":22,"h":8,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAICAYAAAD9aA/QAAABGElEQVR4nGNkwAJ+frr2f9WOu2D2jEnVDErC71Hk770VZMjIawWzwzyUGdj5tBjRzWBEN7CgqhPMNtCSYuASsWJwU94B5v96sh5F4/1HP8H07D1cDDyyTgwT2spRLIAzFq/a/B/kurgob4YA809wA0AGwgyBAUU5dgxLKldKg30RG+YLNpMR2dAVpW8Y2GQCGW4eWwF2CczbegaGDFZ2IWD+sUNrGC5dOA8PnlSXb3CLIrpFEIaDDI31l/3/eKPU/0OThcFsaxu9/zOnVf5nIABAakBqQXpAekFmgNggMxlAEiBBEAaxQYKgsCZkKHK8gPSgm8MAsw1mKLEGogNkw0FmMtm4x4DDExSOsIAnB4D0gswAmQUyEwDqjZ/RWtp2/AAAAABJRU5ErkJggg=="},"noeud":{"w":22,"h":15,"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAPCAYAAADgbT9oAAACLUlEQVR4nH2UT0hUURTGzxtKEFcySVKMMfUknM2Ei2ZqSKRaVKAg/dkkgYsg0EUUWEjLEhUKgoQgSAhXWggJ4qJA+iNNi6iNEklDRqCYBIGIFr34HTiXO+OM3+bdd875vnvOuefeQERkZfVX1JY5K4ZWqZEz/d3ScuFUINvg1dh0NNU3LDOy5myT+WdSF68NAhMdzB6TnU37pGFmTpZ//JTuzUUZ6u+tKI5ob9+QDFc1yO69u2SxNSV/5r/JjXevlRebf5nXDIP2I0ogIB0m5GmyWSDO3nkclYpiw0fMxsUW+Xr5pNpzv/+pFgiy4fGIXQk4nC8UCSytr8u5wge519UpjVc61Pbl4YRcGxlVUZL427hHjo6+dZxPC9+1WiecDhNFTsozIG6Z0E9EDfXV1WWT2VGuf+kwIbfmPrp/6z8VsemDwmfnu506VE5CYpQ5vrmqBB8QzlfFdX1geW1Lm/D1JA9uEWRTNGP0yC/Dvrb2faWb+xx/jaaO0s2wLbLsDFRBP+mtfUGpzXicCWMKb2BhMlBhZvlu5pITtYHnUG0TLgzgQtACE/E3BdfzT/SCxPhhgaG9q8MFvknl9BD96Wg6kXFrfJyDZQ/XRPXwLLAuXhswqwRCmO3MqZ3MTmeb9QYSgwA28D6TVEE4cE20SFg8QNj/6IWuGfbU/avOhwA2wPUvnZaKwpT1fGRCh5xTJhs/E9bY7CIw7/4jVBEcJF8eGaal0luBjxif4+M/UEsdbf7uprYAAAAASUVORK5CYII="}};
+const spriteImages = {};
+for (const key in SPRITES) { const img = new Image(); img.src = SPRITES[key].src; img.onload = () => { if (typeof renderFoot === 'function' && footMask) { renderFoot(); drawFoot($('demoFoot').getContext('2d'), DEMO_FOOT); } }; spriteImages[key] = img; }
+const spriteReady = (key) => spriteImages[key] && spriteImages[key].complete && spriteImages[key].naturalWidth > 0;
+
 /** Dessine un objet centré en (cx, cy), à l'échelle du pied de 96 pixels. */
 function drawObject(ctx, id, cx, cy) {
   const x = Math.round(cx), y = Math.round(cy);
+  if (SPRITES[id] && spriteReady(id)) {
+    const sp = SPRITES[id];
+    // La cravate se noue au point cliqué et pend dessous ; les autres objets sont centrés.
+    const dx = x - Math.floor(sp.w / 2);
+    const dy = id === 'cravate' ? y - 3 : y - Math.floor(sp.h / 2);
+    ctx.drawImage(spriteImages[id], dx, dy);
+    return;
+  }
   switch (id) {
     case 'bague':
       px(ctx, x - 9, y - 2, 18, 5, ACC.goldDark); px(ctx, x - 8, y - 1, 16, 3, ACC.gold); px(ctx, x - 3, y - 5, 6, 4, ACC.goldDark); px(ctx, x - 2, y - 4, 4, 2, '#FFFFFF'); break;
@@ -491,6 +505,17 @@ function drawFoot(ctx, f, { background = true } = {}) {
 function drawIcon(ctx, id) {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, 16, 16);
+  if (SPRITES[id] && id !== 'avatar') {
+    const draw = () => {
+      const sp = SPRITES[id];
+      const scale = Math.min(16 / sp.w, 16 / sp.h);
+      const w = Math.max(1, Math.round(sp.w * scale)), h = Math.max(1, Math.round(sp.h * scale));
+      ctx.clearRect(0, 0, 16, 16);
+      ctx.drawImage(spriteImages[id], Math.floor((16 - w) / 2), Math.floor((16 - h) / 2), w, h);
+    };
+    if (spriteReady(id)) draw(); else spriteImages[id].addEventListener('load', draw, { once: true });
+    return;
+  }
   const K = '#1E1A1C';
   const bottle = (colour) => { px(ctx, 6, 1, 4, 4, K); px(ctx, 7, 2, 2, 3, '#3A3A3A'); px(ctx, 4, 5, 8, 10, K); px(ctx, 5, 6, 6, 8, colour); px(ctx, 6, 7, 1, 5, '#FFFFFF'); };
   const swatch = () => { px(ctx, 2, 3, 12, 11, SKIN.dark); px(ctx, 3, 4, 10, 9, SKIN.base); px(ctx, 3, 4, 1, 9, SKIN.light); px(ctx, 11, 5, 1, 8, SKIN.shade); };
@@ -536,21 +561,32 @@ function drawUiIcon(ctx, name, colour = '#FFFFFF') {
 function drawAvatar(ctx, pseudo) {
   let h = 0;
   for (const ch of pseudo) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const colours = ['#00AEEF', '#17394D', '#2FAD78', '#EB6262', '#F2C230', '#7B2FA3'];
-  const fg = colours[h % colours.length];
-  ctx.clearRect(0, 0, 8, 8);
-  px(ctx, 0, 0, 8, 8, '#DDF5FF');
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 4; x++) {
-    h = (h * 1103515245 + 12345) >>> 0;
-    if ((h >> 16) & 1) { px(ctx, x, y, 1, 1, fg); px(ctx, 7 - x, y, 1, 1, fg); }
-  }
+  const colours = ['#00AEEF', '#2FAD78', '#EB6262', '#F2C230', '#7B2FA3', '#17394D'];
+  const tint = colours[h % colours.length];
+  const draw = () => {
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, 24, 24);
+    ctx.drawImage(spriteImages.avatar, 0, 0);
+    // Une teinte différente par client, posée sur le portrait fourni.
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.globalAlpha = 0.28; ctx.fillStyle = tint; ctx.fillRect(0, 0, 24, 24);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  };
+  if (spriteReady('avatar')) draw(); else spriteImages.avatar.addEventListener('load', draw, { once: true });
 }
 function drawLogo(ctx) {
   ctx.clearRect(0, 0, 16, 16);
-  px(ctx, 4, 7, 9, 8, SKIN.dark); px(ctx, 5, 8, 7, 6, SKIN.base);
-  px(ctx, 2, 2, 5, 6, SKIN.dark); px(ctx, 3, 3, 3, 4, SKIN.base); px(ctx, 3, 3, 3, 2, SKIN.nail);
-  px(ctx, 8, 3, 2, 4, SKIN.dark); px(ctx, 11, 4, 2, 3, SKIN.dark); px(ctx, 13, 5, 2, 3, SKIN.dark);
-  px(ctx, 8, 4, 1, 2, SKIN.base); px(ctx, 11, 5, 1, 1, SKIN.base); px(ctx, 13, 6, 1, 1, SKIN.base);
+  const K = '#17394D', S = '#F2B98F', D = '#D9976A';
+  // Semelle en diagonale, talon en bas à droite
+  const rows = [[7, 4, 8], [8, 4, 9], [9, 5, 10], [10, 6, 11], [11, 7, 12], [12, 8, 13], [13, 9, 13], [14, 10, 13]];
+  for (const [y, x0, x1] of rows) { px(ctx, x0 - 1, y, x1 - x0 + 3, 1, K); px(ctx, x0, y, x1 - x0 + 1, 1, S); px(ctx, x1, y, 1, 1, D); }
+  px(ctx, 10, 15, 4, 1, K);
+  // Gros orteil et quatre petits
+  px(ctx, 2, 1, 5, 6, K); px(ctx, 3, 2, 3, 4, S);
+  px(ctx, 7, 2, 3, 4, K); px(ctx, 8, 3, 1, 2, S);
+  px(ctx, 10, 3, 3, 4, K); px(ctx, 11, 4, 1, 2, S);
+  px(ctx, 12, 5, 3, 3, K); px(ctx, 13, 6, 1, 1, S);
+  px(ctx, 13, 7, 3, 3, K); px(ctx, 14, 8, 1, 1, S);
 }
 function drawSpeaker(ctx, on) {
   ctx.clearRect(0, 0, 12, 12);
@@ -1029,8 +1065,9 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && se
 audio.setMuted(store.get('muted', false) === true);
 $('soundBtn').setAttribute('aria-pressed', String(!audio.muted));
 drawSpeaker($('soundBtn').querySelector('canvas').getContext('2d'), !audio.muted);
-drawLogo($('logoIcon').getContext('2d'));
 for (const c of document.querySelectorAll('canvas[data-icon]')) drawUiIcon(c.getContext('2d'), c.dataset.icon, c.closest('.skip') || c.closest('.status') ? '#17394D' : '#FFFFFF');
+drawLogo($('logoIcon').getContext('2d'));
+drawLogo($('titleIcon').getContext('2d'));
 drawUiIcon($('verifiedIcon').getContext('2d'), 'verified');
 drawUiIcon($('money').querySelector('canvas').getContext('2d'), 'wallet');
 drawUiIcon($('timer').querySelector('canvas').getContext('2d'), 'clock');
