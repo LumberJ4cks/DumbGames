@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#00AEEF">
+<title>ONLY FEET — Deux minutes pour payer ton loyer</title>
+<style>
+  /* Palette interface (section 8) ; les couleurs du pied vivent dans le script. */
+  :root {
+    --bg: #F4F8FA; --white: #FFFFFF; --cyan: #00AEEF; --cyan-light: #DDF5FF; --night: #17394D;
+    --slate: #6B8797; --green: #2FAD78; --coral: #EB6262; --shadow: 4px 4px 0 #17394D;
+    --mono: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--night); font: 14px/1.4 var(--mono); -webkit-text-size-adjust: 100%; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+  .box { background: var(--white); border: 2px solid var(--night); box-shadow: var(--shadow); }
+  .pixel { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+  /* ---------- bandeau ---------- */
+  header { position: sticky; top: 0; z-index: 5; background: var(--white); border-bottom: 2px solid var(--night); }
+  .bar { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 8px 16px; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 18px; letter-spacing: 1px; color: var(--cyan); }
+  .logo canvas { width: 32px; height: 32px; }
+  .badge { font-size: 11px; font-weight: 700; color: var(--white); background: var(--cyan); padding: 3px 6px; border: 2px solid var(--night); }
+  .stat { margin-left: auto; text-align: right; }
+  .stat small { display: block; color: var(--slate); font-size: 11px; letter-spacing: 1px; }
+  .stat b { font-size: 24px; line-height: 1; font-weight: 900; }
+  .stat + .stat { margin-left: 0; }
+  #timer.urgent b { color: var(--coral); }
+  #soundBtn { width: 40px; height: 40px; padding: 0; background: var(--white); border: 2px solid var(--night); box-shadow: 2px 2px 0 var(--night); }
+  #soundBtn canvas { width: 24px; height: 24px; }
+
+  /* ---------- écrans ---------- */
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* accueil */
+  #title .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 24px; }
+  #title h1 { margin: 0 0 4px; font-size: 32px; color: var(--cyan); letter-spacing: 2px; }
+  #title .tag { font-size: 18px; font-weight: 700; margin: 0 0 16px; }
+  #title ol { padding-left: 20px; margin: 0 0 16px; font-weight: 700; }
+  #title p { margin: 0 0 12px; }
+  .demo { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .demo canvas { width: 256px; height: 320px; border: 2px solid var(--night); background: var(--cyan-light); }
+  .dm { background: var(--cyan-light); border: 2px solid var(--night); padding: 10px 12px; font-style: italic; }
+  .dm b { font-style: normal; display: block; color: var(--slate); font-size: 11px; margin-bottom: 4px; }
+  .big-btn { display: block; width: 100%; padding: 16px; margin-top: 8px; background: var(--cyan); color: var(--white); font-weight: 900; font-size: 16px; letter-spacing: 1px; border: 2px solid var(--night); box-shadow: var(--shadow); }
+  .big-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--night); }
+  .record { color: var(--slate); font-size: 12px; margin-top: 12px; }
+
+  /* partie */
+  #game .cols { display: grid; grid-template-columns: 28fr 38fr 34fr; gap: 16px; align-items: start; }
+  .panel { padding: 12px; }
+  .panel h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 2px; color: var(--slate); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+  .tab { background: var(--cyan); color: var(--white); padding: 2px 6px; font-size: 11px; }
+  .client { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+  .client canvas { width: 40px; height: 40px; border: 2px solid var(--night); }
+  .client .pseudo { font-weight: 900; }
+  .client .price { color: var(--slate); font-size: 12px; }
+  .message { background: var(--cyan-light); border: 2px solid var(--night); padding: 10px; min-height: 64px; margin-bottom: 10px; }
+  .crits { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .chip { display: flex; align-items: center; gap: 8px; border: 2px solid var(--night); padding: 6px 8px; background: var(--white); }
+  .chip canvas { width: 24px; height: 24px; }
+  .chip .cat { color: var(--slate); font-size: 11px; display: block; }
+  .chip .check { margin-left: auto; width: 22px; height: 22px; border: 2px solid var(--night); display: grid; place-items: center; font-weight: 900; }
+  .chip.ok { background: #E9F8F0; border-color: var(--green); }
+  .chip.ok .check { background: var(--green); color: var(--white); border-color: var(--green); }
+  .progress { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 4px; }
+  .ifperfect { color: var(--green); font-weight: 700; margin-bottom: 10px; }
+  .skip { width: 100%; padding: 8px; background: var(--white); border: 2px solid var(--slate); color: var(--slate); font-weight: 700; }
+
+  .photo-wrap { position: relative; background: var(--cyan-light); border: 2px solid var(--night); display: flex; justify-content: center; padding: 8px; }
+  #foot { width: 100%; max-width: 320px; height: auto; display: block; }
+  .flash { position: absolute; inset: 0; background: var(--white); opacity: 0; pointer-events: none; }
+  .flash.on { opacity: .5; }
+  .label { position: absolute; top: 6px; left: 6px; font-size: 10px; letter-spacing: 1px; background: var(--night); color: var(--white); padding: 2px 6px; }
+  #publish { margin-top: 10px; }
+  .feedback { min-height: 22px; margin-top: 8px; font-weight: 700; }
+  .feedback.good { color: var(--green); }
+  .feedback.bad { color: var(--coral); }
+  .history { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; min-height: 40px; }
+  .history canvas { width: 32px; height: 40px; border: 2px solid var(--night); background: var(--cyan-light); }
+
+  .palette .row { margin-bottom: 10px; }
+  .palette .row h3 { margin: 0 0 6px; font-size: 11px; color: var(--slate); letter-spacing: 1px; text-transform: uppercase; }
+  .palette .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; min-height: 60px; background: var(--white); border: 2px solid var(--night); box-shadow: 2px 2px 0 var(--night); font-size: 11px; line-height: 1.2; text-align: center; }
+  .opt canvas { width: 24px; height: 24px; }
+  .opt.on { background: var(--cyan); color: var(--white); box-shadow: none; transform: translate(2px, 2px); }
+  .opt:disabled { opacity: .5; cursor: default; }
+
+  /* résultat */
+  #results .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px; }
+  #results .total { font-size: 48px; font-weight: 900; line-height: 1; color: var(--cyan); margin: 4px 0 8px; }
+  #results .rank { font-size: 18px; font-weight: 900; margin-bottom: 16px; }
+  #results dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; margin: 0 0 16px; }
+  #results dt { color: var(--slate); }
+  #results dd { margin: 0; font-weight: 700; text-align: right; }
+  .best { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .best canvas { width: 224px; height: 280px; border: 2px solid var(--night); background: var(--cyan-light); }
+  .best .caption { text-align: center; }
+  .best .caption b { display: block; font-size: 20px; color: var(--green); }
+  .actions { display: flex; flex-direction: column; gap: 8px; }
+  .alt-btn { padding: 10px; background: var(--white); border: 2px solid var(--night); box-shadow: 2px 2px 0 var(--night); font-weight: 700; }
+  .alt-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+  .new-record { color: var(--coral); font-weight: 900; }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 900px) {
+    .bar { gap: 10px; padding: 6px 10px; }
+    .logo span { display: none; }
+    .badge { display: none; }
+    .stat b { font-size: 20px; }
+    #game .cols { grid-template-columns: 1fr; }
+    #game .cols > :nth-child(1) { order: 1; }
+    #game .cols > :nth-child(2) { order: 2; }
+    #game .cols > :nth-child(3) { order: 3; }
+    .history { display: none; }
+    #foot { max-width: 200px; }
+    .opt { min-height: 48px; }
+    #title .hero, #results .wrap { grid-template-columns: 1fr; }
+    .demo canvas { width: 160px; height: 200px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo"><canvas id="logoIcon" class="pixel" width="16" height="16" aria-hidden="true"></canvas><span>ONLY FEET</span></div>
+    <span class="badge">CRÉATEUR VÉRIFIÉ</span>
+    <div class="stat" id="money"><small>SOLDE</small><b>0 €</b></div>
+    <div class="stat" id="timer"><small>TEMPS</small><b>02:00</b></div>
+    <button id="soundBtn" type="button" aria-label="Son" aria-pressed="true"><canvas class="pixel" width="12" height="12"></canvas></button>
+  </div>
+</header>
+
+<main>
+  <!-- ---------- accueil ---------- -->
+  <section id="title" class="screen active">
+    <div class="box hero">
+      <div>
+        <h1>ONLY FEET</h1>
+        <p class="tag">Deux minutes pour payer ton loyer.</p>
+        <p><i>« Sublime le pire. Facture le reste. »</i></p>
+        <ol>
+          <li>Lis la commande.</li>
+          <li>Décore le pied.</li>
+          <li>Publie et encaisse.</li>
+        </ol>
+        <p>Trois critères justes : prix plein et pourboire. Enchaîne les photos parfaites : à partir de la 4<sup>e</sup>, pourboires ×2, à partir de la 7<sup>e</sup>, ×3. Un critère raté casse la série.</p>
+        <div class="dm"><b>MESSAGE PRIVÉ · ComiteEntreprise</b>Votre pied accepte-t-il les chèques de comité d’entreprise ?</div>
+        <button class="big-btn" id="startBtn" type="button">OUVRIR MON COMPTE — 2 MINUTES</button>
+        <p class="record" id="titleRecord"></p>
+      </div>
+      <div class="demo">
+        <canvas id="demoFoot" class="pixel" width="64" height="80"></canvas>
+        <span class="label" style="position:static">APERÇU DU PRODUIT</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- partie ---------- -->
+  <section id="game" class="screen" aria-live="polite">
+    <div class="cols">
+      <div class="box panel">
+        <h2>Messages privés <span class="tab">1 nouveau</span></h2>
+        <div class="client">
+          <canvas id="avatar" class="pixel" width="8" height="8" aria-hidden="true"></canvas>
+          <div><div class="pseudo" id="pseudo">—</div><div class="price" id="basePrice">—</div></div>
+        </div>
+        <div class="message" id="message">—</div>
+        <div class="progress"><span>Critères</span><span id="progress">0/3</span></div>
+        <div class="crits" id="crits"></div>
+        <div class="ifperfect" id="ifPerfect">Si parfaite : —</div>
+        <button class="skip" id="skipBtn" type="button">PASSER −3 s</button>
+      </div>
+
+      <div class="box panel">
+        <h2>Votre contenu exclusif <span id="streak" class="tab" hidden>POURBOIRES ×1</span></h2>
+        <div class="photo-wrap">
+          <span class="label">APERÇU PRIVÉ</span>
+          <canvas id="foot" class="pixel" width="64" height="80"></canvas>
+          <div class="flash" id="flash"></div>
+        </div>
+        <button class="big-btn" id="publishBtn" type="button">PUBLIER — ESPACE</button>
+        <div class="feedback" id="feedback"></div>
+        <div class="history" id="history" aria-label="Dernières ventes"></div>
+      </div>
+
+      <div class="box panel palette" id="palette"></div>
+    </div>
+  </section>
+
+  <!-- ---------- résultat ---------- -->
+  <section id="results" class="screen">
+    <div class="box wrap">
+      <div>
+        <h2 style="margin:0;color:var(--slate);font-size:12px;letter-spacing:2px">TOTAL ENCAISSÉ</h2>
+        <div class="total" id="total">0 €</div>
+        <div class="rank" id="rank">—</div>
+        <dl>
+          <dt>Commandes publiées</dt><dd id="rPublished">0</dd>
+          <dt>Ventes rémunérées</dt><dd id="rPaid">0</dd>
+          <dt>Commandes parfaites</dt><dd id="rPerfect">0</dd>
+          <dt>Meilleure série</dt><dd id="rStreak">0</dd>
+          <dt>Record local</dt><dd id="rRecord">0 €</dd>
+        </dl>
+        <div class="actions">
+          <button class="big-btn" id="replayBtn" type="button">REFAIRE UN MOIS DE SALAIRE EN 2 MINUTES</button>
+          <button class="alt-btn" id="shareBtn" type="button">PARTAGER MON BILAN</button>
+          <button class="alt-btn" id="downloadBtn" type="button">TÉLÉCHARGER LA PHOTO</button>
+        </div>
+      </div>
+      <div class="best">
+        <canvas id="bestPhoto" class="pixel" width="64" height="80"></canvas>
+        <div class="caption" id="bestCaption"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* =====================================================================
+   ONLY FEET — un seul fichier, aucun asset externe.
+   Sections : configuration, catalogue, pixel art, logique pure, état,
+   rendu, événements, audio, stockage.
+   ===================================================================== */
+
+/* ---------- configuration ---------- */
+const DEBUG_RUN = new URLSearchParams(location.search).get('run');
+const CONFIG = {
+  // 120 s fixes ; `?run=10` raccourcit la partie pour les tests, jamais en jeu normal.
+  RUN_MS: DEBUG_RUN ? Math.max(1000, Number(DEBUG_RUN) * 1000) : 120000,
+  SKIP_PENALTY_MS: 3000,
+  PUBLISH_LOCK_MS: 200,
+  URGENT_S: 10,
+  SHARE_URL: location.href.split('?')[0],
+};
+const CATEGORIES = ['vernis', 'texture', 'bijou', 'finition'];
+const CATEGORY_LABEL = { vernis: 'Vernis', texture: 'Texture', bijou: 'Bijou', finition: 'Finition' };
+const OPTIONS = {
+  vernis: [['rouge', 'Rouge passion'], ['or', 'Or bling-bling'], ['violet', 'Violet gothique']],
+  texture: [['nature', 'Nature'], ['poils', 'Poils touffus'], ['mycose', 'Points verts']],
+  bijou: [['bague', 'Bague dorée'], ['noeud', 'Nœud rose'], ['cravate', 'Mini-cravate']],
+  finition: [['mouche', 'Mouche'], ['pansement', 'Pansement sale'], ['chantilly', 'Chantilly']],
+};
+const OPTION_LABEL = {};
+for (const cat of CATEGORIES) for (const [id, label] of OPTIONS[cat]) OPTION_LABEL[id] = label;
+
+/* ---------- catalogue (section 11, 32 commandes) ---------- */
+const CATALOG = [
+  ['01', 'CadreSup92', { vernis: 'violet', bijou: 'cravate', texture: 'poils' }, 300, 'Depuis que j’ai mis votre pied en photo de profil, mes collègues me vouvoient.'],
+  ['02', 'DirectionGenerale', { vernis: 'or', bijou: 'cravate', finition: 'mouche' }, 500, 'Nous avons nommé votre pied directeur et la mouche sera son assistante.'],
+  ['03', 'Reunion14h', { texture: 'poils', bijou: 'cravate', finition: 'pansement' }, 300, 'Mon patron veut rencontrer le pied qui valide mes congés.'],
+  ['04', 'LinkedPied', { vernis: 'or', texture: 'nature', bijou: 'cravate' }, 400, 'Votre gros orteil a accepté ma connexion mais refuse toujours de me recommander.'],
+  ['05', 'CreditSur20Ans', { vernis: 'or', texture: 'mycose', bijou: 'bague' }, 500, 'La banque accepte votre pied comme garant s’il porte une bague.'],
+  ['06', 'AssembleeDesCopro', { texture: 'poils', bijou: 'bague', finition: 'mouche' }, 300, 'Les copropriétaires ont élu votre pied syndic et réclament maintenant sa présence.'],
+  ['07', 'MariageCivil', { vernis: 'rouge', texture: 'poils', bijou: 'noeud' }, 400, 'Le maire veut une photo plus nette avant de nous déclarer mariés.'],
+  ['08', 'BeauPapaOfficiel', { vernis: 'or', texture: 'nature', bijou: 'bague' }, 300, 'Mon père exige de voir le pied avant de lui transmettre l’entreprise.'],
+  ['09', 'GardeAlternee', { vernis: 'violet', bijou: 'noeud', finition: 'pansement' }, 400, 'Le juge m’accorde la garde du JPEG un week-end sur deux.'],
+  ['10', 'RepasDuDimanche', { vernis: 'rouge', texture: 'poils', finition: 'chantilly' }, 200, 'Ma mère a encore mis une assiette pour votre pied.'],
+  ['11', 'HeritierPrincipal', { texture: 'mycose', bijou: 'bague', finition: 'pansement' }, 500, 'Le notaire insiste pour savoir si les cinq orteils sont du même mariage.'],
+  ['12', 'MonOncleLePied', { vernis: 'violet', texture: 'poils', bijou: 'bague' }, 300, 'Depuis Noël, mes cousins appellent votre pied tonton.'],
+  ['13', 'CritiqueGastro', { vernis: 'rouge', texture: 'mycose', finition: 'chantilly' }, 400, 'Le chef veut savoir si la chantilly est maison avant de vous rendre votre étoile.'],
+  ['14', 'MenuDegustation', { vernis: 'or', bijou: 'noeud', finition: 'chantilly' }, 500, 'Nous servons la photo sous cloche et les clients remercient la cuisine.'],
+  ['15', 'HotelTroisEtoiles', { texture: 'poils', bijou: 'noeud', finition: 'mouche' }, 300, 'La mouche est notre cliente la plus fidèle, nous souhaitons lui offrir un portrait.'],
+  ['16', 'InspecteurBuffet', { vernis: 'violet', texture: 'mycose', finition: 'mouche' }, 200, 'Le buffet est fermé depuis que votre pied lui a retiré sa confiance.'],
+  ['17', 'AgenceImmobiliere', { vernis: 'or', bijou: 'bague', finition: 'chantilly' }, 500, 'L’acheteur prend l’appartement à condition que la photo reste porteuse.'],
+  ['18', 'VoisinDuDessous', { texture: 'poils', bijou: 'cravate', finition: 'mouche' }, 200, 'J’ai affiché votre pied dans l’ascenseur et maintenant il faut prendre rendez-vous.'],
+  ['19', 'FengShuiExpert', { vernis: 'rouge', texture: 'nature', finition: 'pansement' }, 300, 'Depuis que votre pied regarde le nord, mon frigo me respecte.'],
+  ['20', 'AssuranceHabitation', { texture: 'mycose', bijou: 'bague', finition: 'mouche' }, 400, 'Mon assurance considère désormais votre pied comme une dépendance habitable.'],
+  ['21', 'MinistereDuTalon', { vernis: 'violet', texture: 'poils', bijou: 'cravate' }, 500, 'Votre pied remplace le préfet jusqu’à son retour de vacances.'],
+  ['22', 'ControleTechnique', { vernis: 'or', texture: 'mycose', finition: 'pansement' }, 300, 'Le garagiste refuse de rendre ma voiture sans l’accord écrit du gros orteil.'],
+  ['23', 'AmbassadeDuSalon', { vernis: 'rouge', bijou: 'bague', finition: 'mouche' }, 400, 'J’ai déclaré votre pied ambassade et mon canapé demande l’asile.'],
+  ['24', 'BureauDesTampons', { texture: 'nature', bijou: 'cravate', finition: 'pansement' }, 200, 'Ils refusent mon dossier parce que votre pied n’a pas paraphé chaque page.'],
+  ['25', 'MuseeMunicipal', { vernis: 'or', texture: 'poils', finition: 'mouche' }, 500, 'Le musée expose la mouche et votre pied doit signer la cession de droits.'],
+  ['26', 'CritiqueDArt', { vernis: 'violet', bijou: 'noeud', finition: 'chantilly' }, 300, 'J’ai pleuré devant la miniature et souhaite acquérir les autres émotions.'],
+  ['27', 'CollectionPrivee', { vernis: 'rouge', texture: 'mycose', bijou: 'bague' }, 400, 'J’ai déjà le pied gauche, il me manque le même en plus cher.'],
+  ['28', 'OrchestreDuDimanche', { texture: 'poils', bijou: 'cravate', finition: 'chantilly' }, 300, 'L’orchestre ne commence plus tant que votre pied ne s’est pas levé.'],
+  ['29', 'CoachMental', { vernis: 'rouge', texture: 'poils', finition: 'pansement' }, 200, 'Votre pied me fixe pendant les pompes et je ne veux pas le décevoir.'],
+  ['30', 'PresidentDuClub', { vernis: 'or', bijou: 'cravate', finition: 'pansement' }, 400, 'On a remplacé le coach par votre photo et personne n’a remarqué.'],
+  ['31', 'AstronauteAmateur', { vernis: 'violet', texture: 'mycose', finition: 'chantilly' }, 500, 'J’ai montré votre pied aux extraterrestres et ils souhaitent négocier directement avec lui.'],
+  ['32', 'EnfinReconnu', { texture: 'poils', bijou: 'noeud', finition: 'pansement' }, 300, 'Mon chien obéit uniquement à votre pied depuis qu’il sait combien je l’ai payé.'],
+].map(([id, pseudo, requirements, basePrice, message]) => ({ id, pseudo, requirements, basePrice, message }));
+
+/* ---------- logique pure (indépendante du DOM) ---------- */
+function countMatches(foot, requirements) {
+  let k = 0;
+  for (const cat in requirements) if (foot[cat] === requirements[cat]) k++;
+  return k;
+}
+/** Retourne { payout, tip, streak, multiplier } selon la section 6. */
+function computePayout(basePrice, matches, streakBefore) {
+  if (matches === 3) {
+    const streak = streakBefore + 1;
+    const multiplier = Math.min(3, 1 + Math.floor((streak - 1) / 3));
+    const tip = basePrice * 0.5 * multiplier;
+    return { payout: basePrice + tip, tip, streak, multiplier };
+  }
+  if (matches === 2) return { payout: basePrice * 0.5, tip: 0, streak: 0, multiplier: 1 };
+  return { payout: 0, tip: 0, streak: 0, multiplier: 1 };
+}
+function nextTipMultiplier(streak) {
+  return Math.min(3, 1 + Math.floor(streak / 3));
+}
+function rankFor(total) {
+  if (total <= 0) return 'Artiste incompris';
+  if (total < 3000) return 'Auto-entrepreneur du talon';
+  if (total < 8000) return 'Cadre supérieur de la cheville';
+  if (total < 15000) return 'Votre pied siège au conseil';
+  return 'Votre pied vient de racheter la plateforme';
+}
+function euros(n) {
+  return n.toLocaleString('fr-FR').replace(/ /g, ' ') + ' €';
+}
+function shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ---------- pixel art : le pied (64 × 80) et les icônes ---------- */
+const SKIN = { base: '#F2B98F', shade: '#D18F66', dark: '#8F5A3C', nail: '#E6D27A', nailEdge: '#B8A24E' };
+const ACC = { rouge: '#D6213A', or: '#F2C230', violet: '#7B2FA3', hair: '#1E1A1C', green: '#58B84A', greenDark: '#2F7A2A', gold: '#F2C230', goldDark: '#A8781A', pink: '#F27AB4', pinkDark: '#B8457F', tie: '#2F58C9', tieDark: '#1B3A8C', fly: '#1E1A1C', wing: '#DDF5FF', band: '#E8D7B8', bandDark: '#C6A77B', stain: '#8A5A2A', cream: '#FFFFFF', creamShade: '#BFE0F2' };
+
+function px(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
+
+/** Silhouette : largeur de la peau par ligne (y → [x0, x1]) ; dessinée en escalier. */
+const SOLE_ROWS = [];
+(function buildSole() {
+  // Semelle du pied : de y=26 (base des orteils) à y=72 (cheville). Gros orteil à gauche.
+  for (let y = 26; y <= 72; y++) {
+    let x0, x1;
+    if (y < 34) { x0 = 14; x1 = 48; }
+    else if (y < 50) { x0 = 15 + Math.floor((y - 34) / 8); x1 = 48 - Math.floor((y - 34) / 5); }
+    else if (y < 62) { x0 = 18 + Math.floor((y - 50) / 4); x1 = 44 - Math.floor((y - 50) / 6); }
+    else { x0 = 22; x1 = 42; }
+    SOLE_ROWS.push([y, x0, x1]);
+  }
+})();
+/** Orteils : [x, y, w, h] du bloc de peau, puis ongle [nx, ny, nw, nh]. Le gros orteil est énorme. */
+const TOES = [
+  { skin: [12, 10, 14, 18], nail: [14, 12, 9, 7] },
+  { skin: [27, 14, 7, 13], nail: [28, 15, 5, 5] },
+  { skin: [34, 15, 6, 12], nail: [35, 16, 4, 4] },
+  { skin: [40, 17, 6, 10], nail: [41, 18, 4, 4] },
+  { skin: [46, 20, 5, 8], nail: [47, 21, 3, 3] },
+];
+
+function drawFoot(ctx, foot, { background = true } = {}) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 64, 80);
+  if (background) {
+    px(ctx, 0, 0, 64, 80, '#DDF5FF');
+    for (let y = 0; y < 80; y += 8) px(ctx, (y / 8) % 2 ? 0 : 4, y, 2, 2, '#C9EBFA');
+  }
+  // Ombre pleine décalée
+  for (const [y, x0, x1] of SOLE_ROWS) px(ctx, x0 + 3, y + 3, x1 - x0, 1, '#9FCFE4');
+  for (const t of TOES) px(ctx, t.skin[0] + 3, t.skin[1] + 3, t.skin[2], t.skin[3], '#9FCFE4');
+  // Contour et peau de la semelle
+  for (const [y, x0, x1] of SOLE_ROWS) {
+    px(ctx, x0 - 1, y, x1 - x0 + 2, 1, SKIN.dark);
+    px(ctx, x0, y, x1 - x0, 1, SKIN.base);
+    px(ctx, x1 - 4, y, 4, 1, SKIN.shade);
+  }
+  px(ctx, 21, 73, 22, 1, SKIN.dark);
+  // Voûte et talon
+  px(ctx, 20, 58, 2, 12, SKIN.shade);
+  px(ctx, 24, 66, 16, 4, SKIN.shade);
+  // Orteils
+  for (const t of TOES) {
+    const [x, y, w, h] = t.skin;
+    px(ctx, x - 1, y - 1, w + 2, h + 2, SKIN.dark);
+    px(ctx, x, y, w, h, SKIN.base);
+    px(ctx, x + w - 2, y + 2, 2, h - 3, SKIN.shade);
+    // Plis
+    px(ctx, x + 1, y + h - 3, w - 2, 1, SKIN.shade);
+  }
+  // Ongles trop grands, jaunâtres par défaut
+  const nailColour = foot.vernis === 'rouge' ? ACC.rouge : foot.vernis === 'or' ? ACC.or : foot.vernis === 'violet' ? ACC.violet : SKIN.nail;
+  const nailEdge = foot.vernis ? '#1E1A1C' : SKIN.nailEdge;
+  for (const t of TOES) {
+    const [nx, ny, nw, nh] = t.nail;
+    px(ctx, nx, ny, nw, nh, nailEdge);
+    px(ctx, nx + 1, ny + 1, nw - 2, nh - 2, nailColour);
+    px(ctx, nx + 1, ny + 1, 1, 1, '#FFFFFF');
+  }
+  // Texture, sur le dessus du pied
+  if (foot.texture === 'poils') {
+    for (const [hx, hy] of [[24, 40], [33, 46], [28, 54]]) {
+      px(ctx, hx, hy, 1, 4, ACC.hair); px(ctx, hx + 2, hy - 1, 1, 5, ACC.hair); px(ctx, hx + 4, hy, 1, 4, ACC.hair);
+      px(ctx, hx + 1, hy + 3, 3, 1, ACC.hair);
+    }
+  }
+  if (foot.texture === 'mycose') {
+    for (const [gx, gy, s] of [[23, 38, 3], [36, 44, 2], [29, 50, 3], [38, 56, 2], [26, 60, 2]]) {
+      px(ctx, gx, gy, s, s, ACC.green); px(ctx, gx, gy, 1, 1, ACC.greenDark);
+    }
+  }
+  // Bijou, sur le gros orteil
+  if (foot.bijou === 'bague') {
+    px(ctx, 11, 24, 16, 3, ACC.goldDark); px(ctx, 12, 24, 14, 2, ACC.gold); px(ctx, 17, 22, 4, 3, ACC.goldDark); px(ctx, 18, 22, 2, 2, '#FFFFFF');
+  }
+  if (foot.bijou === 'noeud') {
+    px(ctx, 12, 27, 5, 4, ACC.pinkDark); px(ctx, 19, 27, 5, 4, ACC.pinkDark);
+    px(ctx, 13, 28, 3, 2, ACC.pink); px(ctx, 20, 28, 3, 2, ACC.pink); px(ctx, 17, 28, 2, 2, ACC.pink);
+    px(ctx, 14, 31, 2, 3, ACC.pinkDark); px(ctx, 20, 31, 2, 3, ACC.pinkDark);
+  }
+  if (foot.bijou === 'cravate') {
+    px(ctx, 15, 26, 8, 2, ACC.tieDark); px(ctx, 17, 28, 4, 3, ACC.tieDark);
+    px(ctx, 16, 31, 6, 14, ACC.tie); px(ctx, 17, 45, 4, 3, ACC.tie); px(ctx, 18, 48, 2, 2, ACC.tieDark);
+    px(ctx, 17, 33, 1, 10, ACC.tieDark);
+  }
+  // Finition, sur le bord opposé près des petits orteils
+  if (foot.finition === 'mouche') {
+    px(ctx, 41, 31, 4, 3, ACC.fly); px(ctx, 40, 32, 1, 1, ACC.fly); px(ctx, 45, 32, 1, 1, ACC.fly);
+    px(ctx, 39, 29, 3, 2, ACC.wing); px(ctx, 44, 29, 3, 2, ACC.wing);
+    px(ctx, 42, 34, 1, 1, ACC.fly); px(ctx, 44, 34, 1, 1, ACC.fly);
+  }
+  if (foot.finition === 'pansement') {
+    px(ctx, 36, 37, 12, 5, ACC.bandDark); px(ctx, 37, 38, 10, 3, ACC.band);
+    px(ctx, 40, 38, 4, 3, '#F5E8D0'); px(ctx, 41, 39, 2, 2, ACC.stain);
+    px(ctx, 38, 39, 1, 1, ACC.bandDark); px(ctx, 45, 39, 1, 1, ACC.bandDark);
+  }
+  if (foot.finition === 'chantilly') {
+    px(ctx, 39, 33, 8, 8, ACC.creamShade); px(ctx, 39, 33, 7, 7, ACC.cream);
+    px(ctx, 41, 35, 4, 4, ACC.creamShade); px(ctx, 42, 36, 2, 2, ACC.cream);
+    px(ctx, 42, 31, 2, 2, ACC.cream); px(ctx, 42, 30, 1, 1, ACC.creamShade);
+  }
+}
+
+/** Icône 12 × 12 d'une option, pour les boutons et les critères. */
+function drawIcon(ctx, id) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 12, 12);
+  const toe = () => { px(ctx, 2, 2, 8, 9, SKIN.dark); px(ctx, 3, 3, 6, 7, SKIN.base); };
+  switch (id) {
+    case 'rouge': case 'or': case 'violet': toe(); px(ctx, 4, 4, 4, 3, ACC[id]); break;
+    case 'nature': toe(); break;
+    case 'poils': toe(); px(ctx, 4, 5, 1, 4, ACC.hair); px(ctx, 6, 4, 1, 5, ACC.hair); px(ctx, 8, 5, 1, 4, ACC.hair); break;
+    case 'mycose': toe(); px(ctx, 4, 5, 2, 2, ACC.green); px(ctx, 7, 7, 2, 2, ACC.green); break;
+    case 'bague': px(ctx, 2, 4, 8, 6, ACC.goldDark); px(ctx, 4, 6, 4, 2, '#DDF5FF'); px(ctx, 5, 2, 2, 2, '#FFFFFF'); break;
+    case 'noeud': px(ctx, 1, 4, 4, 4, ACC.pinkDark); px(ctx, 7, 4, 4, 4, ACC.pinkDark); px(ctx, 5, 5, 2, 2, ACC.pink); break;
+    case 'cravate': px(ctx, 4, 1, 4, 2, ACC.tieDark); px(ctx, 5, 3, 2, 6, ACC.tie); px(ctx, 4, 8, 4, 3, ACC.tie); break;
+    case 'mouche': px(ctx, 4, 5, 4, 3, ACC.fly); px(ctx, 2, 3, 3, 2, ACC.wing); px(ctx, 7, 3, 3, 2, ACC.wing); break;
+    case 'pansement': px(ctx, 1, 4, 10, 4, ACC.bandDark); px(ctx, 2, 5, 8, 2, ACC.band); px(ctx, 5, 5, 2, 2, ACC.stain); break;
+    case 'chantilly': px(ctx, 2, 3, 8, 8, ACC.creamShade); px(ctx, 2, 3, 7, 7, ACC.cream); px(ctx, 4, 5, 3, 3, ACC.creamShade); break;
+  }
+}
+/** Avatar abstrait 8 × 8 déterministe par pseudo. */
+function drawAvatar(ctx, pseudo) {
+  let h = 0;
+  for (const ch of pseudo) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const colours = ['#00AEEF', '#17394D', '#2FAD78', '#EB6262', '#F2C230', '#7B2FA3'];
+  const fg = colours[h % colours.length];
+  ctx.clearRect(0, 0, 8, 8);
+  px(ctx, 0, 0, 8, 8, '#DDF5FF');
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 4; x++) {
+    h = (h * 1103515245 + 12345) >>> 0;
+    if ((h >> 16) & 1) { px(ctx, x, y, 1, 1, fg); px(ctx, 7 - x, y, 1, 1, fg); }
+  }
+}
+function drawLogo(ctx) {
+  ctx.clearRect(0, 0, 16, 16);
+  // Petit pied cyan et cadenas
+  px(ctx, 3, 9, 8, 6, '#00AEEF'); px(ctx, 2, 5, 3, 4, '#00AEEF'); px(ctx, 6, 5, 2, 3, '#00AEEF'); px(ctx, 9, 6, 2, 2, '#00AEEF');
+  px(ctx, 11, 8, 5, 6, '#17394D'); px(ctx, 12, 5, 3, 3, '#17394D'); px(ctx, 13, 6, 1, 2, '#F4F8FA'); px(ctx, 13, 10, 1, 2, '#F4F8FA');
+}
+function drawSpeaker(ctx, on) {
+  ctx.clearRect(0, 0, 12, 12);
+  px(ctx, 1, 4, 3, 4, '#17394D'); px(ctx, 4, 2, 3, 8, '#17394D');
+  if (on) { px(ctx, 8, 4, 1, 4, '#00AEEF'); px(ctx, 10, 2, 1, 8, '#00AEEF'); }
+  else { px(ctx, 8, 3, 1, 1, '#EB6262'); px(ctx, 9, 4, 1, 1, '#EB6262'); px(ctx, 10, 5, 1, 1, '#EB6262'); px(ctx, 10, 3, 1, 1, '#EB6262'); px(ctx, 8, 5, 1, 1, '#EB6262'); }
+}
+
+/* ---------- audio (Web Audio, facultatif) ---------- */
+const audio = (() => {
+  let ac = null, master = null, muted = false;
+  function init() {
+    if (ac) return;
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = muted ? 0 : 0.3; master.connect(ac.destination);
+  }
+  function tone(f, dur, type, vol, delay = 0, slide) {
+    if (!ac) return;
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+  }
+  return {
+    unlock() { try { init(); ac.resume(); } catch {} },
+    get muted() { return muted; },
+    setMuted(v) { muted = v; if (master) master.gain.value = v ? 0 : 0.3; },
+    click() { tone(900, 0.04, 'square', 0.12); },
+    notify() { tone(880, 0.08, 'sine', 0.2); tone(1320, 0.12, 'sine', 0.2, 0.09); },
+    cash() { tone(1568, 0.08, 'square', 0.15); tone(2093, 0.16, 'square', 0.12, 0.1); },
+    soft() { tone(300, 0.2, 'triangle', 0.15, 0, 180); },
+    beep() { tone(1200, 0.05, 'square', 0.1); },
+    end() { [523, 494, 440, 392].forEach((f, i) => tone(f, 0.3, 'triangle', 0.18, i * 0.18)); },
+  };
+})();
+
+/* ---------- stockage (repli silencieux) ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('onlyFeet:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('onlyFeet:' + k, JSON.stringify(v)); } catch {} },
+};
+
+/* ---------- état ---------- */
+const $ = (id) => document.getElementById(id);
+let phase = 'title';
+const foot = { vernis: null, texture: 'nature', bijou: null, finition: null };
+let session = null;
+let timerId = null;
+let publishLockUntil = 0;
+let lastBeepSecond = null;
+let record = Number(store.get('best', 0)) || 0;
+
+function resetFoot() { foot.vernis = null; foot.texture = 'nature'; foot.bijou = null; foot.finition = null; }
+function newSession() {
+  return {
+    deadline: 0, money: 0, streak: 0, bestStreak: 0, publishedCount: 0, paidCount: 0, perfectCount: 0,
+    currentOrder: null, lastOrderId: null, deck: shuffle(CATALOG), history: [], bestSale: null, ended: false,
+  };
+}
+const remainingMs = () => Math.max(0, session.deadline - Date.now());
+const active = () => phase === 'playing' && session && !session.ended && Date.now() < session.deadline;
+
+/* ---------- sélection des commandes (section 5) ---------- */
+function pickNextOrder() {
+  if (session.deck.length === 0) session.deck = shuffle(CATALOG);
+  // Cherche une commande non répétée et non déjà parfaite avec le pied courant.
+  const candidate = (allowPerfect) => session.deck.findIndex((o) => o.id !== session.lastOrderId && (allowPerfect || countMatches(foot, o.requirements) < 3));
+  let idx = candidate(false);
+  if (idx < 0) idx = candidate(true);
+  if (idx < 0) { session.deck = shuffle(CATALOG); idx = candidate(false); if (idx < 0) idx = candidate(true); }
+  if (idx < 0) idx = 0;
+  const order = session.deck.splice(idx, 1)[0];
+  session.currentOrder = order;
+  session.lastOrderId = order.id;
+  renderOrder();
+  audio.notify();
+}
+
+/* ---------- rendu ---------- */
+const footCtx = $('foot').getContext('2d');
+function renderFoot() { drawFoot(footCtx, foot); }
+
+function renderMoney() { $('money').querySelector('b').textContent = euros(session ? session.money : 0); }
+function renderStreak() {
+  const el = $('streak');
+  const mult = nextTipMultiplier(session.streak);
+  el.hidden = session.streak === 0;
+  el.textContent = `SÉRIE ${session.streak} · POURBOIRES ×${mult}`;
+}
+function renderOrder() {
+  const o = session.currentOrder;
+  $('pseudo').textContent = o.pseudo;
+  $('basePrice').textContent = 'Prix de base : ' + euros(o.basePrice);
+  $('message').textContent = o.message;
+  drawAvatar($('avatar').getContext('2d'), o.pseudo);
+  const crits = $('crits');
+  crits.innerHTML = '';
+  for (const cat of CATEGORIES) {
+    if (!(cat in o.requirements)) continue;
+    const id = o.requirements[cat];
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.dataset.cat = cat;
+    const c = document.createElement('canvas'); c.width = 12; c.height = 12; c.className = 'pixel';
+    drawIcon(c.getContext('2d'), id);
+    chip.appendChild(c);
+    const label = document.createElement('div');
+    label.innerHTML = `<span class="cat">${CATEGORY_LABEL[cat]}</span>${OPTION_LABEL[id]}`;
+    chip.appendChild(label);
+    const check = document.createElement('span'); check.className = 'check'; check.textContent = '';
+    chip.appendChild(check);
+    crits.appendChild(chip);
+  }
+  renderCriteria();
+}
+function renderCriteria() {
+  const o = session.currentOrder;
+  let k = 0;
+  for (const chip of $('crits').children) {
+    const cat = chip.dataset.cat;
+    const ok = foot[cat] === o.requirements[cat];
+    chip.classList.toggle('ok', ok);
+    chip.querySelector('.check').textContent = ok ? '✓' : '';
+    if (ok) k++;
+  }
+  $('progress').textContent = `${k}/3`;
+  const perfect = computePayout(o.basePrice, 3, session.streak);
+  $('ifPerfect').textContent = `Si parfaite : ${euros(perfect.payout)} (dont ${euros(perfect.tip)} de pourboire)`;
+}
+function renderPalette() {
+  const pal = $('palette');
+  pal.innerHTML = '<h2>Accessoires</h2>';
+  for (const cat of CATEGORIES) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<h3>${CATEGORY_LABEL[cat]}</h3>`;
+    const opts = document.createElement('div'); opts.className = 'opts';
+    for (const [id, label] of OPTIONS[cat]) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'opt'; b.dataset.cat = cat; b.dataset.id = id;
+      b.setAttribute('aria-pressed', 'false');
+      const c = document.createElement('canvas'); c.width = 12; c.height = 12; c.className = 'pixel';
+      drawIcon(c.getContext('2d'), id);
+      b.appendChild(c);
+      const span = document.createElement('span'); span.textContent = label; b.appendChild(span);
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); applyOption(cat, id); });
+      b.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyOption(cat, id); } });
+      opts.appendChild(b);
+    }
+    row.appendChild(opts);
+    pal.appendChild(row);
+  }
+  renderPaletteState();
+}
+function renderPaletteState() {
+  for (const b of document.querySelectorAll('.opt')) {
+    const on = foot[b.dataset.cat] === b.dataset.id;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+}
+function renderTimer() {
+  const ms = remainingMs();
+  const s = Math.ceil(ms / 1000);
+  $('timer').querySelector('b').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const urgent = s <= CONFIG.URGENT_S && s > 0;
+  $('timer').classList.toggle('urgent', urgent);
+  if (urgent && lastBeepSecond !== s) { lastBeepSecond = s; audio.beep(); }
+}
+function showScreen(id) {
+  for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === id);
+  window.scrollTo(0, 0);
+}
+function feedback(text, good) {
+  const el = $('feedback');
+  el.textContent = text;
+  el.className = 'feedback ' + (good ? 'good' : 'bad');
+}
+function flash() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const f = $('flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 80);
+}
+function snapshotFoot() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 80; c.className = 'pixel';
+  drawFoot(c.getContext('2d'), { ...foot });
+  return c;
+}
+
+/* ---------- actions ---------- */
+function applyOption(cat, id) {
+  if (!active()) return;
+  audio.unlock();
+  if (foot[cat] === id) {
+    // Retirer un choix actif, sauf Nature qui reste.
+    if (!(cat === 'texture' && id === 'nature')) foot[cat] = cat === 'texture' ? 'nature' : null;
+  } else foot[cat] = id;
+  audio.click();
+  renderFoot();
+  renderPaletteState();
+  renderCriteria();
+}
+
+function publishPhoto() {
+  const now = Date.now();
+  if (!active() || now < publishLockUntil) return;
+  if (now >= session.deadline) return; // horodatée à l'échéance ou après : ne compte pas
+  publishLockUntil = now + CONFIG.PUBLISH_LOCK_MS;
+  const o = session.currentOrder;
+  const k = countMatches(foot, o.requirements);
+  const result = computePayout(o.basePrice, k, session.streak);
+  session.money += result.payout;
+  session.streak = result.streak;
+  session.bestStreak = Math.max(session.bestStreak, session.streak);
+  session.publishedCount++;
+  if (result.payout > 0) session.paidCount++;
+  if (k === 3) session.perfectCount++;
+  const snapshot = snapshotFoot();
+  const sale = { order: o, payout: result.payout, tip: result.tip, matches: k, snapshot, foot: { ...foot } };
+  session.history.push(sale);
+  if (result.payout > 0 && (!session.bestSale || result.payout > session.bestSale.payout)) session.bestSale = sale;
+  // Retour immédiat
+  if (k === 3) { feedback(`+${euros(result.payout)} — dont ${euros(result.tip)} de pourboire`, true); audio.cash(); }
+  else if (k === 2) { feedback(`2/3 — +${euros(result.payout)}`, true); audio.cash(); }
+  else { feedback('0 € — Contenu offert, quelle générosité.', false); audio.soft(); }
+  flash();
+  renderMoney();
+  renderStreak();
+  const hist = $('history');
+  hist.prepend(snapshot);
+  while (hist.children.length > 8) hist.lastChild.remove();
+  pickNextOrder();
+}
+
+function skipOrder() {
+  if (!active()) return;
+  audio.unlock();
+  session.deadline -= CONFIG.SKIP_PENALTY_MS;
+  session.streak = 0;
+  renderStreak();
+  feedback('Client ignoré. −3 s, série remise à zéro.', false);
+  audio.soft();
+  if (Date.now() >= session.deadline) { endGame(); return; }
+  pickNextOrder();
+  renderTimer();
+}
+
+function startGame() {
+  audio.unlock();
+  resetSession();
+  session = newSession();
+  session.deadline = Date.now() + CONFIG.RUN_MS;
+  phase = 'playing';
+  resetFoot();
+  renderFoot();
+  renderPalette();
+  renderMoney();
+  renderStreak();
+  $('history').innerHTML = '';
+  $('feedback').textContent = '';
+  $('feedback').className = 'feedback';
+  showScreen('game');
+  pickNextOrder();
+  renderTimer();
+  timerId = setInterval(() => {
+    if (!session || session.ended) return;
+    renderTimer();
+    if (Date.now() >= session.deadline) endGame();
+  }, 100);
+}
+
+function endGame() {
+  if (!session || session.ended) return;
+  session.ended = true;
+  phase = 'results';
+  clearInterval(timerId); timerId = null;
+  renderTimer();
+  const snap = { ...session, history: session.history.slice() };
+  const total = snap.money;
+  const newRecord = total > record;
+  if (newRecord) { record = total; store.set('best', record); }
+  $('total').textContent = euros(total);
+  $('rank').textContent = rankFor(total);
+  $('rPublished').textContent = snap.publishedCount;
+  $('rPaid').textContent = snap.paidCount;
+  $('rPerfect').textContent = snap.perfectCount;
+  $('rStreak').textContent = snap.bestStreak;
+  $('rRecord').innerHTML = euros(record) + (newRecord && total > 0 ? ' <span class="new-record">NOUVEAU RECORD</span>' : '');
+  const bctx = $('bestPhoto').getContext('2d');
+  if (snap.bestSale) {
+    drawFoot(bctx, snap.bestSale.foot);
+    $('bestCaption').innerHTML = `<b>${euros(snap.bestSale.payout)}</b><span>${snap.bestSale.order.pseudo}</span><br><i>« ${snap.bestSale.order.message} »</i>`;
+  } else {
+    drawFoot(bctx, foot);
+    $('bestCaption').innerHTML = '<b>0 €</b>Votre démarche reste incomprise.';
+  }
+  $('titleRecord').textContent = record > 0 ? 'Record local : ' + euros(record) : '';
+  audio.end();
+  showScreen('results');
+  replayLockUntil = Date.now() + 500;
+}
+let replayLockUntil = 0;
+
+function resetSession() {
+  clearInterval(timerId); timerId = null;
+  publishLockUntil = 0;
+  lastBeepSecond = null;
+  $('timer').classList.remove('urgent');
+}
+
+/* ---------- partage ---------- */
+async function shareResults() {
+  if (!session) return;
+  const best = session.bestSale;
+  const text = best
+    ? `J’ai encaissé ${euros(session.money)} sur ONLY FEET en 2 minutes. Ma meilleure vente : ${euros(best.payout)} à ${best.order.pseudo}, qui m’a écrit : « ${best.order.message} » ${rankFor(session.money)}.`
+    : `J’ai encaissé 0 € sur ONLY FEET en 2 minutes. Ma démarche reste incomprise.`;
+  const payload = { title: 'ONLY FEET', text, url: CONFIG.SHARE_URL };
+  try {
+    if (navigator.share) { await navigator.share(payload); return; }
+    await navigator.clipboard.writeText(text + ' ' + CONFIG.SHARE_URL);
+    $('shareBtn').textContent = 'BILAN COPIÉ !';
+    setTimeout(() => { $('shareBtn').textContent = 'PARTAGER MON BILAN'; }, 1800);
+  } catch {}
+}
+function downloadPhoto() {
+  // Carte de partage : la photo agrandie, le pseudo, la phrase et le montant.
+  const src = $('bestPhoto');
+  const card = document.createElement('canvas'); card.width = 640; card.height = 900;
+  const c = card.getContext('2d'); c.imageSmoothingEnabled = false;
+  c.fillStyle = '#F4F8FA'; c.fillRect(0, 0, 640, 900);
+  c.fillStyle = '#FFFFFF'; c.fillRect(40, 40, 560, 820); c.strokeStyle = '#17394D'; c.lineWidth = 6; c.strokeRect(40, 40, 560, 820);
+  c.fillStyle = '#00AEEF'; c.font = '900 40px ui-monospace, Menlo, monospace'; c.fillText('ONLY FEET', 70, 100);
+  c.fillStyle = '#17394D'; c.font = '700 18px ui-monospace, Menlo, monospace'; c.fillText('CONTENU EXCLUSIF · CRÉATEUR VÉRIFIÉ', 70, 130);
+  c.drawImage(src, 128, 160, 384, 480);
+  const best = session && session.bestSale;
+  c.fillStyle = '#2FAD78'; c.font = '900 48px ui-monospace, Menlo, monospace';
+  c.fillText(best ? euros(best.payout) : '0 €', 70, 700);
+  c.fillStyle = '#6B8797'; c.font = '700 20px ui-monospace, Menlo, monospace';
+  c.fillText(best ? best.order.pseudo : 'Votre démarche reste incomprise.', 70, 735);
+  c.fillStyle = '#17394D'; c.font = 'italic 18px ui-monospace, Menlo, monospace';
+  const words = (best ? best.order.message : '').split(' '); let line = ''; let y = 770;
+  for (const w of words) { if (c.measureText(line + ' ' + w).width > 500 && line) { c.fillText(line, 70, y); y += 26; line = w; } else line = (line + ' ' + w).trim(); }
+  if (line) c.fillText(line, 70, y);
+  c.fillStyle = '#6B8797'; c.font = '14px ui-monospace, Menlo, monospace'; c.fillText(CONFIG.SHARE_URL.replace(/^https?:\/\//, ''), 70, 840);
+  const a = document.createElement('a'); a.download = 'only-feet.png'; a.href = card.toDataURL('image/png'); a.click();
+}
+
+/* ---------- événements ---------- */
+$('startBtn').addEventListener('click', startGame);
+$('replayBtn').addEventListener('click', () => { if (Date.now() >= replayLockUntil) startGame(); });
+$('shareBtn').addEventListener('click', shareResults);
+$('downloadBtn').addEventListener('click', downloadPhoto);
+$('skipBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); skipOrder(); });
+$('skipBtn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); skipOrder(); } });
+// Publier : pointeur (une seule fois par toucher) et Espace global, sans double gestion.
+$('publishBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); publishPhoto(); });
+$('publishBtn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); publishPhoto(); } });
+$('publishBtn').addEventListener('click', (e) => e.preventDefault());
+addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+  if (e.target && e.target.id === 'soundBtn') return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (phase === 'playing') publishPhoto();
+  else if (phase === 'title') startGame();
+  else if (phase === 'results' && Date.now() >= replayLockUntil) startGame();
+});
+$('soundBtn').addEventListener('click', () => {
+  audio.unlock();
+  audio.setMuted(!audio.muted);
+  store.set('muted', audio.muted);
+  $('soundBtn').setAttribute('aria-pressed', String(!audio.muted));
+  drawSpeaker($('soundBtn').querySelector('canvas').getContext('2d'), !audio.muted);
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && session && !session.ended) { renderTimer(); if (Date.now() >= session.deadline) endGame(); } });
+
+/* ---------- initialisation ---------- */
+audio.setMuted(store.get('muted', false) === true);
+$('soundBtn').setAttribute('aria-pressed', String(!audio.muted));
+drawSpeaker($('soundBtn').querySelector('canvas').getContext('2d'), !audio.muted);
+drawLogo($('logoIcon').getContext('2d'));
+drawFoot($('demoFoot').getContext('2d'), { vernis: 'violet', texture: 'poils', bijou: 'cravate', finition: 'mouche' });
+renderFoot();
+$('titleRecord').textContent = record > 0 ? 'Record local : ' + euros(record) : '';
+
+/* Contrat du site DumbGames, pour une intégration ultérieure. */
+window.ONLY_FEET = {
+  manifest: { slug: 'only-feet', title: 'ONLY FEET', tagline: 'Deux minutes pour payer ton loyer.' },
+  computePayout, countMatches, rankFor, CATALOG,
+};
+</script>
+</body>
+</html>
