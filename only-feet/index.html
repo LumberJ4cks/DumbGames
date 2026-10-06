@@ -86,7 +86,10 @@
   .skip canvas { width: 20px; height: 20px; }
 
   .photo-wrap { position: relative; background: var(--cyan-light); border: 2px solid var(--night); display: flex; justify-content: center; padding: 8px; }
-  #foot { width: 100%; max-width: 360px; height: auto; display: block; }
+  #foot { width: 100%; max-width: 336px; height: auto; display: block; cursor: crosshair; touch-action: none; }
+  .tool-hint { text-align: center; font-size: 12px; color: var(--slate); margin-top: 6px; min-height: 16px; }
+  .tool-hint b { color: var(--night); }
+  .palette .opts.four { grid-template-columns: repeat(3, 1fr); }
   .flash { position: absolute; inset: 0; background: var(--white); opacity: 0; pointer-events: none; }
   .flash.on { opacity: .5; }
   .label { position: absolute; top: 8px; right: 8px; font-size: 10px; letter-spacing: 1px; font-weight: 900; background: var(--night); color: var(--white); padding: 3px 8px; }
@@ -133,7 +136,7 @@
     .stat { padding: 4px 8px; gap: 6px; } .stat b { font-size: 20px; } .stat canvas { width: 18px; height: 18px; }
     #game .cols { grid-template-columns: 1fr; }
     .hist-title, .history { display: none; }
-    #foot { max-width: 220px; }
+    #foot { max-width: 260px; }
     .opt { min-height: 72px; } .opt canvas { width: 36px; height: 36px; }
     #title .hero, #results .wrap { grid-template-columns: 1fr; }
     .demo canvas { width: 192px; height: 240px; }
@@ -165,6 +168,7 @@
           <li>Décore le pied.</li>
           <li>Publie et encaisse.</li>
         </ol>
+        <p>Peins les ongles au pinceau, pose les poils, les points et les objets avec la souris ou le doigt. Le client regarde ses trois critères, pas ta propreté.</p>
         <p>Trois critères justes : prix plein et pourboire. Enchaîne les photos parfaites : à partir de la 4<sup>e</sup>, pourboires ×2, à partir de la 7<sup>e</sup>, ×3. Un critère raté casse la série.</p>
         <div class="dm"><b>MESSAGE PRIVÉ · ComiteEntreprise</b>Votre pied accepte-t-il les chèques de comité d’entreprise ?</div>
         <button class="big-btn" id="startBtn" type="button">Ouvrir mon compte — 2 minutes</button>
@@ -203,6 +207,7 @@
             <span class="label">APERÇU PRIVÉ</span>
             <div class="flash" id="flash"></div>
           </div>
+          <div class="tool-hint" id="toolHint">Choisis un outil à droite, puis peins ou pose sur le pied.</div>
           <button class="big-btn" id="publishBtn" type="button"><canvas class="pixel" data-icon="camera" width="12" height="12" aria-hidden="true"></canvas>Publier</button>
           <div class="tips"><canvas class="pixel" data-icon="coins" width="12" height="12" aria-hidden="true"></canvas><span id="streak">Pourboires <b>×1</b></span></div>
           <div class="feedback" id="feedback"></div>
@@ -262,18 +267,30 @@ const CONFIG = {
   URGENT_S: 10,
   SHARE_URL: location.href.split('?')[0],
 };
-const CATEGORIES = ['vernis', 'texture', 'bijou', 'finition'];
-const CATEGORY_LABEL = { vernis: 'Vernis', texture: 'Texture', bijou: 'Bijou', finition: 'Finition' };
-const OPTIONS = {
-  vernis: [['rouge', 'Rouge passion'], ['or', 'Or bling-bling'], ['violet', 'Violet gothique']],
-  texture: [['nature', 'Nature'], ['poils', 'Poils touffus'], ['mycose', 'Points verts']],
-  bijou: [['bague', 'Bague dorée'], ['noeud', 'Nœud rose'], ['cravate', 'Mini-cravate']],
-  finition: [['mouche', 'Mouche'], ['pansement', 'Pansement sale'], ['chantilly', 'Chantilly']],
-};
-const OPTION_LABEL = {};
-for (const cat of CATEGORIES) for (const [id, label] of OPTIONS[cat]) OPTION_LABEL[id] = label;
+const CATEGORIES = ['vernis', 'texture', 'bijou', 'finition', 'dessin'];
+const CATEGORY_LABEL = { vernis: 'Vernis', texture: 'Texture', bijou: 'Bijou', finition: 'Finition', dessin: 'Dessin' };
+/* Les outils de la palette. `kind` : brush (peinture continue), stamp (pose au clic), place (objet unique par catégorie), erase. */
+const TOOLS = [
+  { cat: 'vernis', id: 'rouge', label: 'Rouge', kind: 'brush', hint: 'Peins les cinq ongles en rouge.' },
+  { cat: 'vernis', id: 'or', label: 'Or', kind: 'brush', hint: 'Peins les cinq ongles en or.' },
+  { cat: 'vernis', id: 'violet', label: 'Violet', kind: 'brush', hint: 'Peins les cinq ongles en violet.' },
+  { cat: 'texture', id: 'poils', label: 'Poils', kind: 'stamp', hint: 'Clique sur le pied pour poser des touffes. Trois minimum.' },
+  { cat: 'texture', id: 'mycose', label: 'Points verts', kind: 'stamp', hint: 'Clique pour poser des points. Quatre minimum.' },
+  { cat: 'outil', id: 'gomme', label: 'Gomme', kind: 'erase', hint: 'Efface peinture, poils, points, dessins et objets.' },
+  { cat: 'bijou', id: 'bague', label: 'Bague', kind: 'place', hint: 'Clique sur le gros orteil pour poser la bague.' },
+  { cat: 'bijou', id: 'noeud', label: 'Nœud', kind: 'place', hint: 'Clique sur le pied pour poser le nœud.' },
+  { cat: 'bijou', id: 'cravate', label: 'Cravate', kind: 'place', hint: 'Clique sous le gros orteil pour nouer la cravate.' },
+  { cat: 'finition', id: 'mouche', label: 'Mouche', kind: 'place', hint: 'Clique où la mouche doit se poser.' },
+  { cat: 'finition', id: 'pansement', label: 'Pansement', kind: 'place', hint: 'Clique pour coller le pansement.' },
+  { cat: 'finition', id: 'chantilly', label: 'Chantilly', kind: 'place', hint: 'Clique pour déposer la chantilly.' },
+  { cat: 'outil', id: 'feutre', label: 'Feutre', kind: 'brush', hint: 'Dessine ce qu’on te demande. Le client ne vérifie pas.' },
+];
+const OPTION_LABEL = { rouge: 'Rouge passion', or: 'Or bling-bling', violet: 'Violet gothique', nature: 'Nature (rien)', poils: 'Poils touffus', mycose: 'Points verts', bague: 'Bague dorée', noeud: 'Nœud rouge', cravate: 'Mini-cravate', mouche: 'Mouche', pansement: 'Pansement sale', chantilly: 'Chantilly', smiley: 'Un smiley', coeur: 'Un cœur', etoile: 'Une étoile' };
+const PAINT = { rouge: 1, or: 2, violet: 3, feutre: 4 };
+const PAINT_COLOUR = { 1: '#D6213A', 2: '#F2C230', 3: '#7B2FA3', 4: '#1E1A1C' };
+const RULES = { nailCoverage: 0.5, tuftsMin: 3, dotsMin: 4, inkMin: 30 };
 
-/* ---------- catalogue (section 11, 32 commandes) ---------- */
+/* ---------- catalogue (section 11, 32 commandes, plus quatre commandes de dessin) ---------- */
 const CATALOG = [
   ['01', 'CadreSup92', { vernis: 'violet', bijou: 'cravate', texture: 'poils' }, 300, 'Depuis que j’ai mis votre pied en photo de profil, mes collègues me vouvoient.'],
   ['02', 'DirectionGenerale', { vernis: 'or', bijou: 'cravate', finition: 'mouche' }, 500, 'Nous avons nommé votre pied directeur et la mouche sera son assistante.'],
@@ -307,15 +324,75 @@ const CATALOG = [
   ['30', 'PresidentDuClub', { vernis: 'or', bijou: 'cravate', finition: 'pansement' }, 400, 'On a remplacé le coach par votre photo et personne n’a remarqué.'],
   ['31', 'AstronauteAmateur', { vernis: 'violet', texture: 'mycose', finition: 'chantilly' }, 500, 'J’ai montré votre pied aux extraterrestres et ils souhaitent négocier directement avec lui.'],
   ['32', 'EnfinReconnu', { texture: 'poils', bijou: 'noeud', finition: 'pansement' }, 300, 'Mon chien obéit uniquement à votre pied depuis qu’il sait combien je l’ai payé.'],
+  ['33', 'PsyDuDimanche', { vernis: 'rouge', dessin: 'smiley', finition: 'mouche' }, 400, 'Mon thérapeute veut voir le pied sourire avant de me facturer la séance.'],
+  ['34', 'SaintValentin', { dessin: 'coeur', bijou: 'noeud', texture: 'poils' }, 300, 'Elle a dit oui au pied. Moi, elle réfléchit encore.'],
+  ['35', 'ProfDeMaths', { dessin: 'etoile', vernis: 'or', texture: 'nature' }, 500, 'Le pied a eu une étoile au tableau d’honneur, mes enfants non.'],
+  ['36', 'TatoueurAgree', { dessin: 'smiley', vernis: 'violet', bijou: 'bague' }, 400, 'Je tatoue uniquement d’après photo officielle du pied.'],
 ].map(([id, pseudo, requirements, basePrice, message]) => ({ id, pseudo, requirements, basePrice, message }));
 
-/* ---------- logique pure (indépendante du DOM) ---------- */
-function countMatches(foot, requirements) {
+/* ---------- le pied de base (image fournie, 96 × 116, incrustée) et ses ongles ---------- */
+const FOOT_W = 96, FOOT_H = 116;
+const FOOT_IMAGE_SRC = 'data:image/png;base64,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';
+/** Pixels des cinq ongles, du gros orteil au petit. */
+const NAILS = [[[12,10],[12,11],[12,12],[12,13],[12,14],[12,15],[13,9],[13,10],[13,11],[13,12],[13,13],[13,14],[13,15],[14,15],[14,16],[15,15],[15,16],[16,11],[16,12],[16,13],[16,14],[16,15],[16,16],[17,11],[17,12],[17,13],[17,14],[17,15],[17,16],[18,11],[18,12],[18,13],[18,14],[18,15],[18,16],[19,9],[19,10],[19,11],[19,12],[19,13],[19,14],[19,15],[19,16],[20,9],[20,10],[20,11],[20,12],[20,13],[20,14],[20,15],[20,16],[21,9],[21,10],[21,11],[21,12],[21,13],[21,14],[21,15],[21,16],[22,8],[22,9],[22,10],[22,11],[22,12],[22,13],[22,14],[22,15],[22,16],[23,8],[23,9],[23,10],[23,11],[23,12],[23,13],[23,14],[24,9],[24,10],[24,11],[24,12],[24,13],[24,14]],[[42,17],[43,15],[43,16],[43,17],[44,15],[44,16],[44,17],[45,15],[45,16],[45,17],[46,14],[46,15],[46,16],[46,17],[47,14],[47,15],[47,16],[47,17]],[[58,21],[59,19],[59,20],[59,21],[60,19],[60,20],[60,21],[61,18],[61,19],[61,20],[61,21],[62,18],[62,19],[62,20],[62,21]],[[73,27],[74,25],[74,26],[74,27],[75,25],[75,26],[75,27],[76,24],[76,25],[76,26],[76,27]],[[85,36],[86,34],[86,35],[86,36],[87,34],[87,35],[87,36],[88,34],[88,35],[88,36]]];
+const footImage = new Image();
+let footMask = null; // Uint8Array : 1 = peau ou ongle (peignable), 2 = contour, 0 = hors pied
+let nailOwner = null; // Uint8Array : index de l'ongle + 1, ou 0
+footImage.onload = () => {
+  const c = document.createElement('canvas'); c.width = FOOT_W; c.height = FOOT_H;
+  const x = c.getContext('2d'); x.drawImage(footImage, 0, 0);
+  const d = x.getImageData(0, 0, FOOT_W, FOOT_H).data;
+  footMask = new Uint8Array(FOOT_W * FOOT_H);
+  nailOwner = new Uint8Array(FOOT_W * FOOT_H);
+  for (let i = 0; i < FOOT_W * FOOT_H; i++) {
+    if (d[i * 4 + 3] === 0) continue;
+    const dark = d[i * 4] < 80 && d[i * 4 + 1] < 80;
+    footMask[i] = dark ? 2 : 1;
+  }
+  NAILS.forEach((nail, n) => { for (const [nx, ny] of nail) nailOwner[ny * FOOT_W + nx] = n + 1; });
+  renderFoot();
+  drawFoot($('demoFoot').getContext('2d'), DEMO_FOOT);
+};
+footImage.src = FOOT_IMAGE_SRC;
+
+/* ---------- état du pied : peinture, touffes, points, objets ---------- */
+function emptyFoot() {
+  return { paint: new Uint8Array(FOOT_W * FOOT_H), tufts: [], dots: [], bijou: null, finition: null };
+}
+function cloneFoot(f) {
+  return { paint: new Uint8Array(f.paint), tufts: f.tufts.map((t) => ({ ...t })), dots: f.dots.map((t) => ({ ...t })), bijou: f.bijou && { ...f.bijou }, finition: f.finition && { ...f.finition } };
+}
+/** Ce que le client « voit » : une valeur par catégorie, calculée depuis le dessin. */
+function footState(f) {
+  // Vernis : chaque ongle a la couleur qui couvre au moins la moitié de ses pixels ; les cinq doivent être identiques.
+  let vernis = undefined;
+  for (const nail of NAILS) {
+    const counts = [0, 0, 0, 0, 0];
+    for (const [nx, ny] of nail) counts[f.paint[ny * FOOT_W + nx]]++;
+    let colour = null;
+    for (const id of ['rouge', 'or', 'violet']) if (counts[PAINT[id]] >= nail.length * RULES.nailCoverage) colour = id;
+    if (vernis === undefined) vernis = colour;
+    else if (vernis !== colour) vernis = null;
+  }
+  if (vernis === undefined) vernis = null;
+  const hairy = f.tufts.length >= RULES.tuftsMin;
+  const dotted = f.dots.length >= RULES.dotsMin;
+  const texture = hairy && !dotted ? 'poils' : dotted && !hairy ? 'mycose' : !hairy && !dotted ? 'nature' : 'mixte';
+  let ink = 0;
+  for (let i = 0; i < f.paint.length; i++) if (f.paint[i] === PAINT.feutre) ink++;
+  return { vernis, texture, bijou: f.bijou ? f.bijou.id : null, finition: f.finition ? f.finition.id : null, dessin: ink >= RULES.inkMin ? 'dessin' : null };
+}
+
+/* ---------- logique pure ---------- */
+function countMatches(state, requirements) {
   let k = 0;
-  for (const cat in requirements) if (foot[cat] === requirements[cat]) k++;
+  for (const cat in requirements) {
+    const want = requirements[cat];
+    if (cat === 'dessin') { if (state.dessin) k++; }
+    else if (state[cat] === want) k++;
+  }
   return k;
 }
-/** Retourne { payout, tip, streak, multiplier } selon la section 6. */
 function computePayout(basePrice, matches, streakBefore) {
   if (matches === 3) {
     const streak = streakBefore + 1;
@@ -326,9 +403,7 @@ function computePayout(basePrice, matches, streakBefore) {
   if (matches === 2) return { payout: basePrice * 0.5, tip: 0, streak: 0, multiplier: 1 };
   return { payout: 0, tip: 0, streak: 0, multiplier: 1 };
 }
-function nextTipMultiplier(streak) {
-  return Math.min(3, 1 + Math.floor(streak / 3));
-}
+function nextTipMultiplier(streak) { return Math.min(3, 1 + Math.floor(streak / 3)); }
 function rankFor(total) {
   if (total <= 0) return 'Artiste incompris';
   if (total < 3000) return 'Auto-entrepreneur du talon';
@@ -336,138 +411,88 @@ function rankFor(total) {
   if (total < 15000) return 'Votre pied siège au conseil';
   return 'Votre pied vient de racheter la plateforme';
 }
-function euros(n) {
-  return n.toLocaleString('fr-FR').replace(/ /g, ' ') + ' €';
-}
+function euros(n) { return n.toLocaleString('fr-FR').replace(/ /g, ' ') + ' €'; }
 function shuffle(list) {
   const a = list.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
 
-/* ---------- pixel art : le pied (64 × 80) et les icônes ---------- */
-const SKIN = { base: '#F2B98F', shade: '#D9976A', dark: '#8F5A3C', light: '#F8CFAA', nail: '#E6D27A', nailEdge: '#B8A24E' };
+/* ---------- pixel art : objets posés et icônes ---------- */
 const ACC = { rouge: '#D6213A', or: '#F2C230', violet: '#7B2FA3', hair: '#1E1A1C', green: '#58B84A', greenDark: '#2F7A2A', gold: '#F2C230', goldDark: '#A8781A', pink: '#E8334A', pinkDark: '#A3172A', tie: '#2F58C9', tieDark: '#1B3A8C', fly: '#1E1A1C', wing: '#E8F4FA', band: '#E8D7B8', bandDark: '#C6A77B', stain: '#8A5A2A', cream: '#FFFFFF', creamShade: '#BFE0F2' };
-
+const SKIN = { base: '#F2B98F', shade: '#D9976A', dark: '#17213A', light: '#F8CFAA', nail: '#F6E096' };
 function px(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
 
-/* Silhouette en diagonale : orteils en haut à gauche, cheville en bas à droite.
-   Pour chaque ligne y : [x0, x1] de la peau. */
-const SOLE_ROWS = [];
-(function buildSole() {
-  for (let y = 24; y <= 76; y++) {
-    const t = (y - 24) / 52; // 0 aux orteils, 1 à la cheville
-    const x0 = Math.round(10 + t * t * 22 + t * 4);      // bord interne (gros orteil) glisse vers la droite
-    const x1 = Math.round(50 - t * 6 + Math.sin(t * Math.PI) * 2); // bord externe
-    SOLE_ROWS.push([y, x0, Math.max(x0 + 14, x1)]);
-  }
-})();
-/* Orteils : bloc de peau [x, y, w, h] et ongle [nx, ny, nw, nh]. Gros orteil énorme, petits tassés et décalés vers le bas. */
-const TOES = [
-  { skin: [8, 6, 15, 20], nail: [10, 8, 10, 8] },
-  { skin: [24, 11, 7, 15], nail: [25, 12, 5, 5] },
-  { skin: [32, 13, 6, 13], nail: [33, 14, 4, 4] },
-  { skin: [39, 16, 6, 11], nail: [40, 17, 4, 4] },
-  { skin: [46, 19, 5, 9], nail: [47, 20, 3, 3] },
-];
-
-function drawFoot(ctx, foot, { background = true } = {}) {
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, 64, 80);
-  if (background) {
-    px(ctx, 0, 0, 64, 80, '#DDF5FF');
-    for (let y = 4; y < 80; y += 8) for (let x = 4; x < 64; x += 8) px(ctx, x, y, 1, 1, '#C4E7F6');
-  }
-  // Ombre pleine décalée
-  for (const [y, x0, x1] of SOLE_ROWS) px(ctx, x0 + 3, y + 3, x1 - x0, 1, '#A9D6EA');
-  for (const t of TOES) px(ctx, t.skin[0] + 3, t.skin[1] + 3, t.skin[2], t.skin[3], '#A9D6EA');
-  // Semelle : contour en escalier, peau, ombre sur le bord externe, lumière sur le bord interne
-  for (const [y, x0, x1] of SOLE_ROWS) {
-    px(ctx, x0 - 1, y, x1 - x0 + 2, 1, SKIN.dark);
-    px(ctx, x0, y, x1 - x0, 1, SKIN.base);
-    px(ctx, x1 - 3, y, 3, 1, SKIN.shade);
-    px(ctx, x0, y, 2, 1, SKIN.light);
-  }
-  const last = SOLE_ROWS[SOLE_ROWS.length - 1];
-  px(ctx, last[1] - 1, last[0] + 1, last[2] - last[1] + 2, 1, SKIN.dark);
-  // Pores et plis
-  for (const [sx, sy] of [[22, 34], [30, 40], [26, 48], [36, 52], [33, 60], [40, 66]]) px(ctx, sx, sy, 1, 1, SKIN.shade);
-  px(ctx, 14, 30, 6, 1, SKIN.shade); px(ctx, 26, 31, 4, 1, SKIN.shade); px(ctx, 34, 32, 4, 1, SKIN.shade);
-  // Orteils
-  for (const t of TOES) {
-    const [x, y, w, h] = t.skin;
-    px(ctx, x - 1, y - 1, w + 2, h + 2, SKIN.dark);
-    px(ctx, x, y, w, h, SKIN.base);
-    px(ctx, x + w - 2, y + 2, 2, h - 3, SKIN.shade);
-    px(ctx, x, y + 1, 1, h - 2, SKIN.light);
-    px(ctx, x + 1, y + h - 3, w - 2, 1, SKIN.shade);
-  }
-  // Ongles trop grands, jaunâtres par défaut
-  const nailColour = foot.vernis === 'rouge' ? ACC.rouge : foot.vernis === 'or' ? ACC.or : foot.vernis === 'violet' ? ACC.violet : SKIN.nail;
-  const nailEdge = foot.vernis ? '#1E1A1C' : SKIN.nailEdge;
-  for (const t of TOES) {
-    const [nx, ny, nw, nh] = t.nail;
-    px(ctx, nx, ny, nw, nh, nailEdge);
-    px(ctx, nx + 1, ny + 1, nw - 2, nh - 2, nailColour);
-    px(ctx, nx + 1, ny + 1, Math.max(1, nw - 4), 1, '#FFFFFF');
-  }
-  // Texture, sur le dessus du pied
-  if (foot.texture === 'poils') {
-    for (const [hx, hy] of [[20, 38], [30, 44], [25, 52], [34, 58], [29, 64]]) {
-      px(ctx, hx, hy, 1, 4, ACC.hair); px(ctx, hx + 2, hy - 1, 1, 5, ACC.hair); px(ctx, hx + 4, hy, 1, 4, ACC.hair);
-    }
-  }
-  if (foot.texture === 'mycose') {
-    for (const [gx, gy, sz] of [[20, 36], [33, 42], [26, 50], [37, 56], [30, 62], [41, 48]]) {
-      px(ctx, gx, gy, 3, 3, ACC.green); px(ctx, gx, gy, 1, 1, ACC.greenDark); px(ctx, gx + 2, gy + 2, 1, 1, ACC.greenDark);
-    }
-  }
-  // Bijou, sur le gros orteil
-  if (foot.bijou === 'bague') {
-    px(ctx, 7, 20, 17, 4, ACC.goldDark); px(ctx, 8, 21, 15, 2, ACC.gold); px(ctx, 13, 18, 5, 3, ACC.goldDark); px(ctx, 14, 19, 3, 1, '#FFFFFF');
-  }
-  if (foot.bijou === 'noeud') {
-    px(ctx, 8, 23, 6, 5, ACC.pinkDark); px(ctx, 16, 23, 6, 5, ACC.pinkDark);
-    px(ctx, 9, 24, 4, 3, ACC.pink); px(ctx, 17, 24, 4, 3, ACC.pink); px(ctx, 14, 24, 2, 3, ACC.pink);
-    px(ctx, 10, 28, 2, 4, ACC.pinkDark); px(ctx, 18, 28, 2, 4, ACC.pinkDark);
-  }
-  if (foot.bijou === 'cravate') {
-    px(ctx, 10, 24, 11, 2, ACC.tieDark); px(ctx, 13, 26, 5, 3, ACC.tieDark);
-    // La cravate descend en biais sur le dessus du pied
-    for (let i = 0; i < 16; i++) px(ctx, 13 + Math.floor(i / 3), 29 + i, 6, 1, ACC.tie);
-    for (let i = 0; i < 16; i += 2) px(ctx, 14 + Math.floor(i / 3), 29 + i, 1, 1, ACC.tieDark);
-    px(ctx, 19, 45, 5, 2, ACC.tie); px(ctx, 20, 47, 3, 2, ACC.tieDark);
-  }
-  // Finition, sur le bord opposé près des petits orteils
-  if (foot.finition === 'mouche') {
-    px(ctx, 50, 29, 5, 3, ACC.fly); px(ctx, 55, 30, 1, 1, ACC.fly); px(ctx, 49, 30, 1, 1, ACC.fly);
-    px(ctx, 48, 27, 3, 2, ACC.wing); px(ctx, 54, 27, 3, 2, ACC.wing); px(ctx, 51, 26, 3, 1, ACC.wing);
-    px(ctx, 51, 32, 1, 1, ACC.fly); px(ctx, 53, 32, 1, 1, ACC.fly); px(ctx, 52, 29, 1, 1, '#E24B4A');
-  }
-  if (foot.finition === 'pansement') {
-    px(ctx, 36, 34, 14, 5, ACC.bandDark); px(ctx, 37, 35, 12, 3, ACC.band);
-    px(ctx, 41, 35, 4, 3, '#F5E8D0'); px(ctx, 42, 36, 2, 2, ACC.stain);
-    px(ctx, 38, 36, 1, 1, ACC.bandDark); px(ctx, 47, 36, 1, 1, ACC.bandDark);
-  }
-  if (foot.finition === 'chantilly') {
-    px(ctx, 40, 31, 9, 9, ACC.creamShade); px(ctx, 40, 31, 8, 8, ACC.cream);
-    px(ctx, 42, 33, 4, 4, ACC.creamShade); px(ctx, 43, 34, 2, 2, ACC.cream);
-    px(ctx, 43, 28, 2, 3, ACC.cream); px(ctx, 44, 27, 1, 1, ACC.cream); px(ctx, 45, 29, 1, 1, ACC.creamShade);
+/** Dessine un objet centré en (cx, cy), à l'échelle du pied de 96 pixels. */
+function drawObject(ctx, id, cx, cy) {
+  const x = Math.round(cx), y = Math.round(cy);
+  switch (id) {
+    case 'bague':
+      px(ctx, x - 9, y - 2, 18, 5, ACC.goldDark); px(ctx, x - 8, y - 1, 16, 3, ACC.gold); px(ctx, x - 3, y - 5, 6, 4, ACC.goldDark); px(ctx, x - 2, y - 4, 4, 2, '#FFFFFF'); break;
+    case 'noeud':
+      px(ctx, x - 9, y - 4, 7, 7, ACC.pinkDark); px(ctx, x + 2, y - 4, 7, 7, ACC.pinkDark); px(ctx, x - 8, y - 3, 5, 5, ACC.pink); px(ctx, x + 3, y - 3, 5, 5, ACC.pink);
+      px(ctx, x - 2, y - 2, 4, 4, ACC.pinkDark); px(ctx, x - 1, y - 1, 2, 2, ACC.pink); px(ctx, x - 6, y + 3, 2, 5, ACC.pinkDark); px(ctx, x + 4, y + 3, 2, 5, ACC.pinkDark); break;
+    case 'cravate':
+      px(ctx, x - 7, y - 10, 14, 3, ACC.tieDark); px(ctx, x - 3, y - 7, 6, 3, ACC.tieDark);
+      for (let i = 0; i < 20; i++) px(ctx, x - 3 + Math.floor(i / 5), y - 4 + i, 7, 1, ACC.tie);
+      for (let i = 0; i < 20; i += 2) px(ctx, x - 2 + Math.floor(i / 5), y - 4 + i, 1, 1, ACC.tieDark);
+      px(ctx, x + 1, y + 16, 6, 2, ACC.tie); px(ctx, x + 2, y + 18, 4, 2, ACC.tieDark); break;
+    case 'mouche':
+      px(ctx, x - 3, y - 1, 7, 4, ACC.fly); px(ctx, x + 4, y, 2, 2, ACC.fly); px(ctx, x - 5, y, 2, 2, ACC.fly);
+      px(ctx, x - 6, y - 4, 5, 3, ACC.wing); px(ctx, x + 2, y - 4, 5, 3, ACC.wing); px(ctx, x - 1, y - 5, 3, 1, ACC.wing);
+      px(ctx, x - 2, y + 3, 1, 2, ACC.fly); px(ctx, x + 1, y + 3, 1, 2, ACC.fly); px(ctx, x + 2, y - 1, 1, 1, '#E24B4A'); break;
+    case 'pansement':
+      for (let i = 0; i < 14; i++) px(ctx, x - 7 + i, y + 4 - Math.floor(i / 2), 6, 3, ACC.band);
+      for (let i = 0; i < 14; i++) px(ctx, x - 7 + i, y + 3 - Math.floor(i / 2), 1, 1, ACC.bandDark);
+      px(ctx, x - 1, y - 1, 5, 3, '#F5E8D0'); px(ctx, x, y, 2, 2, ACC.stain); break;
+    case 'chantilly':
+      px(ctx, x - 6, y - 2, 13, 10, ACC.creamShade); px(ctx, x - 6, y - 2, 12, 9, ACC.cream); px(ctx, x - 3, y - 5, 7, 4, ACC.cream);
+      px(ctx, x - 1, y - 9, 3, 5, ACC.cream); px(ctx, x + 1, y - 10, 1, 1, ACC.cream); px(ctx, x - 3, y + 1, 5, 4, ACC.creamShade); px(ctx, x - 2, y + 2, 2, 2, ACC.cream); break;
   }
 }
+function drawTuft(ctx, x, y) {
+  px(ctx, x - 2, y, 1, 5, ACC.hair); px(ctx, x, y - 1, 1, 6, ACC.hair); px(ctx, x + 2, y, 1, 5, ACC.hair);
+  px(ctx, x - 3, y - 1, 1, 1, ACC.hair); px(ctx, x + 3, y - 1, 1, 1, ACC.hair);
+}
+function drawDot(ctx, x, y) {
+  px(ctx, x - 1, y - 1, 3, 3, ACC.green); px(ctx, x - 1, y - 1, 1, 1, ACC.greenDark); px(ctx, x + 1, y + 1, 1, 1, ACC.greenDark);
+}
 
-/** Icône 16 × 16 d'une option (boutons et critères), dans l'esprit de la maquette. */
+const paintLayer = document.createElement('canvas'); paintLayer.width = FOOT_W; paintLayer.height = FOOT_H;
+function drawFoot(ctx, f, { background = true } = {}) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, FOOT_W, FOOT_H);
+  if (background) {
+    px(ctx, 0, 0, FOOT_W, FOOT_H, '#DDF5FF');
+    for (let y = 4; y < FOOT_H; y += 8) for (let x = 4; x < FOOT_W; x += 8) px(ctx, x, y, 1, 1, '#C4E7F6');
+  }
+  if (!footImage.complete || !footImage.naturalWidth) return;
+  // Ombre pleine décalée, puis le pied
+  ctx.globalAlpha = 0.35; ctx.drawImage(footImage, 4, 4); ctx.globalAlpha = 1;
+  ctx.drawImage(footImage, 0, 0);
+  // Peinture et dessins, pixel par pixel
+  const pc = paintLayer.getContext('2d');
+  const img = pc.createImageData(FOOT_W, FOOT_H);
+  for (let i = 0; i < f.paint.length; i++) {
+    const v = f.paint[i];
+    if (!v) continue;
+    const col = PAINT_COLOUR[v];
+    img.data[i * 4] = parseInt(col.slice(1, 3), 16); img.data[i * 4 + 1] = parseInt(col.slice(3, 5), 16); img.data[i * 4 + 2] = parseInt(col.slice(5, 7), 16); img.data[i * 4 + 3] = 255;
+  }
+  pc.putImageData(img, 0, 0);
+  ctx.drawImage(paintLayer, 0, 0);
+  for (const t of f.tufts) drawTuft(ctx, t.x, t.y);
+  for (const d of f.dots) drawDot(ctx, d.x, d.y);
+  if (f.bijou) drawObject(ctx, f.bijou.id, f.bijou.x, f.bijou.y);
+  if (f.finition) drawObject(ctx, f.finition.id, f.finition.x, f.finition.y);
+}
+
+/** Icône 16 × 16 d'un outil ou d'un critère. */
 function drawIcon(ctx, id) {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, 16, 16);
   const K = '#1E1A1C';
-  const bottle = (colour) => {
-    px(ctx, 6, 1, 4, 4, K); px(ctx, 7, 2, 2, 3, '#3A3A3A');
-    px(ctx, 4, 5, 8, 10, K); px(ctx, 5, 6, 6, 8, colour); px(ctx, 6, 7, 1, 5, '#FFFFFF');
-  };
+  const bottle = (colour) => { px(ctx, 6, 1, 4, 4, K); px(ctx, 7, 2, 2, 3, '#3A3A3A'); px(ctx, 4, 5, 8, 10, K); px(ctx, 5, 6, 6, 8, colour); px(ctx, 6, 7, 1, 5, '#FFFFFF'); };
   const swatch = () => { px(ctx, 2, 3, 12, 11, SKIN.dark); px(ctx, 3, 4, 10, 9, SKIN.base); px(ctx, 3, 4, 1, 9, SKIN.light); px(ctx, 11, 5, 1, 8, SKIN.shade); };
   switch (id) {
     case 'rouge': bottle(ACC.rouge); break;
@@ -476,14 +501,20 @@ function drawIcon(ctx, id) {
     case 'nature': swatch(); break;
     case 'poils': swatch(); for (const [hx, hy] of [[5, 6], [8, 8], [6, 10], [10, 6]]) { px(ctx, hx, hy, 1, 3, ACC.hair); px(ctx, hx + 1, hy - 1, 1, 1, ACC.hair); } break;
     case 'mycose': swatch(); for (const [gx, gy] of [[5, 6], [9, 9], [6, 11], [11, 6]]) px(ctx, gx, gy, 2, 2, ACC.green); break;
+    case 'gomme': px(ctx, 3, 8, 10, 6, K); px(ctx, 4, 9, 8, 4, '#F4A7B9'); px(ctx, 3, 4, 10, 5, K); px(ctx, 4, 5, 8, 4, '#4A6FB5'); break;
+    case 'feutre': px(ctx, 9, 1, 5, 5, K); px(ctx, 10, 2, 3, 3, '#4A6FB5'); px(ctx, 5, 5, 6, 6, K); px(ctx, 6, 6, 4, 4, '#4A6FB5'); px(ctx, 2, 9, 4, 4, K); px(ctx, 1, 13, 2, 2, K); break;
     case 'bague': px(ctx, 3, 5, 10, 8, ACC.goldDark); px(ctx, 5, 7, 6, 4, '#FFFFFF'); px(ctx, 4, 6, 8, 1, ACC.gold); px(ctx, 6, 2, 4, 3, ACC.goldDark); px(ctx, 7, 3, 2, 1, '#FFFFFF'); break;
     case 'noeud': px(ctx, 1, 4, 6, 7, ACC.pinkDark); px(ctx, 9, 4, 6, 7, ACC.pinkDark); px(ctx, 2, 5, 4, 5, ACC.pink); px(ctx, 10, 5, 4, 5, ACC.pink); px(ctx, 6, 6, 4, 4, ACC.pinkDark); px(ctx, 7, 7, 2, 2, ACC.pink); px(ctx, 4, 11, 2, 3, ACC.pinkDark); px(ctx, 10, 11, 2, 3, ACC.pinkDark); break;
     case 'cravate': px(ctx, 5, 1, 6, 3, ACC.tieDark); px(ctx, 6, 4, 4, 7, ACC.tie); px(ctx, 5, 11, 6, 3, ACC.tie); px(ctx, 7, 14, 2, 1, ACC.tieDark); px(ctx, 7, 5, 1, 6, ACC.tieDark); break;
     case 'mouche': px(ctx, 6, 7, 5, 4, ACC.fly); px(ctx, 11, 8, 2, 2, ACC.fly); px(ctx, 3, 5, 4, 3, ACC.wing); px(ctx, 9, 4, 4, 3, ACC.wing); px(ctx, 5, 11, 1, 2, ACC.fly); px(ctx, 8, 11, 1, 2, ACC.fly); px(ctx, 11, 7, 1, 1, '#E24B4A'); break;
     case 'pansement': for (let i = 0; i < 10; i++) px(ctx, 2 + i, 11 - i, 4, 2, ACC.band); for (let i = 0; i < 10; i++) px(ctx, 2 + i, 10 - i, 1, 1, ACC.bandDark); px(ctx, 6, 6, 3, 3, '#F5E8D0'); px(ctx, 7, 7, 1, 1, ACC.stain); break;
     case 'chantilly': px(ctx, 3, 8, 10, 6, ACC.creamShade); px(ctx, 3, 8, 9, 5, ACC.cream); px(ctx, 5, 5, 6, 4, ACC.cream); px(ctx, 7, 2, 2, 4, ACC.cream); px(ctx, 9, 6, 1, 2, ACC.creamShade); px(ctx, 6, 10, 3, 2, ACC.creamShade); break;
+    case 'smiley': px(ctx, 2, 2, 12, 12, SKIN.base); px(ctx, 5, 5, 2, 2, K); px(ctx, 9, 5, 2, 2, K); px(ctx, 4, 9, 1, 1, K); px(ctx, 5, 10, 6, 1, K); px(ctx, 11, 9, 1, 1, K); break;
+    case 'coeur': px(ctx, 2, 2, 12, 12, SKIN.base); px(ctx, 4, 4, 3, 3, K); px(ctx, 9, 4, 3, 3, K); px(ctx, 3, 6, 10, 3, K); px(ctx, 5, 9, 6, 2, K); px(ctx, 7, 11, 2, 2, K); break;
+    case 'etoile': px(ctx, 2, 2, 12, 12, SKIN.base); px(ctx, 7, 3, 2, 10, K); px(ctx, 3, 7, 10, 2, K); px(ctx, 5, 5, 1, 1, K); px(ctx, 10, 5, 1, 1, K); px(ctx, 5, 10, 1, 1, K); px(ctx, 10, 10, 1, 1, K); break;
   }
 }
+
 /** Icônes d'interface 12 × 12. */
 function drawUiIcon(ctx, name, colour = '#FFFFFF') {
   ctx.imageSmoothingEnabled = false;
@@ -502,7 +533,6 @@ function drawUiIcon(ctx, name, colour = '#FFFFFF') {
     case 'verified': px(ctx, 3, 0, 6, 1, '#00AEEF'); px(ctx, 1, 2, 10, 8, '#00AEEF'); px(ctx, 0, 3, 12, 6, '#00AEEF'); px(ctx, 3, 11, 6, 1, '#00AEEF'); px(ctx, 2, 1, 1, 1, '#00AEEF'); px(ctx, 9, 1, 1, 1, '#00AEEF'); px(ctx, 2, 10, 1, 1, '#00AEEF'); px(ctx, 9, 10, 1, 1, '#00AEEF'); px(ctx, 3, 6, 1, 1, '#FFFFFF'); px(ctx, 4, 7, 1, 1, '#FFFFFF'); px(ctx, 5, 8, 1, 1, '#FFFFFF'); px(ctx, 6, 7, 1, 1, '#FFFFFF'); px(ctx, 7, 6, 1, 1, '#FFFFFF'); px(ctx, 8, 5, 1, 1, '#FFFFFF'); px(ctx, 9, 4, 1, 1, '#FFFFFF'); break;
   }
 }
-/** Avatar abstrait 8 × 8 déterministe par pseudo. */
 function drawAvatar(ctx, pseudo) {
   let h = 0;
   for (const ch of pseudo) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -517,7 +547,6 @@ function drawAvatar(ctx, pseudo) {
 }
 function drawLogo(ctx) {
   ctx.clearRect(0, 0, 16, 16);
-  // Petit pied beige, gros orteil à gauche
   px(ctx, 4, 7, 9, 8, SKIN.dark); px(ctx, 5, 8, 7, 6, SKIN.base);
   px(ctx, 2, 2, 5, 6, SKIN.dark); px(ctx, 3, 3, 3, 4, SKIN.base); px(ctx, 3, 3, 3, 2, SKIN.nail);
   px(ctx, 8, 3, 2, 4, SKIN.dark); px(ctx, 11, 4, 2, 3, SKIN.dark); px(ctx, 13, 5, 2, 3, SKIN.dark);
@@ -568,14 +597,24 @@ const store = {
 /* ---------- état ---------- */
 const $ = (id) => document.getElementById(id);
 let phase = 'title';
-const foot = { vernis: null, texture: 'nature', bijou: null, finition: null };
+let foot = emptyFoot();
 let session = null;
 let timerId = null;
 let publishLockUntil = 0;
 let lastBeepSecond = null;
 let record = Number(store.get('best', 0)) || 0;
+let tool = TOOLS[0];
+let painting = false;
+let lastStamp = null;
+const DEMO_FOOT = (() => {
+  const f = emptyFoot();
+  for (const nail of NAILS) for (const [nx, ny] of nail) f.paint[ny * FOOT_W + nx] = PAINT.violet;
+  f.tufts = [{ x: 44, y: 60 }, { x: 56, y: 70 }, { x: 48, y: 82 }];
+  f.bijou = { id: 'cravate', x: 30, y: 36 };
+  f.finition = { id: 'mouche', x: 74, y: 40 };
+  return f;
+})();
 
-function resetFoot() { foot.vernis = null; foot.texture = 'nature'; foot.bijou = null; foot.finition = null; }
 function newSession() {
   return {
     deadline: 0, money: 0, streak: 0, bestStreak: 0, publishedCount: 0, paidCount: 0, perfectCount: 0,
@@ -588,8 +627,8 @@ const active = () => phase === 'playing' && session && !session.ended && Date.no
 /* ---------- sélection des commandes (section 5) ---------- */
 function pickNextOrder() {
   if (session.deck.length === 0) session.deck = shuffle(CATALOG);
-  // Cherche une commande non répétée et non déjà parfaite avec le pied courant.
-  const candidate = (allowPerfect) => session.deck.findIndex((o) => o.id !== session.lastOrderId && (allowPerfect || countMatches(foot, o.requirements) < 3));
+  const state = footState(foot);
+  const candidate = (allowPerfect) => session.deck.findIndex((o) => o.id !== session.lastOrderId && (allowPerfect || countMatches(state, o.requirements) < 3));
   let idx = candidate(false);
   if (idx < 0) idx = candidate(true);
   if (idx < 0) { session.deck = shuffle(CATALOG); idx = candidate(false); if (idx < 0) idx = candidate(true); }
@@ -602,7 +641,11 @@ function pickNextOrder() {
 }
 
 /* ---------- rendu ---------- */
-const footCtx = $('foot').getContext('2d');
+const footCanvas = $('foot');
+const footCtx = footCanvas.getContext('2d');
+footCanvas.width = FOOT_W; footCanvas.height = FOOT_H;
+$('demoFoot').width = FOOT_W; $('demoFoot').height = FOOT_H;
+$('bestPhoto').width = FOOT_W; $('bestPhoto').height = FOOT_H;
 function renderFoot() { drawFoot(footCtx, foot); }
 
 function renderMoney() { $('money').querySelector('b').textContent = euros(session ? session.money : 0); }
@@ -638,10 +681,11 @@ function renderOrder() {
 }
 function renderCriteria() {
   const o = session.currentOrder;
+  const state = footState(foot);
   let k = 0;
   for (const chip of $('crits').children) {
     const cat = chip.dataset.cat;
-    const ok = foot[cat] === o.requirements[cat];
+    const ok = cat === 'dessin' ? !!state.dessin : state[cat] === o.requirements[cat];
     chip.classList.toggle('ok', ok);
     chip.querySelector('.check').textContent = ok ? '✓' : '';
     if (ok) k++;
@@ -654,22 +698,24 @@ function renderCriteria() {
 function renderPalette() {
   const pal = $('palette');
   pal.innerHTML = '';
-  for (const cat of CATEGORIES) {
+  const rows = [['Vernis', ['rouge', 'or', 'violet']], ['Texture', ['poils', 'mycose', 'gomme']], ['Bijou', ['bague', 'noeud', 'cravate']], ['Finition', ['mouche', 'pansement', 'chantilly']], ['Dessin', ['feutre']]];
+  for (const [title, ids] of rows) {
     const row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = `<h3>${CATEGORY_LABEL[cat]}</h3>`;
+    row.innerHTML = `<h3>${title}</h3>`;
     const opts = document.createElement('div'); opts.className = 'opts';
-    for (const [id, label] of OPTIONS[cat]) {
+    for (const id of ids) {
+      const t = TOOLS.find((x) => x.id === id);
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'opt'; b.dataset.cat = cat; b.dataset.id = id;
+      b.type = 'button'; b.className = 'opt'; b.dataset.id = id;
       b.setAttribute('aria-pressed', 'false');
-      b.setAttribute('aria-label', label);
+      b.setAttribute('aria-label', t.label);
       const c = document.createElement('canvas'); c.width = 16; c.height = 16; c.className = 'pixel';
       drawIcon(c.getContext('2d'), id);
       b.appendChild(c);
-      const span = document.createElement('span'); span.textContent = label.split(' ')[0] === 'Points' ? 'Points verts' : label.split(' ')[0]; b.appendChild(span);
+      const span = document.createElement('span'); span.textContent = t.label; b.appendChild(span);
       const tick = document.createElement('span'); tick.className = 'tick'; tick.textContent = '✓'; b.appendChild(tick);
-      b.addEventListener('pointerdown', (e) => { e.preventDefault(); applyOption(cat, id); });
-      b.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyOption(cat, id); } });
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); selectTool(id); });
+      b.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); selectTool(id); } });
       opts.appendChild(b);
     }
     row.appendChild(opts);
@@ -681,10 +727,11 @@ function renderPalette() {
 }
 function renderPaletteState() {
   for (const b of document.querySelectorAll('.opt')) {
-    const on = foot[b.dataset.cat] === b.dataset.id;
+    const on = tool.id === b.dataset.id;
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
   }
+  $('toolHint').innerHTML = `<b>${tool.label}</b> — ${tool.hint}`;
 }
 function renderTimer() {
   const ms = remainingMs();
@@ -695,7 +742,7 @@ function renderTimer() {
   if (urgent && lastBeepSecond !== s) { lastBeepSecond = s; audio.beep(); }
 }
 function showScreen(id) {
-  for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === id);
+  for (const sc of document.querySelectorAll('.screen')) sc.classList.toggle('active', sc.id === id);
   window.scrollTo(0, 0);
 }
 function feedback(text, good) {
@@ -708,32 +755,97 @@ function flash() {
   const f = $('flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 80);
 }
 function snapshotFoot() {
-  const c = document.createElement('canvas'); c.width = 64; c.height = 80; c.className = 'pixel';
-  drawFoot(c.getContext('2d'), { ...foot });
+  const c = document.createElement('canvas'); c.width = FOOT_W; c.height = FOOT_H; c.className = 'pixel';
+  drawFoot(c.getContext('2d'), foot);
   return c;
 }
 
-/* ---------- actions ---------- */
-function applyOption(cat, id) {
+/* ---------- outils et peinture ---------- */
+function selectTool(id) {
   if (!active()) return;
   audio.unlock();
-  if (foot[cat] === id) {
-    // Retirer un choix actif, sauf Nature qui reste.
-    if (!(cat === 'texture' && id === 'nature')) foot[cat] = cat === 'texture' ? 'nature' : null;
-  } else foot[cat] = id;
+  tool = TOOLS.find((t) => t.id === id);
   audio.click();
-  renderFoot();
   renderPaletteState();
-  renderCriteria();
 }
+function canvasPoint(e) {
+  const r = footCanvas.getBoundingClientRect();
+  return { x: Math.floor(((e.clientX - r.left) / r.width) * FOOT_W), y: Math.floor(((e.clientY - r.top) / r.height) * FOOT_H) };
+}
+const onFoot = (x, y) => x >= 0 && y >= 0 && x < FOOT_W && y < FOOT_H && footMask && footMask[y * FOOT_W + x] === 1;
+const insideFoot = (x, y) => x >= 0 && y >= 0 && x < FOOT_W && y < FOOT_H && footMask && footMask[y * FOOT_W + x] !== 0;
 
+/** Applique l'outil courant en (x, y). `down` : premier contact. */
+function applyTool(x, y, down) {
+  if (!active() || !footMask) return;
+  let changed = false;
+  if (tool.kind === 'brush') {
+    const v = PAINT[tool.id];
+    const r = tool.id === 'feutre' ? 0 : 1;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const px2 = x + dx, py2 = y + dy;
+      if (onFoot(px2, py2)) { foot.paint[py2 * FOOT_W + px2] = v; changed = true; }
+    }
+  } else if (tool.kind === 'stamp') {
+    if (!insideFoot(x, y)) return;
+    if (!down && lastStamp && Math.hypot(lastStamp.x - x, lastStamp.y - y) < 6) return;
+    lastStamp = { x, y };
+    if (tool.id === 'poils') foot.tufts.push({ x, y });
+    else foot.dots.push({ x, y });
+    changed = true;
+  } else if (tool.kind === 'place') {
+    if (!down) return;
+    if (!insideFoot(x, y)) return;
+    foot[tool.cat] = { id: tool.id, x, y };
+    changed = true;
+  } else if (tool.kind === 'erase') {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const i = (y + dy) * FOOT_W + (x + dx);
+      if (x + dx >= 0 && x + dx < FOOT_W && y + dy >= 0 && y + dy < FOOT_H && foot.paint[i]) { foot.paint[i] = 0; changed = true; }
+    }
+    const near = (o) => Math.hypot(o.x - x, o.y - y) < 5;
+    const before = foot.tufts.length + foot.dots.length;
+    foot.tufts = foot.tufts.filter((t) => !near(t));
+    foot.dots = foot.dots.filter((t) => !near(t));
+    if (before !== foot.tufts.length + foot.dots.length) changed = true;
+    for (const cat of ['bijou', 'finition']) {
+      const o = foot[cat];
+      if (o && Math.hypot(o.x - x, o.y - y) < 10) { foot[cat] = null; changed = true; }
+    }
+  }
+  if (changed) {
+    if (down) audio.click();
+    renderFoot();
+    renderCriteria();
+  }
+}
+footCanvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (!active()) return;
+  audio.unlock();
+  painting = true;
+  lastStamp = null;
+  footCanvas.setPointerCapture(e.pointerId);
+  const p = canvasPoint(e);
+  applyTool(p.x, p.y, true);
+});
+footCanvas.addEventListener('pointermove', (e) => {
+  if (!painting) return;
+  const p = canvasPoint(e);
+  applyTool(p.x, p.y, false);
+});
+const stopPainting = () => { painting = false; lastStamp = null; };
+footCanvas.addEventListener('pointerup', stopPainting);
+footCanvas.addEventListener('pointercancel', stopPainting);
+
+/* ---------- actions ---------- */
 function publishPhoto() {
   const now = Date.now();
   if (!active() || now < publishLockUntil) return;
-  if (now >= session.deadline) return; // horodatée à l'échéance ou après : ne compte pas
+  if (now >= session.deadline) return;
   publishLockUntil = now + CONFIG.PUBLISH_LOCK_MS;
   const o = session.currentOrder;
-  const k = countMatches(foot, o.requirements);
+  const k = countMatches(footState(foot), o.requirements);
   const result = computePayout(o.basePrice, k, session.streak);
   session.money += result.payout;
   session.streak = result.streak;
@@ -742,10 +854,9 @@ function publishPhoto() {
   if (result.payout > 0) session.paidCount++;
   if (k === 3) session.perfectCount++;
   const snapshot = snapshotFoot();
-  const sale = { order: o, payout: result.payout, tip: result.tip, matches: k, snapshot, foot: { ...foot } };
+  const sale = { order: o, payout: result.payout, tip: result.tip, matches: k, snapshot, foot: cloneFoot(foot) };
   session.history.push(sale);
   if (result.payout > 0 && (!session.bestSale || result.payout > session.bestSale.payout)) session.bestSale = sale;
-  // Retour immédiat
   if (k === 3) { feedback(`+${euros(result.payout)} — dont ${euros(result.tip)} de pourboire`, true); audio.cash(); }
   else if (k === 2) { feedback(`2/3 — +${euros(result.payout)}`, true); audio.cash(); }
   else { feedback('0 € — Contenu offert, quelle générosité.', false); audio.soft(); }
@@ -783,7 +894,8 @@ function startGame() {
   session = newSession();
   session.deadline = Date.now() + CONFIG.RUN_MS;
   phase = 'playing';
-  resetFoot();
+  foot = emptyFoot();
+  tool = TOOLS[0];
   renderFoot();
   renderPalette();
   renderMoney();
@@ -810,6 +922,7 @@ function endGame() {
   if (!session || session.ended) return;
   session.ended = true;
   phase = 'results';
+  painting = false;
   clearInterval(timerId); timerId = null;
   renderTimer();
   const snap = { ...session, history: session.history.slice() };
@@ -869,7 +982,7 @@ function downloadPhoto() {
   c.fillStyle = '#FFFFFF'; c.fillRect(40, 40, 560, 820); c.strokeStyle = '#17394D'; c.lineWidth = 6; c.strokeRect(40, 40, 560, 820);
   c.fillStyle = '#00AEEF'; c.font = '900 40px ui-monospace, Menlo, monospace'; c.fillText('ONLY FEET', 70, 100);
   c.fillStyle = '#17394D'; c.font = '700 18px ui-monospace, Menlo, monospace'; c.fillText('CONTENU EXCLUSIF · CRÉATEUR VÉRIFIÉ', 70, 130);
-  c.drawImage(src, 128, 160, 384, 480);
+  c.drawImage(src, 128, 150, 384, 464);
   const best = session && session.bestSale;
   c.fillStyle = '#2FAD78'; c.font = '900 48px ui-monospace, Menlo, monospace';
   c.fillText(best ? euros(best.payout) : '0 €', 70, 700);
@@ -921,14 +1034,12 @@ for (const c of document.querySelectorAll('canvas[data-icon]')) drawUiIcon(c.get
 drawUiIcon($('verifiedIcon').getContext('2d'), 'verified');
 drawUiIcon($('money').querySelector('canvas').getContext('2d'), 'wallet');
 drawUiIcon($('timer').querySelector('canvas').getContext('2d'), 'clock');
-drawFoot($('demoFoot').getContext('2d'), { vernis: 'violet', texture: 'poils', bijou: 'cravate', finition: 'mouche' });
-renderFoot();
 $('titleRecord').textContent = record > 0 ? 'Record local : ' + euros(record) : '';
 
 /* Contrat du site DumbGames, pour une intégration ultérieure. */
 window.ONLY_FEET = {
   manifest: { slug: 'only-feet', title: 'ONLY FEET', tagline: 'Deux minutes pour payer ton loyer.' },
-  computePayout, countMatches, rankFor, CATALOG,
+  computePayout, countMatches, footState, rankFor, CATALOG,
 };
 </script>
 </body>
