@@ -561,7 +561,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (!force && G && G.t - G.lastVoice < interval) return
     if (G) G.lastVoice = G.t
     bubble(262, 64, 'ATTENTION À LA MOUSSE !', 1.4)
-    audio.say('Attention à la mousse !', intensity)
+    audio.say(intensity)
     // From the crowd phase, the spectators take up the chant.
     if (G && G.phase >= 2) {
       const echoes = G.phase - 1
@@ -721,7 +721,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function startRun() {
     audio.resume()
-    audio.primeVoice()
     G = newGame()
     G.nextGroup = planGroup(C.FIRST_ARRIVAL)
     skaters = []
@@ -907,7 +906,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         audio.setIntensity(phase)
         if (phase === 4) {
           G.banner = { text: 'LE PELOTON DU DIMANCHE', at: now }
-          audio.say('Le peloton du dimanche !', 1)
+          audio.say(1)
           G.lastVoice = G.t
         } else if (PHASE_NOTES[phase]) notify(PHASE_NOTES[phase], P.ink)
       }
