@@ -147,6 +147,19 @@
         const extra = BREAK[item]
         if (extra && allow('gag', 0.12)) extra(t)
       },
+      hit() {
+        // A sturdy object takes the hit and stays: dull thump, no crash.
+        if (!allow('hit', 0.03)) return
+        tone(170, 0.09, 'square', 0.08, 100)
+        noise(0.07, 0.14, 1200)
+      },
+      kicked() {
+        // The football: a ridiculous squeak and nothing else.
+        if (!allow('kicked', 0.08)) return
+        const t = ac.currentTime
+        tone(900, 0.16, 'sine', 0.11, 2000, t)
+        tone(1400, 0.1, 'sine', 0.06, 700, t + 0.15)
+      },
       lost() {
         if (!allow('lost', 0.06)) return
         const t = ac.currentTime

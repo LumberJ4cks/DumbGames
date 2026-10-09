@@ -1,13 +1,15 @@
 /*
  * BARRICASSE — « Tout fait barricade. Même le poisson. »
  *
- * A defensive, upside-down brick-breaker. Demonstrators at the top of the street, a police
- * line at the bottom sending big arcade balls, and in the middle the player orders furniture
- * that flies from a single stock icon to a cell and only protects once it lands. Ninety
- * seconds, keep as many people as possible.
+ * A defensive, upside-down brick-breaker in landscape. Demonstrators on the left of the
+ * street, a police line on the right sending big arcade balls, and in between the player
+ * drops furniture anywhere (overlaps allowed): it flies from a single stock icon and only
+ * protects once it lands. Big sturdy objects take several hits; the football takes none.
+ * Ninety seconds, keep as many people as possible.
  *
  * This file: screens, input, rendering, particles and the glue to sim.js (rules) and
  * audio.js (sound). The simulation runs at a fixed step; the renderer only reads it.
+ * Portrait phones get the whole 640 × 360 frame rotated, never cropped.
  */
 ;(function () {
   'use strict'
@@ -62,7 +64,7 @@
     rupture: ['RUPTURE DE PALETTES', 'FRIGOS ET CANAPÉS SEULEMENT · LIVRAISON 1 S'],
     groupes: ['ON RESTE GROUPÉS', 'LA BANDEROLE EST TROP LONGUE'],
     treve: ['TRÊVE MERGUEZ', 'PLUS AUCUN TIR'],
-    fournisseur: ['CHANGEMENT DE FOURNISSEUR', 'LE STOCK PASSE À DROITE'],
+    fournisseur: ['CHANGEMENT DE FOURNISSEUR', 'LE STOCK CHANGE DE TROTTOIR'],
   }
 
   const app = {
@@ -72,7 +74,7 @@
     acc: 0,
     last: 0,
     real: 0,
-    hover: -1,
+    hover: null,
     pointer: { x: -1, y: -1 },
     muted: store.get('barricasse.muted') === '1',
     reduced: store.get('barricasse.reduced') !== null ? store.get('barricasse.reduced') === '1' : matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -83,6 +85,7 @@
     result: null,
     newRecord: false,
     resultsAt: 0,
+    rotated: false,
   }
   audio.setMuted(app.muted)
 
@@ -107,7 +110,6 @@
       transient: null,
       sends: 0,
       lastPhase: -1,
-      fired: {},
     }
   }
   resetFx()
@@ -143,8 +145,7 @@
     audio.startMusic()
   }
   function endGame() {
-    const s = app.sim
-    app.result = Sim.summary(s)
+    app.result = Sim.summary(app.sim)
     app.newRecord = Sim.better(app.result, app.record)
     if (app.newRecord) {
       app.record = app.result
@@ -181,22 +182,22 @@
   function buttons() {
     const b = []
     if (app.mode === 'PLAYING' || app.mode === 'PAUSED') {
-      b.push({ x: 396, y: 8, w: 32, h: 32, icon: 'pause', act: () => setPaused(app.mode === 'PLAYING') })
-      b.push({ x: 438, y: 8, w: 32, h: 32, icon: 'sound', act: toggleMute })
+      b.push({ x: 588, y: 1, w: 24, h: 22, icon: 'pause', act: () => setPaused(app.mode === 'PLAYING') })
+      b.push({ x: 614, y: 1, w: 24, h: 22, icon: 'sound', act: toggleMute })
     }
     if (app.mode === 'MENU') {
-      b.push({ x: 100, y: 446, w: 280, h: 46, label: 'TENIR 90 SECONDES', big: true, act: () => startGame() })
-      b.push({ x: 100, y: 560, w: 134, h: 26, label: app.muted ? 'SON : NON' : 'SON : OUI', act: toggleMute })
-      b.push({ x: 246, y: 560, w: 134, h: 26, label: app.reduced ? 'MOUVEMENT : -' : 'MOUVEMENT : +', act: toggleReduced })
+      b.push({ x: 210, y: 240, w: 220, h: 36, label: 'TENIR 90 SECONDES', big: true, act: () => startGame() })
+      b.push({ x: 210, y: 284, w: 106, h: 22, label: app.muted ? 'SON : NON' : 'SON : OUI', act: toggleMute })
+      b.push({ x: 324, y: 284, w: 106, h: 22, label: app.reduced ? 'MOUVEMENT : -' : 'MOUVEMENT : +', act: toggleReduced })
     }
     if (app.mode === 'PAUSED') {
-      b.push({ x: 130, y: 290, w: 220, h: 40, label: 'REPRENDRE', big: true, act: () => setPaused(false) })
-      b.push({ x: 130, y: 342, w: 220, h: 28, label: app.reduced ? 'MOUVEMENTS RÉDUITS : OUI' : 'MOUVEMENTS RÉDUITS : NON', act: toggleReduced })
+      b.push({ x: 220, y: 156, w: 200, h: 34, label: 'REPRENDRE', big: true, act: () => setPaused(false) })
+      b.push({ x: 220, y: 198, w: 200, h: 24, label: app.reduced ? 'MOUVEMENTS RÉDUITS : OUI' : 'MOUVEMENTS RÉDUITS : NON', act: toggleReduced })
       b.push({
-        x: 130,
-        y: 380,
-        w: 220,
-        h: 28,
+        x: 220,
+        y: 230,
+        w: 200,
+        h: 24,
         label: 'ABANDONNER',
         act: () => {
           audio.stopMusic()
@@ -205,8 +206,8 @@
       })
     }
     if (app.mode === 'RESULTS' && app.real - app.resultsAt > 0.5) {
-      b.push({ x: 50, y: 556, w: 184, h: 42, label: 'REJOUER (R)', big: true, act: () => startGame() })
-      b.push({ x: 246, y: 556, w: 184, h: 42, label: 'MÊME PARTIE', big: true, act: () => startGame(app.result.seed) })
+      b.push({ x: 140, y: 312, w: 172, h: 36, label: 'REJOUER (R)', big: true, act: () => startGame() })
+      b.push({ x: 328, y: 312, w: 172, h: 36, label: 'MÊME PARTIE', big: true, act: () => startGame(app.result.seed) })
     }
     return b
   }
@@ -214,11 +215,25 @@
   /* ---------- input ---------- */
   function toLogical(e) {
     const r = canvas.getBoundingClientRect()
+    // Rotated frame (portrait phone): the canvas is turned a quarter clockwise.
+    if (app.rotated) return { x: ((e.clientY - r.top) / r.height) * W, y: ((r.right - e.clientX) / r.width) * H }
     return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }
   }
+  let firstTouch = true
   canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault()
     audio.init()
+    if (firstTouch && e.pointerType !== 'mouse') {
+      // Phones: full screen in landscape when the browser allows it.
+      firstTouch = false
+      try {
+        const fs = document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })
+        if (fs && fs.then)
+          fs.then(() => screen.orientation?.lock?.('landscape'))
+            .catch(() => {})
+            .finally(() => setTimeout(fit, 300))
+      } catch {}
+    }
     const p = toLogical(e)
     app.pointer = p
     if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -234,9 +249,9 @@
   canvas.addEventListener('pointermove', (e) => {
     const p = toLogical(e)
     app.pointer = p
-    app.hover = e.pointerType === 'mouse' && app.sim ? Sim.cellAt(app.sim, p.x, p.y) : -1
+    app.hover = e.pointerType === 'mouse' ? p : null
   })
-  canvas.addEventListener('pointerleave', () => (app.hover = -1))
+  canvas.addEventListener('pointerleave', () => (app.hover = null))
   canvas.addEventListener('contextmenu', (e) => e.preventDefault())
   addEventListener('keydown', (e) => {
     if (e.repeat) return
@@ -258,25 +273,40 @@
 
   function order(p) {
     const s = app.sim
-    const i = Sim.cellAt(s, p.x, p.y)
-    if (i < 0) return
-    const r = Sim.command(s, i)
+    if (!Sim.inZone(s, p.x, p.y)) return
+    const r = Sim.command(s, p.x, p.y)
     if (r.ok) {
       fx.sends++
       return
     }
-    if (r.reason === 'reload') {
+    if (r.reason === 'reload' && s.t - fx.chargeMsgAt > 0.45) {
       // One small message, not one per click.
-      if (s.t - fx.chargeMsgAt > 0.45) {
-        fx.chargeMsgAt = s.t
-        popup('ÇA CHARGE', s.stock.x, s.stock.y + 52, '#ffd23f', 0.6, 1)
-        audio.play('refuse')
-      }
-    } else if (r.reason === 'reserved' || r.reason === 'occupied') {
-      const cr = Sim.cellRect(s, i)
-      fx.flashes.push({ kind: 'cross', x: cr.cx, y: cr.cy, born: s.t, life: 0.25 })
-      audio.play('busy')
+      fx.chargeMsgAt = s.t
+      popup('ÇA CHARGE', s.stock.x, s.stock.side === 'main' ? C.STREET_B - 12 : C.STREET_T + 18, '#ffd23f', 0.6, 1)
+      audio.play('refuse')
     }
+  }
+
+  /* ---------- art placement helpers: sprite drawn so its opaque bounds fill the box ---------- */
+  function artOrigin(item, box) {
+    const b = Sim.BOUNDS[item]
+    const k = Sim.ITEMS[item].scale
+    return { x: box.x - b[0] * k, y: box.y - b[1] * k, k }
+  }
+  function artPoint(item, box, ax, ay) {
+    const o = artOrigin(item, box)
+    return { x: o.x + ax * o.k, y: o.y + ay * o.k, k: o.k }
+  }
+  function drawArt(sprite, item, box, dx = 0, dy = 0) {
+    const o = artOrigin(item, box)
+    ctx.drawImage(sprite, Math.round(o.x + dx), Math.round(o.y + dy), 24 * o.k, 24 * o.k)
+  }
+  function spriteFor(item, state) {
+    const fr = S.frames[item] || {}
+    if (item === 'reverbere' && state === 'placed') return fr.lit
+    if (item === 'planche' && state === 'folded') return fr.folded
+    if (item === 'parasol' && state === 'folded') return fr.closed
+    return S.items[item]
   }
 
   /* ---------- notifications from the rules → sound and pixels ---------- */
@@ -289,24 +319,40 @@
           break
         case 'land': {
           audio.play('land', e.item)
-          fx.visual[e.cell] = { item: e.item, landAt: t, objId: e.delivery.id }
-          dust(e.x, e.y + 20, 6)
-          if (e.near || Math.random() < 0.06) popup('LIVRÉ', e.x, e.y - 30, '#9cf27a', 0.8, 1)
-          landingGag(e, t)
+          fx.visual[e.obj.id] = { landAt: t, hitAt: -9 }
+          const q = e.obj.box
+          dust(q.cx, q.y + q.h, q.w)
+          if (e.near || Math.random() < 0.06) popup('LIVRÉ', q.cx, q.y - 12, '#9cf27a', 0.8, 1)
+          landingGag(e.obj, t)
           break
         }
         case 'toolate':
           audio.play('toolate')
-          popup('TROP TARD', e.x, e.y - 30, '#ff6a5a', 0.9, 1)
+          popup('TROP TARD', e.x, e.y - 20, '#ff6a5a', 0.9, 1)
           debris(e.item, e.x, e.y, 8)
           break
+        case 'hit': {
+          audio.play('hit', e.item)
+          const v = fx.visual[e.obj.id] || (fx.visual[e.obj.id] = { landAt: -9 })
+          v.hitAt = t
+          debris(e.item, e.x, e.y, app.reduced ? 2 : 4)
+          break
+        }
         case 'destroy': {
-          const cr = Sim.cellRect(s, e.cell)
           audio.play('destroy', e.item)
-          debris(e.item, cr.cx, cr.cy, app.reduced ? 5 : 10)
-          breakGag(e.item, cr, t)
-          delete fx.visual[e.cell]
+          const q = e.obj.box
+          debris(e.item, q.cx, q.cy, app.reduced ? 5 : 10)
+          breakGag(e.obj, t)
+          delete fx.visual[e.obj.id]
           shake(e.item === 'palette' ? 3 : 1.5, 0.08)
+          break
+        }
+        case 'kicked': {
+          audio.play('kicked')
+          const sp = Math.hypot(e.vx, e.vy) || 1
+          particle({ x: e.obj.box.cx, y: e.obj.box.cy, vx: (e.vx / sp) * 160, vy: (e.vy / sp) * 160 + rnd(-30, 30), z: 6, vz: 120, sprite: S.items.ballon, scale: 1, life: 1.2, vr: -14, drag: 0.6, bounce: true })
+          popup('INUTILE', e.obj.box.cx, e.obj.box.y - 10, '#ff9a7a', 0.9, 1)
+          delete fx.visual[e.obj.id]
           break
         }
         case 'wall':
@@ -321,19 +367,19 @@
             const v = rnd(20, 60)
             particle({ x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6, z: rnd(0, 6), vz: rnd(10, 50), color: pick([look.shirt, look.skin, '#f4f1e8', '#d8d8e0']), size: 2, life: rnd(0.4, 0.8), drag: 2 })
           }
-          for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-6, 6), y: e.y + rnd(-6, 4), vx: rnd(-8, 8), vy: rnd(-14, -4), z: 0, vz: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.6 })
+          for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-6, 6), y: e.y + rnd(-6, 4), vx: rnd(-8, 8), vy: rnd(-14, -4), sprite: S.props.fumee, g: 0, scale: 2, life: 0.6 })
           fx.flashes.push({ kind: 'danger', x: e.x, y: e.y, born: t, life: 0.5 })
           fx.lostBlink = t
           shake(2, 0.12)
           break
         }
-        case 'top':
-          particle({ x: e.x, y: C.TOP_ABSORB_Y, vx: 0, vy: -6, z: 0, vz: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.4 })
+        case 'passed':
+          particle({ x: C.LEFT_ABSORB_X, y: e.y, vx: -6, vy: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.4 })
           audio.play('top')
           break
         case 'evacuated':
           fx.evacBlink = t
-          for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-4, 4), y: C.BOTTOM_EXIT_Y, vx: rnd(-10, 10), vy: rnd(0, 10), z: 0, vz: 0, g: 0, sprite: S.props.fumee, scale: 1, life: 0.35 })
+          for (let k = 0; k < 4; k++) particle({ x: C.RIGHT_EXIT_X, y: e.y + rnd(-4, 4), vx: rnd(0, 10), vy: rnd(-10, 10), g: 0, sprite: S.props.fumee, scale: 1, life: 0.35 })
           audio.play('evacuated')
           break
         case 'announce':
@@ -341,12 +387,10 @@
           break
         case 'fire':
           audio.play('fire')
-          for (let k = 0; k < 3; k++) particle({ x: e.ball.x + rnd(-3, 3), y: C.SPAWN_Y + 4, vx: rnd(-12, 12), vy: rnd(-4, 6), z: 0, vz: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.3 })
+          for (let k = 0; k < 3; k++) particle({ x: C.SPAWN_X - 4, y: e.ball.y + rnd(-3, 3), vx: rnd(-6, 4), vy: rnd(-12, 12), g: 0, sprite: S.props.fumee, scale: 2, life: 0.3 })
           break
         case 'event':
           eventFx(e, t)
-          break
-        case 'end':
           break
       }
     }
@@ -367,12 +411,11 @@
     }
     if (e.id === 'fournisseur') {
       if (e.phase === 'active' || e.phase === 'done') {
-        const s = app.sim
-        poof(e.phase === 'active' ? C.STOCK_LEFT.x : C.STOCK_RIGHT.x, C.STOCK_LEFT.y)
-        poof(s.stock.x, s.stock.y)
+        poof(C.STOCK_MAIN.x, C.STOCK_MAIN.y)
+        poof(C.STOCK_ALT.x, C.STOCK_ALT.y)
       }
-      if (e.phase === 'warn') fx.transient = { text: 'RETOUR À GAUCHE', sub: 'DANS 1 S', until: t + 1.0, color: '#ffd23f' }
-      if (e.phase === 'done') fx.transient = { text: 'LE STOCK EST REVENU', sub: 'À GAUCHE', until: t + 1.2, color: '#9cf27a' }
+      if (e.phase === 'warn') fx.transient = { text: 'RETOUR EN BAS', sub: 'DANS 1 S', until: t + 1.0, color: '#ffd23f' }
+      if (e.phase === 'done') fx.transient = { text: 'LE STOCK EST REVENU', sub: 'EN BAS', until: t + 1.2, color: '#9cf27a' }
     }
   }
 
@@ -396,121 +439,126 @@
     fx.shakeMag = Math.max(fx.shakeMag, mag)
     fx.shake = Math.max(fx.shake, dur)
   }
-  function dust(x, y, n) {
-    for (let k = 0; k < (app.reduced ? 3 : n); k++) {
+  function dust(x, y, width) {
+    const n = app.reduced ? 3 : 6
+    for (let k = 0; k < n; k++) {
       const dir = k % 2 ? 1 : -1
-      particle({ x: x + dir * rnd(4, 18), y: y + rnd(-2, 2), vx: dir * rnd(20, 45), vy: rnd(-6, 6), z: 0, vz: rnd(4, 14), g: 40, color: pick(['#d8d0c0', '#bfb6a6', '#e8e0d0']), size: 2, life: rnd(0.25, 0.45), drag: 4 })
+      particle({ x: x + dir * rnd(width * 0.2, width * 0.5), y: y + rnd(-2, 1), vx: dir * rnd(20, 45), vy: rnd(-6, 6), vz: rnd(4, 14), g: 40, color: pick(['#d8d0c0', '#bfb6a6', '#e8e0d0']), size: 2, life: rnd(0.25, 0.45), drag: 4 })
     }
   }
   function spark(x, y) {
-    for (let k = 0; k < 3; k++) particle({ x, y, vx: rnd(-30, 30), vy: rnd(-30, 30), z: 0, vz: 0, g: 0, color: '#ffe7b0', size: 1, life: 0.15 })
+    for (let k = 0; k < 3; k++) particle({ x, y, vx: rnd(-30, 30), vy: rnd(-30, 30), g: 0, color: '#ffe7b0', size: 1, life: 0.15 })
   }
   function poof(x, y) {
-    for (let k = 0; k < 8; k++) particle({ x: x + rnd(-20, 20), y: y + rnd(-20, 20), vx: rnd(-20, 20), vy: rnd(-20, 5), z: 0, vz: 0, g: 0, sprite: S.props.fumee, scale: 3, life: rnd(0.3, 0.6) })
+    for (let k = 0; k < 8; k++) particle({ x: x + rnd(-16, 16), y: y + rnd(-14, 14), vx: rnd(-20, 20), vy: rnd(-20, 5), g: 0, sprite: S.props.fumee, scale: 3, life: rnd(0.3, 0.6) })
   }
   function debris(item, x, y, n) {
     const cols = S.palette[item] || ['#888']
     for (let k = 0; k < n; k++) {
       const a = rnd(0, Math.PI * 2)
       const v = rnd(30, 90)
-      particle({ x: x + rnd(-10, 10), y: y + rnd(-10, 10), vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7, z: rnd(4, 14), vz: rnd(40, 110), color: pick(cols), size: pick([2, 2, 3, 4]), life: rnd(0.5, 0.9), drag: 1.5, bounce: true })
+      particle({ x: x + rnd(-8, 8), y: y + rnd(-8, 8), vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7, z: rnd(4, 14), vz: rnd(40, 110), color: pick(cols), size: pick([2, 2, 3, 4]), life: rnd(0.5, 0.9), drag: 1.5, bounce: true })
     }
   }
   function prop(name, x, y, opts = {}) {
     particle(Object.assign({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 10, vz: rnd(80, 140), sprite: S.props[name], scale: 2, life: 1.3, vr: rnd(-8, 8), drag: 1, bounce: true }, opts))
   }
-  function remnant(frame, cr, life, extra) {
-    fx.remnants.push(Object.assign({ frame, x: cr.x, y: cr.y, born: app.sim.t, life }, extra || {}))
+  function remnant(frame, o, life, extra) {
+    fx.remnants.push(Object.assign({ frame, item: o.item, box: o.box, born: app.sim.t, life }, extra || {}))
   }
 
   /** The comic part of a landing. */
-  function landingGag(e, t) {
-    const v = fx.visual[e.cell]
-    if (e.item === 'planche') v.ironAt = t + 0.35
-    if (e.item === 'poisson') for (let k = 0; k < 6; k++) prop('goutte', e.x + rnd(-14, 14), e.y + 10, { life: 0.6, vz: rnd(40, 80), scale: 1 })
-    if (e.item === 'carton') for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-10, 10), y: e.y, vx: rnd(-30, 30), vy: rnd(-10, 10), z: 8, vz: rnd(30, 60), color: '#d8f0ff', size: 1, life: 0.5 })
-    if (e.item === 'reverbere') v.flicker = t
+  function landingGag(o, t) {
+    const v = fx.visual[o.id]
+    const q = o.box
+    if (o.item === 'planche') v.ironAt = t + 0.35
+    if (o.item === 'poisson') for (let k = 0; k < 6; k++) prop('goutte', q.cx + rnd(-q.w / 3, q.w / 3), q.cy + 6, { life: 0.6, vz: rnd(40, 80), scale: 1 })
+    if (o.item === 'carton') for (let k = 0; k < 4; k++) particle({ x: q.cx + rnd(-10, 10), y: q.cy, vx: rnd(-30, 30), vy: rnd(-10, 10), z: 8, vz: rnd(30, 60), color: '#d8f0ff', size: 1, life: 0.5 })
   }
   /** The comic part of a destruction. */
-  function breakGag(item, cr, t) {
-    const x = cr.cx
-    const y = cr.cy
-    switch (item) {
+  function breakGag(o, t) {
+    const q = o.box
+    const x = q.cx
+    const y = q.cy
+    const k = Sim.ITEMS[o.item].scale
+    const ps = Math.max(1, k - 1)
+    switch (o.item) {
       case 'chaise':
-        remnant(S.frames.chaise.folded, cr, 0.9)
+        remnant(S.frames.chaise.folded, o, 0.9)
         break
       case 'palette':
-        for (let k = 0; k < 3; k++) prop('planche_bois', x, y - 8 + k * 7, { vz: rnd(120, 180), vr: rnd(-12, 12), life: 1.4 })
+        for (let n = 0; n < 3; n++) prop('planche_bois', x, y - 8 + n * 7, { vz: rnd(120, 180), vr: rnd(-12, 12), life: 1.4 })
         break
       case 'voiture':
-        prop('roue', x, y, { scale: 2 })
+        prop('roue', x, y, { scale: k })
         break
       case 'planche':
-        prop('fer', x + 8, y - 10, { scale: 2 })
+        prop('fer', x + 8, y - 10)
         break
       case 'frigo':
-        remnant(S.frames.frigo.open, cr, 0.7)
-        prop('yaourt', x, y, { scale: 2, vz: 160 })
+        remnant(S.frames.frigo.open, o, 0.7)
+        prop('yaourt', x, y, { vz: 160 })
         break
       case 'canape':
-        prop('telecommande', x, y, { scale: 2 })
+        prop('telecommande', x, y, { scale: ps + 1 })
         for (const p of app.sim.people) if (SIGN_OF[p.index] === 'canape') fx.signDown[p.index] = t + 2.5
         break
       case 'reverbere':
-        for (let k = 0; k < 5; k++) particle({ x: x + 8, y: y - 12, vx: rnd(-40, 40), vy: rnd(-30, 10), z: 10, vz: rnd(30, 80), color: '#fff2a8', size: 1, life: 0.4 })
+        for (let n = 0; n < 5; n++) particle({ x: x + 8, y: y - 12, vx: rnd(-40, 40), vy: rnd(-30, 10), z: 10, vz: rnd(30, 80), color: '#fff2a8', size: 1, life: 0.4 })
         break
       case 'poisson':
-        for (let k = 0; k < 4; k++) prop('goutte', x, y, { scale: 1, life: 0.6 })
+        for (let n = 0; n < 4; n++) prop('goutte', x, y, { scale: 1, life: 0.6 })
         break
       case 'armoire':
-        remnant(S.frames.armoire.open, cr, 0.8)
-        for (let k = 0; k < 3; k++) prop('cintre', x + (k - 1) * 8, y - 6, { scale: 2 })
-        break
-      case 'ballon':
+        remnant(S.frames.armoire.open, o, 0.8)
+        for (let n = 0; n < 3; n++) prop('cintre', x + (n - 1) * 10, y - 6, { scale: ps + 1 })
         break
       case 'baignoire':
-        prop('canard', x + 8, y - 8, { scale: 2, vz: 170, life: 1.5 })
-        for (let k = 0; k < 5; k++) prop('goutte', x, y - 4, { scale: 1, life: 0.6 })
+        prop('canard', x + 8, y - 8, { vz: 170, life: 1.5 })
+        for (let n = 0; n < 5; n++) prop('goutte', x, y - 4, { scale: 1, life: 0.6 })
         break
       case 'photocopieuse':
-        prop('feuille_non', x, y - 6, { scale: 2, vz: 60, g: 50, vr: rnd(-2, 2), life: 1.6, drag: 1.5 })
+        prop('feuille_non', x, y - 6, { vz: 60, g: 50, vr: rnd(-2, 2), life: 1.6, drag: 1.5 })
         break
-      case 'nain':
-        remnant(S.props.bonnet, cr, 1.2, { small: true, ox: 15, oy: 26 })
+      case 'nain': {
+        const pt = artPoint('nain', q, 7, 0)
+        remnant(S.props.bonnet, o, 1.2, { at: pt, scale: k })
         break
-      case 'caddie':
-        remnant(S.frames.caddie.nowheel, cr, 0.3)
-        remnant(null, cr, 1.6, { wheel: true })
+      }
+      case 'caddie': {
+        remnant(S.frames.caddie.nowheel, o, 0.3)
+        remnant(null, o, 1.6, { wheel: artPoint('caddie', q, 18.5, 20.5) })
         break
+      }
       case 'plante':
-        for (let k = 0; k < 10; k++) prop('feuille', x, y - 6, { scale: 2, g: 90, life: 1.2, drag: 2 })
+        for (let n = 0; n < 10; n++) prop('feuille', x, y - 6, { scale: 1, g: 90, life: 1.2, drag: 2 })
         break
       case 'toilettes':
-        for (let k = 0; k < 10; k++) prop('goutte', x, y - 4, { scale: 2, life: 0.8 })
+        for (let n = 0; n < 10; n++) prop('goutte', x, y - 4, { life: 0.8 })
         break
       case 'distributeur':
-        prop('canette', x, y + 6, { scale: 2, vz: 60, vy: 40 })
+        prop('canette', x, y + 6, { vz: 60, vy: 40 })
         break
       case 'gateau':
-        for (let k = 0; k < 8; k++) prop('creme', x, y, { scale: 2, life: 0.9 })
+        for (let n = 0; n < 8; n++) prop('creme', x, y, { life: 0.9 })
         break
       case 'tableau':
-        remnant(S.frames.tableau.empty, cr, 1.2)
+        remnant(S.frames.tableau.empty, o, 1.2)
         break
       case 'glaciere':
-        for (let k = 0; k < 6; k++) prop('glacon', x, y, { scale: 2, life: 1 })
+        for (let n = 0; n < 6; n++) prop('glacon', x, y, { life: 1 })
         break
       case 'barbecue':
-        for (let k = 0; k < 2; k++) prop('saucisse', x, y, { scale: 2 })
+        for (let n = 0; n < 2; n++) prop('saucisse', x, y)
         break
       case 'merguez':
-        prop('saucisse', x, y, { scale: 2 })
+        prop('saucisse', x, y)
         break
       case 'carton':
-        for (let k = 0; k < 6; k++) particle({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 8, vz: rnd(40, 90), color: '#d8f0ff', size: 1, life: 0.6 })
+        for (let n = 0; n < 6; n++) particle({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 8, vz: rnd(40, 90), color: '#d8f0ff', size: 1, life: 0.6 })
         break
       case 'trophee':
-        for (let k = 0; k < 6; k++) particle({ x, y: y - 8, vx: rnd(-30, 30), vy: rnd(-30, 10), z: 10, vz: rnd(30, 60), color: '#fff0a0', size: 1, life: 0.6 })
+        for (let n = 0; n < 6; n++) particle({ x, y: y - 6, vx: rnd(-30, 30), vy: rnd(-30, 10), z: 10, vz: rnd(30, 60), color: '#fff0a0', size: 1, life: 0.6 })
         break
     }
   }
@@ -602,13 +650,6 @@
     rect(x, y, t, h, col)
     rect(x + w - t, y, t, h, col)
   }
-  function spriteFor(item, state) {
-    const fr = S.frames[item] || {}
-    if (item === 'reverbere' && state === 'placed') return fr.lit
-    if (item === 'planche' && state === 'folded') return fr.folded
-    if (item === 'parasol' && state === 'folded') return fr.closed
-    return S.items[item]
-  }
 
   function render() {
     ctx.save()
@@ -622,10 +663,10 @@
       return
     }
     const s = app.sim
-    drawGrid(s)
+    drawHover(s)
     drawRemnants(s)
-    drawBarricades(s)
     drawReserved(s)
+    drawObjects(s)
     drawCrowd(s)
     drawPolice(s)
     drawParticles(false)
@@ -644,92 +685,96 @@
     drawButtons()
   }
 
-  function drawGrid(s) {
-    // Discreet: small crosses at the intersections.
-    for (let r = 0; r <= C.ROWS; r++)
-      for (let c = 0; c <= C.COLS; c++) {
-        const x = C.GRID_X + c * C.CELL
-        const y = C.GRID_Y + r * C.CELL
-        rect(x - 2, y, 5, 1, '#666e82')
-        rect(x, y - 2, 1, 5, '#666e82')
-      }
-    const i = app.hover
-    if (i >= 0 && app.mode === 'PLAYING') {
-      const cr = Sim.cellRect(s, i)
-      const cell = s.cells[i]
-      const ready = s.t >= s.stock.readyAt
-      if (cell.state === 'EMPTY') {
-        const col = ready ? '#ffffff' : '#9aa2b4'
-        rect(cr.x + 1, cr.y + 1, 46, 46, ready ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)')
-        corners(cr.x, cr.y, 48, col)
-        if (ready) {
-          ctx.globalAlpha = 0.35
-          ctx.drawImage(S.items[s.stock.next], cr.x, cr.y, 48, 48)
-          ctx.globalAlpha = 1
-        }
-      }
-    }
-  }
-  function corners(x, y, size, col) {
-    const L = 9
+  function corners(x, y, w, h, col) {
+    const L = 7
     for (const [left, top] of [[true, true], [false, true], [true, false], [false, false]]) {
-      const hx = left ? x : x + size - L
-      const vx = left ? x : x + size - 2
-      const hy = top ? y : y + size - 2
-      const vy = top ? y : y + size - L
+      const hx = left ? x : x + w - L
+      const vx = left ? x : x + w - 2
+      const hy = top ? y : y + h - 2
+      const vy = top ? y : y + h - L
       rect(hx, hy, L, 2, col)
       rect(vx, vy, 2, L, col)
     }
   }
-  function drawBase(x, y) {
-    // Common square base: the physical footprint, identical for every object.
-    rect(x + 2, y + 2, 44, 44, 'rgba(16,14,26,0.28)')
-    frameRect(x + 2, y + 2, 44, 44, 'rgba(16,14,26,0.45)')
+  function drawHover(s) {
+    const p = app.hover
+    if (!p || app.mode !== 'PLAYING' || !Sim.inZone(s, p.x, p.y)) return
+    const ready = s.t >= s.stock.readyAt
+    const item = s.stock.next
+    const q = Sim.boxAt(s, item, p.x, p.y)
+    if (ready) {
+      ctx.globalAlpha = 0.4
+      drawArt(spriteFor(item, 'placed'), item, q)
+      ctx.globalAlpha = 1
+    }
+    corners(q.x - 2, q.y - 2, q.w + 4, q.h + 4, ready ? '#ffffff' : '#8a92a4')
   }
-  function drawBarricades(s) {
+  /** Objects sorted by their foot so the overlaps read in depth. */
+  function drawObjects(s) {
     const t = s.t
-    for (let i = 0; i < s.cells.length; i++) {
-      const cell = s.cells[i]
-      if (cell.state !== 'OCCUPIED') continue
-      const cr = Sim.cellRect(s, i)
-      const v = fx.visual[i] || { item: cell.item, landAt: -9 }
-      drawBase(cr.x, cr.y)
-      const item = cell.item
-      if (item === 'reverbere') {
-        ctx.globalAlpha = 0.16
-        rect(cr.x + 18, cr.y + 22, 30, 20, '#fff2a8')
-        ctx.globalAlpha = 1
-      }
-      const age = t - v.landAt
-      let sx = 1
-      let sy = 1
-      if (age < 0.16 && !app.reduced) {
-        const k = 1 - age / 0.16
-        sx = 1 + 0.22 * k
-        sy = 1 - 0.28 * k
-      }
-      const sp = spriteFor(item, 'placed')
-      const w = 48 * sx
-      const h = 48 * sy
-      if (item === 'cheval' && !app.reduced) {
-        ctx.save()
-        ctx.translate(cr.cx, cr.y + 44)
-        ctx.rotate(Math.sin(t * 2.6 + i) * 0.1)
-        ctx.drawImage(sp, -w / 2, -h + 4, w, h)
-        ctx.restore()
-      } else ctx.drawImage(sp, Math.round(cr.cx - w / 2), Math.round(cr.y + 48 - h), Math.round(w), Math.round(h))
-      if (item === 'planche' && v.ironAt !== undefined) {
-        const k = Math.min(1, Math.max(0, (t - v.ironAt + 0.25) / 0.25))
-        if (t >= v.ironAt - 0.25) ctx.drawImage(S.props.fer, cr.x + 26, cr.y + 4 - (1 - k) * 40, 16, 12)
-      }
-      if (item === 'trophee' && (t * 0.8 + i * 0.37) % 1 < 0.12) {
-        const sx2 = cr.x + 16 + ((i * 7) % 16)
-        rect(sx2, cr.y + 12, 1, 5, '#ffffff')
-        rect(sx2 - 2, cr.y + 14, 5, 1, '#ffffff')
-      }
-      if (item === 'barbecue' && !app.reduced && (t * 3 + i) % 1 < 0.04) particle({ x: cr.cx + rnd(-8, 8), y: cr.y + 10, vx: rnd(-3, 3), vy: -12, z: 0, vz: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.8 })
-      if (item === 'carton' && age < 0.5) {
-        F.drawTextOC(ctx, 'CLING', cr.cx, cr.y - 6, '#d8f0ff')
+    const list = s.objects.filter((o) => o.alive).sort((a, b) => a.box.y + a.box.h - (b.box.y + b.box.h) || a.id - b.id)
+    for (const o of list) drawObject(o, t, fx.visual[o.id] || { landAt: -9, hitAt: -9 })
+  }
+  function drawObject(o, t, v) {
+    const q = o.box
+    const item = o.item
+    const k = Sim.ITEMS[item].scale
+    if (item === 'reverbere') {
+      const lp = artPoint(item, q, 14, 9)
+      ctx.globalAlpha = 0.16
+      rect(Math.round(lp.x), Math.round(lp.y), 8 * k, 12 * k, '#fff2a8')
+      ctx.globalAlpha = 1
+    }
+    const sp = spriteFor(item, 'placed')
+    const age = t - v.landAt
+    const hitAge = t - (v.hitAt ?? -9)
+    const jolt = hitAge < 0.15 && !app.reduced ? (Math.floor(hitAge * 60) % 2 ? 1 : -1) : 0
+    if (age < 0.16 && !app.reduced) {
+      // Squash on landing, anchored on the object's foot.
+      const n = 1 - age / 0.16
+      const sx = 1 + 0.2 * n
+      const sy = 1 - 0.26 * n
+      const o0 = artOrigin(item, q)
+      ctx.save()
+      ctx.translate(q.cx, q.y + q.h)
+      ctx.scale(sx, sy)
+      ctx.drawImage(sp, o0.x - q.cx, o0.y - (q.y + q.h), 24 * k, 24 * k)
+      ctx.restore()
+    } else if (item === 'cheval' && !app.reduced) {
+      const o0 = artOrigin(item, q)
+      ctx.save()
+      ctx.translate(q.cx, q.y + q.h)
+      ctx.rotate(Math.sin(t * 2.6 + o.id) * 0.08)
+      ctx.drawImage(sp, o0.x - q.cx, o0.y - (q.y + q.h), 24 * k, 24 * k)
+      ctx.restore()
+    } else drawArt(sp, item, q, jolt, 0)
+    if (o.maxHp > 1 && o.hp < o.maxHp) drawCracks(o, jolt)
+    if (item === 'planche' && v.ironAt !== undefined && t >= v.ironAt - 0.25) {
+      const n = Math.min(1, (t - v.ironAt + 0.25) / 0.25)
+      const pt = artPoint(item, q, 13, 2)
+      ctx.drawImage(S.props.fer, Math.round(pt.x), Math.round(pt.y - (1 - n) * 40), 8 * k, 6 * k)
+    }
+    if (item === 'trophee' && (t * 0.8 + o.id * 0.37) % 1 < 0.12) {
+      const sx2 = q.x + 4 + ((o.id * 7) % Math.max(1, q.w - 8))
+      rect(sx2, q.y + 6, 1, 5, '#ffffff')
+      rect(sx2 - 2, q.y + 8, 5, 1, '#ffffff')
+    }
+    if (item === 'barbecue' && !app.reduced && (t * 3 + o.id) % 1 < 0.04) particle({ x: q.cx + rnd(-8, 8), y: q.y + 4, vx: rnd(-3, 3), vy: -12, g: 0, sprite: S.props.fumee, scale: 2, life: 0.8 })
+    if (item === 'carton' && age < 0.5) F.drawTextOC(ctx, 'CLING', q.cx, q.y - 10, '#d8f0ff')
+  }
+  /** Damage shows on the object itself: dark cracks, more of them after each hit. */
+  function drawCracks(o, dx) {
+    const q = o.box
+    const lost = o.maxHp - o.hp
+    const r = seeded(o.id * 97 + 13)
+    for (let n = 0; n < lost * 2; n++) {
+      let x = Math.round(q.x + q.w * (0.2 + 0.6 * r())) + dx
+      let y = Math.round(q.y + q.h * (0.15 + 0.5 * r()))
+      const len = 4 + Math.floor(r() * (q.h / 4))
+      for (let i = 0; i < len; i++) {
+        rect(x, y, 2, 2, '#1d1726')
+        y += 1
+        x += r() < 0.5 ? -1 : 1
       }
     }
   }
@@ -741,39 +786,50 @@
       ctx.globalAlpha = Math.min(1, (r.life - age) / 0.3)
       if (r.wheel) {
         // The one wheel that keeps spinning.
-        const cx = r.x + 37
-        const cy = r.y + 41
-        rect(cx - 4, cy - 4, 9, 9, '#1d1726')
-        rect(cx - 3, cy - 3, 7, 7, '#4a4756')
+        const k = Sim.ITEMS.caddie.scale
+        const cx = Math.round(r.wheel.x)
+        const cy = Math.round(r.wheel.y)
+        const R0 = 2 * k
+        rect(cx - R0 - 1, cy - R0 - 1, 2 * R0 + 2, 2 * R0 + 2, '#1d1726')
+        rect(cx - R0, cy - R0, 2 * R0, 2 * R0, '#4a4756')
         const a = age * 14
-        rect(Math.round(cx + Math.cos(a) * 2), Math.round(cy + Math.sin(a) * 2), 1, 1, '#c9c6bc')
-        rect(Math.round(cx - Math.cos(a) * 2), Math.round(cy - Math.sin(a) * 2), 1, 1, '#c9c6bc')
-      } else if (r.small) ctx.drawImage(r.frame, r.x + r.ox, r.y + r.oy, r.frame.width * 2, r.frame.height * 2)
-      else ctx.drawImage(r.frame, r.x, r.y, 48, 48)
+        rect(Math.round(cx + Math.cos(a) * (R0 - 1)), Math.round(cy + Math.sin(a) * (R0 - 1)), k, k, '#c9c6bc')
+        rect(Math.round(cx - Math.cos(a) * (R0 - 1)), Math.round(cy - Math.sin(a) * (R0 - 1)), k, k, '#c9c6bc')
+      } else if (r.at) ctx.drawImage(r.frame, Math.round(r.at.x), Math.round(r.at.y), r.frame.width * r.scale, r.frame.height * r.scale)
+      else drawArt(r.frame, r.item, r.box)
       ctx.globalAlpha = 1
     }
   }
   function drawReserved(s) {
     const t = s.t
     for (const d of s.deliveries) {
-      const cr = Sim.cellRect(s, d.cell)
+      const q = d.box
       const p = Math.min(1, (t - d.sentAt) / d.duration)
       ctx.globalAlpha = 0.28
-      ctx.drawImage(spriteFor(d.item, 'placed'), cr.x, cr.y, 48, 48)
+      drawArt(spriteFor(d.item, 'placed'), d.item, q)
       ctx.globalAlpha = 1
-      // Marching-ants outline, and how long until it lands.
+      // Marching-ants outline of the exact footprint, and how long until it lands.
       const off = Math.floor(t * 24) % 8
-      for (let k = -8; k < 48; k += 8) {
+      const x0 = q.x - 1
+      const y0 = q.y - 1
+      const w = q.w + 2
+      const h = q.h + 2
+      for (let k = -8; k < Math.max(w, h); k += 8) {
         const a = Math.max(0, k + off)
-        const b = Math.min(48, k + off + 4)
-        if (b <= a) continue
-        rect(cr.x + a, cr.y, b - a, 2, '#ffe066')
-        rect(cr.x + 48 - b, cr.y + 46, b - a, 2, '#ffe066')
-        rect(cr.x, cr.y + 48 - b, 2, b - a, '#ffe066')
-        rect(cr.x + 46, cr.y + a, 2, b - a, '#ffe066')
+        const bw = Math.min(w, k + off + 4)
+        if (bw > a) {
+          rect(x0 + a, y0, bw - a, 1, '#ffe066')
+          rect(x0 + w - bw, y0 + h - 1, bw - a, 1, '#ffe066')
+        }
+        const bh = Math.min(h, k + off + 4)
+        if (bh > a) {
+          rect(x0, y0 + h - bh, 1, bh - a, '#ffe066')
+          rect(x0 + w - 1, y0 + a, 1, bh - a, '#ffe066')
+        }
       }
-      rect(cr.x + 6, cr.y + 41, 36, 3, 'rgba(16,14,26,0.6)')
-      rect(cr.x + 6, cr.y + 41, Math.round(36 * p), 3, '#ffe066')
+      const bw = Math.max(10, Math.min(36, q.w - 4))
+      rect(Math.round(q.cx - bw / 2), q.y + q.h + 2, bw, 2, '#1d1726')
+      rect(Math.round(q.cx - bw / 2), q.y + q.h + 2, Math.round(bw * p), 2, '#ffe066')
     }
   }
   function drawFlights(s) {
@@ -783,8 +839,9 @@
       const gx = d.from.x + (d.to.x - d.from.x) * p
       const gy = d.from.y + (d.to.y - d.from.y) * p
       const hgt = Math.sin(Math.PI * p) * d.arc
-      const sw = 30 - (hgt / C.ARC_MAX) * 10
-      ctx.drawImage(shadowArt, Math.round(gx - sw / 2), Math.round(gy + 14), Math.round(sw), 10)
+      const k = Sim.ITEMS[d.item].scale
+      const sw = (14 + 8 * k) * (1 - (hgt / C.ARC_MAX) * 0.35)
+      ctx.drawImage(shadowArt, Math.round(gx - sw / 2), Math.round(gy + d.box.h / 2 - 6), Math.round(sw), 8)
       let rot = Math.sin(p * Math.PI * 2) * 0.22
       let state = 'flying'
       if (d.item === 'fromage') rot = p * Math.PI * 4
@@ -792,7 +849,7 @@
       if (d.item === 'planche') state = p < 0.6 ? 'folded' : 'open'
       if (d.item === 'parasol') state = 'folded'
       if (app.reduced) rot *= 0.3
-      const size = 44
+      const size = 24 * k
       ctx.save()
       ctx.globalAlpha = 0.72
       ctx.translate(Math.round(gx), Math.round(gy - hgt))
@@ -812,7 +869,7 @@
         tr.push([b.x, b.y])
         if (tr.length > 6) tr.shift()
       }
-      for (let k = 0; k < tr.length - 1; k += 1) {
+      for (let k = 0; k < tr.length - 1; k++) {
         ctx.globalAlpha = 0.12 + (0.4 * k) / tr.length
         ctx.drawImage(trailArt, Math.round(tr[k][0]) - 3, Math.round(tr[k][1]) - 3)
       }
@@ -830,11 +887,6 @@
       if (p.sprite) {
         const w = p.sprite.width * p.scale
         const h = p.sprite.height * p.scale
-        if (p.z > 1) {
-          ctx.globalAlpha = a * 0.3
-          rect(Math.round(p.x - w / 3), Math.round(p.y + 2), Math.round((w * 2) / 3), 2, '#10101a')
-          ctx.globalAlpha = a
-        }
         if (p.rot) {
           ctx.save()
           ctx.translate(Math.round(p.x), Math.round(p.y - p.z))
@@ -851,22 +903,13 @@
     fx.flashes = fx.flashes.filter((f) => t - f.born < f.life)
     for (const f of fx.flashes) {
       const age = t - f.born
-      if (f.kind === 'cross') {
-        const c = '#ff5a4a'
-        for (let k = -6; k <= 6; k++) {
-          rect(f.x + k, f.y + k, 2, 2, c)
-          rect(f.x + k, f.y - k, 2, 2, c)
-        }
-      } else if (f.kind === 'danger') {
-        // Brief local blink where someone was lost.
-        if (Math.floor(age * 16) % 2 === 0) {
-          const r = 10 + age * 30
-          ctx.strokeStyle = '#ff3a2a'
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          ctx.arc(f.x, f.y, r, 0, Math.PI * 2)
-          ctx.stroke()
-        }
+      // Brief local blink where someone was lost.
+      if (f.kind === 'danger' && Math.floor(age * 16) % 2 === 0) {
+        ctx.strokeStyle = '#ff3a2a'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(f.x, f.y, 10 + age * 30, 0, Math.PI * 2)
+        ctx.stroke()
       }
     }
   }
@@ -875,21 +918,16 @@
     fx.popups = fx.popups.filter((p) => t - p.born < p.life)
     for (const p of fx.popups) {
       const age = t - p.born
-      const y = Math.round(p.y - age * 18)
-      F.drawTextOC(ctx, p.text, Math.round(p.x), y, p.color, p.scale)
+      F.drawTextOC(ctx, p.text, Math.round(p.x), Math.round(p.y - age * 18), p.color, p.scale)
     }
   }
 
-  /* ---------- crowd ---------- */
+  /* ---------- crowd: three lines facing right ---------- */
   function drawCrowd(s) {
     const t = vt()
-    for (let row = 0; row < C.CROWD_ROWS.length; row++) {
-      if (row === 2 && s.activeEvent === 'groupes') drawBanderole(s)
-      for (const p of s.people) {
-        if (!p.alive || p.row !== row) continue
-        drawPerson(p, t)
-      }
-    }
+    const people = s.people.filter((p) => p.alive).sort((a, b) => a.y - b.y || a.line - b.line)
+    for (const p of people) drawPerson(p, t)
+    if (s.activeEvent === 'groupes') drawBanderole(s)
   }
   function drawPerson(p, t) {
     const sign = SIGN_OF[p.index]
@@ -918,120 +956,128 @@
     }
   }
   function drawBanderole(s) {
-    const front = s.people.filter((p) => p.alive && p.row === 1)
-    if (front.length < 2) return
-    const x0 = Math.round(Math.min(...front.map((p) => p.x))) - 6
-    const x1 = Math.round(Math.max(...front.map((p) => p.x))) + 6
-    const y = 113
-    rect(x0, y, x1 - x0, 9, '#1d1726')
-    rect(x0 + 1, y + 1, x1 - x0 - 2, 7, '#f4ead2')
-    rect(x0 - 1, y - 6, 2, 16, '#7a5a3a')
-    rect(x1 - 1, y - 6, 2, 16, '#7a5a3a')
-    F.drawTextC(ctx, 'ON RESTE GROUPÉS', (x0 + x1) / 2, y, '#d6402f')
+    // The banner is too long: it runs along the middle line, letters stacked.
+    const mid = s.people.filter((p) => p.alive && p.line === 1)
+    if (mid.length < 2) return
+    const y0 = Math.round(Math.min(...mid.map((p) => p.y))) - 4
+    const y1 = Math.round(Math.max(...mid.map((p) => p.y))) + 4
+    const x = C.CROWD_LINES[1] + 12
+    rect(x - 1, y0, 9, y1 - y0, '#1d1726')
+    rect(x, y0 + 1, 7, y1 - y0 - 2, '#f4ead2')
+    rect(x - 2, y0 - 3, 11, 2, '#7a5a3a')
+    rect(x - 2, y1 + 1, 11, 2, '#7a5a3a')
+    const text = 'ON RESTE GROUPÉS'
+    const step = Math.max(8, Math.floor((y1 - y0 - 6) / text.length))
+    const start = Math.round((y0 + y1) / 2 - (text.length * step) / 2)
+    for (let i = 0; i < text.length; i++) F.drawText(ctx, text[i], x + 2, start + i * step, '#d6402f')
   }
 
-  /* ---------- police ---------- */
+  /* ---------- police, on the right, facing left ---------- */
   function drawPolice(s) {
     const t = vt()
     const truce = s.activeEvent === 'treve'
     const f = app.reduced ? 0 : Math.floor(t * 2) % 2
-    for (let k = 0; k < 9; k++) {
-      const x = 96 + k * 36
-      ctx.drawImage(S.crs[(truce ? 2 : 0) + ((f + (truce ? k : 0)) % 2)], x - 9, 560 - 9 + (truce ? 0 : f))
-    }
-    for (let k = 0; k < 8; k++) ctx.drawImage(S.crs[(truce ? 2 : 0) + ((f + k) % 2) * (truce ? 1 : 0) + (truce ? 0 : f)], 114 + k * 36 - 9, 582 - 9)
+    const frameFor = (k) => S.crs[truce ? 2 + ((f + k) % 2) : f]
+    for (let k = 0; k < 8; k++) ctx.drawImage(frameFor(k), 574 - 9 + (truce ? 0 : f), 76 + k * 32 - 9)
+    for (let k = 0; k < 7; k++) ctx.drawImage(frameFor(k + 1), 602 - 9, 92 + k * 32 - 9)
     s.launchers.forEach((L, li) => {
       if (!L.active) return
-      const x = Math.round(L.x)
+      const y = Math.round(L.y)
       const a = s.announces.find((q) => q.launcher === li)
-      const ang = a ? a.angle : L.lastAngle ?? 0
       if (a) L.lastAngle = a.angle
-      ctx.drawImage(S.crs[truce ? 2 + f : L.walking ? f : 0], x - 9, C.LAUNCHER_Y + 6)
+      const ang = a ? a.angle : L.lastAngle ?? 0
+      ctx.drawImage(S.crs[truce ? 2 + f : L.walking ? f : 0], C.LAUNCHER_X + 6, y - 9)
       // The tube points where the next ball goes.
       const rad = (ang * Math.PI) / 180
-      const tx = Math.sin(rad)
-      const ty = -Math.cos(rad)
-      for (let k = 0; k < 12; k++) rect(Math.round(x + tx * k) - 2, Math.round(C.LAUNCHER_Y - 2 + ty * k) - 2, 5, 5, k > 9 ? '#ff8a2a' : '#1d1726')
-      for (let k = 0; k < 10; k++) rect(Math.round(x + tx * k) - 1, Math.round(C.LAUNCHER_Y - 2 + ty * k) - 1, 3, 3, '#3a4a7a')
-      ctx.drawImage(S.launcher, x - 11, C.LAUNCHER_Y - 9)
+      const tx = -Math.cos(rad)
+      const ty = Math.sin(rad)
+      const x0 = C.LAUNCHER_X - 2
+      for (let k = 0; k < 12; k++) rect(Math.round(x0 + tx * k) - 2, Math.round(y + ty * k) - 2, 5, 5, k > 9 ? '#ff8a2a' : '#1d1726')
+      for (let k = 0; k < 10; k++) rect(Math.round(x0 + tx * k) - 1, Math.round(y + ty * k) - 1, 3, 3, '#3a4a7a')
+      ctx.drawImage(S.launcher, C.LAUNCHER_X - 9, y - 11)
       if (a) drawAnnounce(a, s.t)
     })
   }
   function drawAnnounce(a, t) {
     const k = Math.min(1, Math.max(0, (t - a.announcedAt) / (a.fireAt - a.announcedAt)))
     const rad = (a.angle * Math.PI) / 180
-    const dx = Math.sin(rad)
-    const dy = -Math.cos(rad)
-    const len = 64
-    const x0 = a.x
-    const y0 = C.SPAWN_Y - 6
+    const dx = -Math.cos(rad)
+    const dy = Math.sin(rad)
+    const len = 60
+    const x0 = C.SPAWN_X - 6
+    const y0 = a.y
     for (let d = 0; d < len; d += 6) {
-      const filled = d / len <= k
       const x = Math.round(x0 + dx * d)
       const y = Math.round(y0 + dy * d)
       rect(x - 2, y - 2, 4, 4, '#1d1726')
-      rect(x - 1, y - 1, 2, 2, filled ? '#ff6a3a' : '#ffd23f')
+      rect(x - 1, y - 1, 2, 2, d / len <= k ? '#ff6a3a' : '#ffd23f')
     }
-    // Arrow head.
     const hx = x0 + dx * len
     const hy = y0 + dy * len
     for (let w = 0; w < 6; w++) {
       const bx = hx - dx * w * 1.5
       const by = hy - dy * w * 1.5
-      const px = -dy
-      const py = dx
-      rect(Math.round(bx + px * w) - 1, Math.round(by + py * w) - 1, 3, 3, '#1d1726')
-      rect(Math.round(bx - px * w) - 1, Math.round(by - py * w) - 1, 3, 3, '#1d1726')
-      rect(Math.round(bx + px * w), Math.round(by + py * w), 1, 1, '#ffd23f')
-      rect(Math.round(bx - px * w), Math.round(by - py * w), 1, 1, '#ffd23f')
+      for (const sgn of [1, -1]) {
+        const px = Math.round(bx - dy * w * sgn)
+        const py = Math.round(by + dx * w * sgn)
+        rect(px - 1, py - 1, 3, 3, '#1d1726')
+        rect(px, py, 1, 1, '#ffd23f')
+      }
     }
   }
 
   /* ---------- stock ---------- */
   function drawStock(s) {
     const t = s.t
-    const x = s.stock.x - 28
-    const y = s.stock.y - 28
+    const cx = s.stock.x
+    const cy = s.stock.y
+    const x = cx - 17
+    const y = cy - 17
     const k = Math.min(1, Math.max(0, (s.stock.readyAt - t) / C.RELOAD))
-    F.drawTextOC(ctx, 'STOCK', s.stock.x, y - 13, '#f4ead2')
-    rect(x - 2, y - 2, 60, 60, '#10131c')
-    const flash = t - fx.readyFlash < 0.18
-    rect(x, y, 56, 56, flash ? '#ffffff' : '#f4ead2')
-    rect(x + 3, y + 3, 50, 50, '#2a3046')
-    rect(x + 3, y + 3, 50, 2, '#3a4260')
-    ctx.drawImage(S.items[s.stock.next], x + 4, y + 4, 48, 48)
+    const item = s.stock.next
+    F.drawTextO(ctx, 'STOCK', x - 26, cy - 4, '#f4ead2')
+    rect(x - 2, y - 2, 38, 38, '#10131c')
+    rect(x, y, 34, 34, t - fx.readyFlash < 0.18 ? '#ffffff' : '#f4ead2')
+    rect(x + 2, y + 2, 30, 30, '#2a3046')
+    ctx.drawImage(S.items[item], x + 5, y + 5)
     if (k > 0) {
-      const hh = Math.ceil(50 * k)
-      rect(x + 3, y + 3, 50, hh, 'rgba(10,12,22,0.66)')
-      rect(x + 3, y + 3 + hh - 1, 50, 1, '#ffd23f')
+      const hh = Math.ceil(30 * k)
+      rect(x + 2, y + 2, 30, hh, 'rgba(10,12,22,0.66)')
+      rect(x + 2, y + 2 + hh - 1, 30, 1, '#ffd23f')
     }
-    rect(x, y + 60, 56, 6, '#10131c')
-    rect(x + 1, y + 61, Math.round(54 * (1 - k)), 4, k > 0 ? '#ffd23f' : '#9cf27a')
-    if (app.firstRun && t < 9 && fx.sends < 4) {
-      const lines = ['LE STOCK', 'RECHARGE', 'APRÈS', 'CHAQUE', 'ENVOI']
-      const bx = s.stock.x
-      const by = y - 72
-      rect(bx - 31, by - 3, 62, lines.length * 9 + 5, 'rgba(16,19,28,0.85)')
-      lines.forEach((l, i) => F.drawTextC(ctx, l, bx, by + i * 9, '#ffd23f'))
+    // What is coming: its name, how sturdy it is, and the reload.
+    const info = Sim.ITEMS[item]
+    const tx = x + 42
+    F.drawTextO(ctx, info.name.toUpperCase(), tx, y, '#ffffff')
+    if (info.hp === 0) F.drawTextO(ctx, 'NE SERT À RIEN', tx, y + 11, '#ff9a7a')
+    else {
+      F.drawTextO(ctx, 'SOLIDE', tx, y + 11, '#a8b0c4')
+      for (let n = 0; n < 3; n++) {
+        rect(tx + 26 + n * 8, y + 12, 6, 6, '#10131c')
+        rect(tx + 27 + n * 8, y + 13, 4, 4, n < info.hp ? '#9cf27a' : '#3a4260')
+      }
     }
+    rect(tx, y + 24, 60, 6, '#10131c')
+    rect(tx + 1, y + 25, Math.round(58 * (1 - k)), 4, k > 0 ? '#ffd23f' : '#9cf27a')
+    if (app.firstRun && t < 9 && fx.sends < 4) F.drawTextO(ctx, '← LE STOCK RECHARGE APRÈS CHAQUE ENVOI', tx + 72, y + 24, '#ffd23f')
   }
 
   /* ---------- HUD ---------- */
   function drawHud(s) {
     const t = s.t
-    rect(0, 0, W, 48, '#151a28')
-    rect(0, 47, W, 1, '#2c3346')
+    rect(0, 0, W, 24, '#151a28')
+    rect(0, 23, W, 1, '#2c3346')
     const alive = Sim.survivors(s)
     const blink = t - fx.lostBlink < 0.6 && Math.floor((t - fx.lostBlink) * 10) % 2 === 0
-    F.drawText(ctx, 'SURVIVANTS', 12, 6, '#a8b0c4')
-    F.drawText(ctx, `${alive}/${s.people.length}`, 12, 15, blink ? '#ff5a4a' : '#ffffff', 3)
+    F.drawText(ctx, 'SURVIVANTS', 8, 8, '#a8b0c4')
+    F.drawText(ctx, `${alive}/${s.people.length}`, 52, 3, blink ? '#ff5a4a' : '#ffffff', 2)
     const remain = Math.max(0, Math.ceil(C.RUN_DURATION - t - 1e-9))
     const urgent = remain <= 10 && Math.floor(t * 4) % 2 === 0
-    F.drawTextC(ctx, String(remain), 240, -2, urgent ? '#ffd23f' : '#ffffff', 5)
-    F.drawTextC(ctx, 'SECONDES', 240, 38, '#a8b0c4')
+    F.drawTextC(ctx, String(remain), 320, -3, urgent ? '#ffd23f' : '#ffffff', 3)
+    F.drawText(ctx, 'S', 342, 13, '#a8b0c4')
     const eb = t - fx.evacBlink < 0.3
-    F.drawText(ctx, 'RENVOYÉES', 300, 6, '#a8b0c4')
-    F.drawText(ctx, String(s.stats.evacuated), 300, 16, eb ? '#9cf27a' : '#c8d0e0', 2)
+    F.drawText(ctx, 'RENVOYÉES', 430, 8, '#a8b0c4')
+    F.drawText(ctx, String(s.stats.evacuated), 470, 3, eb ? '#9cf27a' : '#c8d0e0', 2)
   }
   function drawButtons() {
     for (const b of buttons()) {
@@ -1039,36 +1085,37 @@
       if (b.icon) {
         rect(b.x, b.y, b.w, b.h, '#10131c')
         rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2, hot ? '#3a4260' : '#262c40')
-        const cx = b.x + 16
-        const cy = b.y + 16
+        const cx = b.x + 12
+        const cy = b.y + 11
         if (b.icon === 'pause') {
-          if (app.mode === 'PAUSED') for (let k = 0; k < 10; k++) rect(cx - 4 + k / 2, cy - 7 + k * 0.7, 2, 14 - k * 1.4, '#f4ead2')
+          if (app.mode === 'PAUSED') for (let k = 0; k < 7; k++) rect(cx - 3 + k, cy - 6 + k * 0.85, 1, 12 - k * 1.7, '#f4ead2')
           else {
-            rect(cx - 6, cy - 7, 4, 14, '#f4ead2')
-            rect(cx + 2, cy - 7, 4, 14, '#f4ead2')
+            rect(cx - 5, cy - 6, 3, 12, '#f4ead2')
+            rect(cx + 2, cy - 6, 3, 12, '#f4ead2')
           }
         } else {
-          rect(cx - 8, cy - 3, 4, 6, '#f4ead2')
-          for (let k = 0; k < 5; k++) rect(cx - 4 + k, cy - 3 - k, 1, 6 + 2 * k, '#f4ead2')
+          rect(cx - 7, cy - 2, 3, 5, '#f4ead2')
+          for (let k = 0; k < 4; k++) rect(cx - 4 + k, cy - 2 - k, 1, 5 + 2 * k, '#f4ead2')
           if (app.muted) {
-            for (let k = 0; k < 8; k++) {
-              rect(cx + 3 + k, cy - 4 + k, 1, 1, '#ff5a4a')
-              rect(cx + 3 + k, cy + 3 - k, 1, 1, '#ff5a4a')
+            for (let k = 0; k < 6; k++) {
+              rect(cx + 2 + k, cy - 3 + k, 1, 1, '#ff5a4a')
+              rect(cx + 2 + k, cy + 2 - k, 1, 1, '#ff5a4a')
             }
           } else {
-            rect(cx + 4, cy - 2, 1, 4, '#f4ead2')
-            rect(cx + 7, cy - 5, 1, 10, '#f4ead2')
+            rect(cx + 2, cy - 1, 1, 3, '#f4ead2')
+            rect(cx + 5, cy - 4, 1, 9, '#f4ead2')
           }
         }
         continue
       }
       rect(b.x, b.y, b.w, b.h, '#10131c')
       rect(b.x + 2, b.y + 2, b.w - 4, b.h - 4, b.big ? (hot ? '#ff7a4a' : '#e8573f') : hot ? '#3a4260' : '#262c40')
-      if (b.big) rect(b.x + 2, b.y + b.h - 6, b.w - 4, 4, hot ? '#e8573f' : '#b8402c')
+      if (b.big) rect(b.x + 2, b.y + b.h - 5, b.w - 4, 3, hot ? '#e8573f' : '#b8402c')
       const sc = b.big ? 2 : 1
       F.drawTextC(ctx, b.label, b.x + b.w / 2, b.y + Math.round((b.h - 9 * sc) / 2) - (b.big ? 1 : 0), '#ffffff', sc)
     }
   }
+  /** Event banner, on the sidewalk the stock is not using. */
   function drawBanner(s) {
     const t = s.t
     let text = null
@@ -1076,7 +1123,7 @@
     let color = '#ffd23f'
     if (t < C.FIRST_SHOT - C.ANNOUNCE) {
       text = 'CONSTRUIS !'
-      sub = `PREMIERS TIRS DANS ${Math.ceil(C.FIRST_SHOT - C.ANNOUNCE - t)} S`
+      sub = `PREMIERS TIRS DANS ${Math.ceil(C.FIRST_SHOT - C.ANNOUNCE - t)} S · CLIQUE N’IMPORTE OÙ DANS LA RUE`
       color = '#9cf27a'
     }
     for (const ev of C.EVENTS) {
@@ -1098,15 +1145,17 @@
       color = '#9cf27a'
     }
     if (!text) return
-    F.drawTextOC(ctx, text, 240, 604, color, 2)
-    if (sub) F.drawTextC(ctx, sub, 240, 626, '#c8d0e0')
+    const top = s.stock.side === 'main'
+    const y = top ? 28 : 322
+    F.drawTextOC(ctx, text, 320, y, color, 2)
+    if (sub) F.drawTextOC(ctx, sub, 320, y + 18, '#e8ecf4')
   }
 
   /* ---------- overlays ---------- */
   function drawPause() {
-    rect(0, 48, W, H - 48, 'rgba(12,14,22,0.78)')
-    F.drawTextOC(ctx, 'PAUSE', 240, 200, '#ffffff', 6)
-    F.drawTextC(ctx, 'LE TEMPS EST SUSPENDU. LES CRS AUSSI.', 240, 258, '#a8b0c4')
+    rect(0, 24, W, H - 24, 'rgba(12,14,22,0.78)')
+    F.drawTextOC(ctx, 'PAUSE', 320, 70, '#ffffff', 5)
+    F.drawTextC(ctx, 'LE TEMPS EST SUSPENDU. LES CRS AUSSI.', 320, 124, '#a8b0c4')
   }
   function resultTitle(r) {
     if (r.survivors === 0) return 'CORTÈGE DISPERSÉ. LE FRIGO VA BIEN.'
@@ -1118,28 +1167,29 @@
   }
   function drawResults() {
     const r = app.result
-    rect(0, 48, W, H - 48, 'rgba(12,14,22,0.86)')
-    F.drawTextOC(ctx, resultTitle(r), 240, 84, '#ffd23f', 2)
-    if (r.reason === 'wiped') F.drawTextC(ctx, `PLUS PERSONNE APRÈS ${r.time.toFixed(1).replace('.', ',')} S`, 240, 110, '#ff8a7a')
-    F.drawTextOC(ctx, `${r.survivors}/${r.total}`, 240, 128, r.survivors ? '#ffffff' : '#ff6a5a', 11)
-    F.drawTextC(ctx, 'SURVIVANTS', 240, 232, '#a8b0c4', 2)
+    rect(0, 24, W, H - 24, 'rgba(12,14,22,0.88)')
+    F.drawTextOC(ctx, resultTitle(r), 320, 34, '#ffd23f', 2)
+    if (r.reason === 'wiped') F.drawTextC(ctx, `PLUS PERSONNE APRÈS ${r.time.toFixed(1).replace('.', ',')} S`, 320, 56, '#ff8a7a')
+    // Left: the big number. Right: the details.
+    F.drawTextOC(ctx, `${r.survivors}/${r.total}`, 168, 82, r.survivors ? '#ffffff' : '#ff6a5a', 8)
+    F.drawTextC(ctx, 'SURVIVANTS', 168, 160, '#a8b0c4', 2)
     const lines = [
       ['TEMPS TENU', `${Math.floor(r.time)} S`],
       ['BALLES RENVOYÉES', String(r.evacuated)],
       ['OBJETS LIVRÉS', r.tooLate ? `${r.delivered} (+${r.tooLate} TROP TARD)` : String(r.delivered)],
-      ['OBJET LE PLUS UTILISÉ', r.mostUsed ? Sim.ITEMS[r.mostUsed].toUpperCase() : 'AUCUN'],
+      ['LE PLUS UTILISÉ', r.mostUsed ? Sim.ITEMS[r.mostUsed].name.toUpperCase() : 'AUCUN'],
     ]
     lines.forEach(([k, v], i) => {
-      const y = 274 + i * 30
-      F.drawText(ctx, k, 64, y, '#a8b0c4', 2)
-      F.drawText(ctx, v, 416 - F.textWidth(v, 2), y, '#ffffff', 2)
-      rect(64, y + 22, 352, 1, '#2c3346')
+      const y = 82 + i * 24
+      F.drawText(ctx, k, 330, y, '#a8b0c4')
+      F.drawText(ctx, v, 612 - F.textWidth(v), y + 9, '#ffffff')
+      rect(330, y + 20, 282, 1, '#2c3346')
     })
-    if (r.mostUsed) ctx.drawImage(S.items[r.mostUsed], 216, 392, 48, 48)
+    if (r.mostUsed) ctx.drawImage(S.items[r.mostUsed], 330, 182, 48, 48)
     const rec = app.record
-    if (app.newRecord) F.drawTextOC(ctx, 'NOUVEAU RECORD !', 240, 456, Math.floor(app.real * 4) % 2 ? '#9cf27a' : '#ffffff', 2)
-    else if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} · ${Math.floor(rec.time)} S · ${rec.evacuated} RENVOYÉES`, 240, 460, '#a8b0c4')
-    F.drawTextC(ctx, `PARTIE ${String(r.seed).toUpperCase()}`, 240, 530, '#5d6578')
+    if (app.newRecord) F.drawTextOC(ctx, 'NOUVEAU RECORD !', 320, 250, Math.floor(app.real * 4) % 2 ? '#9cf27a' : '#ffffff', 2)
+    else if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} · ${Math.floor(rec.time)} S · ${rec.evacuated} RENVOYÉES`, 320, 254, '#a8b0c4')
+    F.drawTextC(ctx, `PARTIE ${String(r.seed).toUpperCase()}`, 320, 290, '#5d6578')
   }
 
   /* ---------- menu ---------- */
@@ -1147,77 +1197,78 @@
   function drawMenuScene() {
     if (!menuScene) {
       menuScene = Sim.create('menu', { NO_SHOTS: true })
-      const deco = [['canape', 1, 4], ['frigo', 2, 4], ['poisson', 3, 4], ['voiture', 4, 4], ['armoire', 5, 4], ['palette', 0, 5], ['chaise', 6, 5]]
-      for (const [item, c, r] of deco) {
-        const i = Sim.cellIndex(menuScene, c, r)
-        menuScene.cells[i].state = 'OCCUPIED'
-        menuScene.cells[i].item = item
-      }
+      for (const [item, x, y] of [['canape', 200, 110], ['frigo', 300, 270], ['poisson', 420, 120], ['voiture', 440, 270], ['armoire', 160, 260], ['ballon', 360, 190]]) Sim.placeNow(menuScene, item, x, y)
     }
     const s = menuScene
     s.t = app.real
-    drawBarricades(s)
+    drawObjects(s)
     drawCrowd(s)
     drawPolice(s)
   }
   function drawMenu() {
     const t = app.real
-    rect(0, 150, W, 270, 'rgba(12,14,22,0.72)')
+    rect(110, 34, 420, 296, 'rgba(12,14,22,0.8)')
     const bounce = app.reduced ? 0 : Math.round(Math.sin(t * 3) * 2)
-    F.drawTextOC(ctx, 'BARRICASSE', 240, 164 + bounce, '#ffd23f', 7, '#1d1726')
-    F.drawTextC(ctx, '« TOUT FAIT BARRICADE. MÊME LE POISSON. »', 240, 238, '#ffffff', 2)
-    F.drawTextC(ctx, SLOGANS[Math.floor(t / 2.2) % SLOGANS.length], 240, 262, '#ff9a7a')
-    const tuto = ['CLIQUE POUR LIVRER UNE BARRICADE.', 'ELLE DOIT ARRIVER AVANT LA BALLE.', 'SAUVE LE PLUS DE MANIFESTANTS POSSIBLE.']
-    tuto.forEach((l, i) => F.drawTextC(ctx, l, 240, 300 + i * 22, '#e8ecf4', 2))
-    F.drawTextC(ctx, 'LE STOCK RECHARGE APRÈS CHAQUE ENVOI.', 240, 374, '#a8b0c4')
+    F.drawTextOC(ctx, 'BARRICASSE', 320, 44 + bounce, '#ffd23f', 6, '#1d1726')
+    F.drawTextC(ctx, '« TOUT FAIT BARRICADE. MÊME LE POISSON. »', 320, 104, '#ffffff', 2)
+    F.drawTextC(ctx, SLOGANS[Math.floor(t / 2.2) % SLOGANS.length], 320, 124, '#ff9a7a')
+    const tuto = ['CLIQUE DANS LA RUE POUR LIVRER UNE BARRICADE.', 'ELLE DOIT ARRIVER AVANT LA BALLE.', 'SAUVE LE PLUS DE MANIFESTANTS POSSIBLE.']
+    tuto.forEach((l, i) => F.drawTextC(ctx, l, 320, 146 + i * 20, '#e8ecf4', 2))
+    F.drawTextC(ctx, 'LE STOCK RECHARGE APRÈS CHAQUE ENVOI. UN CANAPÉ ENCAISSE, UN BALLON NON.', 320, 212, '#a8b0c4')
     const rec = app.record
-    if (rec) F.drawTextOC(ctx, `RECORD : ${rec.survivors}/${rec.total} SURVIVANTS · ${Math.floor(rec.time)} S`, 240, 508, '#ffffff')
-    F.drawTextOC(ctx, 'ÉCHAP : PAUSE · M : SON', 240, 600, '#a8b0c4')
+    if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} SURVIVANTS · ${Math.floor(rec.time)} S`, 320, 312, '#ffffff')
+    F.drawTextOC(ctx, 'ÉCHAP : PAUSE · M : SON', 320, 340, '#a8b0c4')
   }
 
   /* ---------- debug ---------- */
   function drawDebug(s) {
     ctx.save()
-    ctx.globalAlpha = 0.8
-    for (let i = 0; i < s.cells.length; i++) {
-      const cr = Sim.cellRect(s, i)
-      const st = s.cells[i].state
-      frameRect(cr.x, cr.y, 48, 48, st === 'OCCUPIED' ? '#40ff60' : st === 'RESERVED' ? '#ffe066' : 'rgba(255,255,255,0.25)')
-    }
-    for (const p of s.people) if (p.alive) frameRect(Math.round(p.x - 7), p.y - 9, 14, 18, '#40e0ff')
+    ctx.globalAlpha = 0.85
+    frameRect(C.ZONE_L, C.STREET_T, C.ZONE_R - C.ZONE_L, C.STREET_B - C.STREET_T, 'rgba(255,255,255,0.3)')
+    for (const o of s.objects) frameRect(o.box.x, o.box.y, o.box.w, o.box.h, '#40ff60')
+    for (const d of s.deliveries) frameRect(d.box.x, d.box.y, d.box.w, d.box.h, '#ffe066')
+    for (const p of s.people) if (p.alive) frameRect(p.x - 7, Math.round(p.y - 9), 14, 18, '#40e0ff')
     ctx.strokeStyle = '#ff40ff'
     for (const b of s.balls) {
       ctx.beginPath()
       ctx.arc(b.x, b.y, C.BALL_RADIUS, 0, Math.PI * 2)
       ctx.stroke()
     }
-    rect(C.STREET_L, 48, 1, 548, '#ff40ff')
-    rect(C.STREET_R, 48, 1, 548, '#ff40ff')
-    rect(0, C.TOP_ABSORB_Y, W, 1, '#ff40ff')
-    rect(0, C.BOTTOM_EXIT_Y, W, 1, '#ff40ff')
+    rect(0, C.STREET_T, W, 1, '#ff40ff')
+    rect(0, C.STREET_B, W, 1, '#ff40ff')
+    rect(C.LEFT_ABSORB_X, 24, 1, H - 24, '#ff40ff')
+    rect(C.RIGHT_EXIT_X, 24, 1, H - 24, '#ff40ff')
     ctx.restore()
     const lines = [
-      `T ${s.t.toFixed(2)}  PHASE ${Sim.phaseAt(s)}`,
+      `T ${s.t.toFixed(2)}  PHASE ${Sim.phaseAt(s)}  GRAINE ${s.seed}`,
       `BALLES ${s.balls.length}/${C.BALL_CAP}  TIRS ${s.stats.shots}  SAUTÉS ${s.stats.capSkipped}`,
-      `GRAINE ${s.seed}`,
-      `ÉVÉNEMENT ${s.activeEvent || '-'}`,
+      `ÉVÉNEMENT ${s.activeEvent || '-'}  OBJETS ${s.objects.length}`,
       `STOCK ${s.t >= s.stock.readyAt ? 'PRÊT' : (s.stock.readyAt - s.t).toFixed(2)}  VOLS ${s.deliveries.length}`,
     ]
-    if (app.hover >= 0) lines.push(`LIVRAISON ICI ${Sim.deliveryTime(s, s.stock, app.hover).toFixed(2)} S`)
-    rect(76, 50, 230, lines.length * 9 + 4, 'rgba(0,0,0,0.7)')
-    lines.forEach((l, i) => F.drawText(ctx, l, 80, 52 + i * 9, '#40ff60'))
+    if (app.hover && Sim.inZone(s, app.hover.x, app.hover.y)) {
+      const q = Sim.boxAt(s, s.stock.next, app.hover.x, app.hover.y)
+      lines.push(`LIVRAISON ICI ${Sim.deliveryTime(s, s.stock, q.cx, q.cy).toFixed(2)} S`)
+    }
+    rect(124, 26, 220, lines.length * 9 + 4, 'rgba(0,0,0,0.7)')
+    lines.forEach((l, i) => F.drawText(ctx, l, 128, 28 + i * 9, '#40ff60'))
   }
 
-  /* ---------- fit the logical 480 × 640 frame to the window ---------- */
+  /* ---------- fit the logical 640 × 360 frame; portrait phones get it rotated ---------- */
   function fit() {
     const sw = window.innerWidth
     const sh = window.innerHeight
-    let scale = Math.min(sw / W, sh / H)
-    if (!matchMedia('(pointer: coarse)').matches && scale >= 1) scale = scale >= 2 ? Math.floor(scale) : Math.max(1, Math.floor(scale * 4) / 4)
+    app.rotated = sh > sw && sw < 760
+    const availW = app.rotated ? sh : sw
+    const availH = app.rotated ? sw : sh
+    let scale = Math.min(availW / W, availH / H)
+    // Desktop: whole pixels when there is room; phones fill the screen.
+    if (!matchMedia('(pointer: coarse)').matches && scale >= 2) scale = Math.floor(scale)
     canvas.style.width = Math.floor(W * scale) + 'px'
     canvas.style.height = Math.floor(H * scale) + 'px'
+    canvas.style.transform = app.rotated ? 'rotate(90deg)' : ''
   }
   addEventListener('resize', fit)
+  if (screen.orientation) screen.orientation.addEventListener('change', fit)
   fit()
 
   // Debug hook for tests and the console.

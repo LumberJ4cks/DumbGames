@@ -6,66 +6,68 @@
  * counter, three seeded random streams (shots, launchers, items) so a seed replays the same
  * police pattern whatever the player does. Rendering, audio and particles live in game.js
  * and read `state.out`, the list of notifications produced by the last steps.
+ *
+ * Landscape street: demonstrators on the left, police on the right, balls travel leftwards.
+ * Barricades are placed freely (overlaps allowed); each object's box is its sprite's real
+ * opaque bounds × its scale, and it takes `hp` hits (the football takes none at all).
  */
 ;(function () {
   'use strict'
 
   /* ---------- configuration (every tunable number lives here) ---------- */
   const CONFIG = {
-    W: 480,
-    H: 640,
+    W: 640,
+    H: 360,
     DT: 1 / 120,
     RUN_DURATION: 90,
-    // Street and build grid (7 × 6 cells of 48 px).
-    STREET_L: 72,
-    STREET_R: 408,
-    GRID_X: 72,
-    GRID_Y: 180,
-    COLS: 7,
-    ROWS: 6,
-    CELL: 48,
-    TOP_ABSORB_Y: 58,
-    BOTTOM_EXIT_Y: 596,
+    // Street: curbs at the top and bottom bounce the balls; the build zone sits in between.
+    STREET_T: 60,
+    STREET_B: 316,
+    ZONE_L: 120,
+    ZONE_R: 500,
+    LEFT_ABSORB_X: 14,
+    RIGHT_EXIT_X: 612,
     // Stock and deliveries.
-    STOCK_LEFT: { x: 30, y: 330 },
-    STOCK_RIGHT: { x: 450, y: 330 },
+    STOCK_MAIN: { x: 300, y: 338 },
+    STOCK_ALT: { x: 300, y: 42 },
     RELOAD: 0.8,
     DELIVERY_MIN: 0.2,
     DELIVERY_MAX: 1.0,
-    ARC_MIN: 18,
-    ARC_MAX: 54,
-    NEAR_MISS: 34,
+    ARC_MIN: 16,
+    ARC_MAX: 46,
+    NEAR_MISS: 30,
     // Balls and launchers.
     BALL_RADIUS: 5,
     BALL_CAP: 10,
     ANNOUNCE: 0.6,
-    LAUNCHER_Y: 532,
-    SPAWN_Y: 512,
-    LAUNCHER_MIN_X: 104,
-    LAUNCHER_MAX_X: 376,
+    LAUNCHER_X: 542,
+    SPAWN_X: 522,
+    LAUNCHER_MIN_Y: 84,
+    LAUNCHER_MAX_Y: 292,
     LAUNCHER_SPEED: 55,
     LAUNCHER_RECOVER: 0.18,
+    LAUNCHER_GAP: 70,
     SECOND_LAUNCHER_AT: 37.5,
     FIRST_SHOT: 5.6,
     LAST_SHOT_BEFORE: 89,
     // Global intervals: with two launchers they alternate, the cadence is not doubled.
     PHASES: [
       { from: 0, mode: 'none' },
-      { from: 5, mode: 'single', interval: 2.2, speed: 130, maxAngle: 8, launchers: 1 },
-      { from: 20, mode: 'single', interval: 1.5, speed: 150, maxAngle: 24, launchers: 1 },
-      { from: 40, mode: 'single', interval: 1.05, speed: 175, maxAngle: 35, launchers: 2 },
-      { from: 60, mode: 'burst', count: 5, gap: 0.55, rest: 2.0, speed: 195, maxAngle: 35, launchers: 2 },
-      { from: 75, mode: 'burst', count: 6, gap: 0.42, rest: 1.2, speed: 210, maxAngle: 35, launchers: 2 },
+      { from: 5, mode: 'single', interval: 2.0, speed: 135, maxAngle: 8, launchers: 1 },
+      { from: 20, mode: 'single', interval: 1.4, speed: 155, maxAngle: 24, launchers: 1 },
+      { from: 40, mode: 'single', interval: 0.95, speed: 180, maxAngle: 35, launchers: 2 },
+      { from: 60, mode: 'burst', count: 5, gap: 0.5, rest: 1.8, speed: 200, maxAngle: 35, launchers: 2 },
+      { from: 75, mode: 'burst', count: 6, gap: 0.4, rest: 1.1, speed: 215, maxAngle: 35, launchers: 2 },
       { from: 89, mode: 'none' },
     ],
-    // Crowd.
-    CROWD_ROWS: [82, 106, 130],
-    CROWD_PER_ROW: 8,
-    CROWD_CENTER_X: 240,
-    CROWD_SPACING: 36,
-    CROWD_EVENT_SPACING: 44,
+    // Crowd: three lines facing right, the front line closest to the police.
+    CROWD_LINES: [34, 58, 82],
+    CROWD_PER_LINE: 8,
+    CROWD_CENTER_Y: 188,
+    CROWD_SPACING: 30,
+    CROWD_EVENT_SPACING: 34,
     CROWD_SPEED: 18,
-    CROWD_MARGIN: 12,
+    CROWD_MARGIN: 10,
     PERSON_W: 14,
     PERSON_H: 18,
     // Absurd events, fixed order for the first prototype.
@@ -84,42 +86,83 @@
     NO_SHOTS: false,
   }
 
-  /* ---------- catalogue: one cell, one hit, same box for everything ---------- */
+  /* ---------- catalogue ----------
+   * scale: integer zoom of the 24 × 24 art (×1 small, ×2 normal, ×3 huge).
+   * hp: hits taken before breaking; every hit bounces the ball. 0 = useless, the ball goes on.
+   */
   const ITEMS = {
-    chaise: 'Chaise de jardin',
-    palette: 'Palette',
-    voiture: 'Voiture',
-    planche: 'Planche à repasser',
-    frigo: 'Frigo',
-    canape: 'Canapé fleuri',
-    reverbere: 'Réverbère',
-    poisson: 'Poisson',
-    armoire: 'Armoire normande',
-    ballon: 'Ballon de foot',
-    baignoire: 'Baignoire',
-    photocopieuse: 'Photocopieuse',
-    nain: 'Nain de jardin',
-    fromage: 'Meule de fromage',
-    piano: 'Piano droit',
-    caddie: 'Caddie',
-    plante: 'Plante verte',
-    toilettes: 'Toilettes',
-    cheval: 'Cheval à bascule',
-    distributeur: 'Distributeur de boissons',
-    gateau: 'Gâteau de mariage',
-    tableau: 'Tableau de paysage',
-    trophee: 'Trophée de pétanque',
-    carton: 'Carton « FRAGILE »',
-    barbecue: 'Barbecue',
-    glaciere: 'Glacière',
-    parasol: 'Parasol',
-    merguez: 'Merguez géante',
+    chaise: { name: 'Chaise de jardin', scale: 2, hp: 1 },
+    palette: { name: 'Palette', scale: 2, hp: 2 },
+    voiture: { name: 'Voiture', scale: 3, hp: 2 },
+    planche: { name: 'Planche à repasser', scale: 2, hp: 1 },
+    frigo: { name: 'Frigo', scale: 2, hp: 2 },
+    canape: { name: 'Canapé fleuri', scale: 3, hp: 3 },
+    reverbere: { name: 'Réverbère', scale: 2, hp: 2 },
+    poisson: { name: 'Poisson', scale: 2, hp: 1 },
+    armoire: { name: 'Armoire normande', scale: 3, hp: 3 },
+    ballon: { name: 'Ballon de foot', scale: 1, hp: 0 },
+    baignoire: { name: 'Baignoire', scale: 2, hp: 2 },
+    photocopieuse: { name: 'Photocopieuse', scale: 2, hp: 2 },
+    nain: { name: 'Nain de jardin', scale: 1, hp: 1 },
+    fromage: { name: 'Meule de fromage', scale: 2, hp: 2 },
+    piano: { name: 'Piano droit', scale: 3, hp: 3 },
+    caddie: { name: 'Caddie', scale: 2, hp: 1 },
+    plante: { name: 'Plante verte', scale: 1, hp: 1 },
+    toilettes: { name: 'Toilettes', scale: 2, hp: 1 },
+    cheval: { name: 'Cheval à bascule', scale: 2, hp: 1 },
+    distributeur: { name: 'Distributeur de boissons', scale: 2, hp: 2 },
+    gateau: { name: 'Gâteau de mariage', scale: 2, hp: 1 },
+    tableau: { name: 'Tableau de paysage', scale: 2, hp: 1 },
+    trophee: { name: 'Trophée de pétanque', scale: 1, hp: 1 },
+    carton: { name: 'Carton « FRAGILE »', scale: 2, hp: 1 },
+    barbecue: { name: 'Barbecue', scale: 2, hp: 1 },
+    glaciere: { name: 'Glacière', scale: 2, hp: 1 },
+    parasol: { name: 'Parasol', scale: 2, hp: 1 },
+    merguez: { name: 'Merguez géante', scale: 2, hp: 1 },
+  }
+  /* Opaque bounds [x, y, w, h] of each 24 × 24 sprite, outline included. Generated by
+     `node barricasse/test/sprite-bounds.js`; a test fails if the art and this table drift. */
+  const BOUNDS = {
+    chaise: [3, 0, 18, 23],
+    palette: [0, 2, 24, 22],
+    voiture: [0, 3, 24, 19],
+    planche: [0, 6, 23, 17],
+    frigo: [4, 0, 16, 24],
+    canape: [0, 3, 24, 20],
+    reverbere: [6, 2, 16, 22],
+    poisson: [0, 4, 24, 16],
+    armoire: [1, 0, 22, 24],
+    ballon: [2, 2, 21, 21],
+    baignoire: [0, 3, 24, 20],
+    photocopieuse: [0, 4, 24, 19],
+    nain: [5, 0, 14, 24],
+    fromage: [1, 4, 23, 18],
+    piano: [0, 1, 24, 22],
+    caddie: [0, 2, 23, 21],
+    plante: [1, 0, 23, 24],
+    toilettes: [3, 0, 19, 23],
+    cheval: [1, 1, 22, 23],
+    distributeur: [3, 0, 18, 24],
+    gateau: [1, 1, 22, 23],
+    tableau: [0, 1, 24, 23],
+    trophee: [2, 0, 20, 23],
+    carton: [1, 3, 22, 19],
+    barbecue: [2, 6, 22, 18],
+    glaciere: [1, 2, 22, 20],
+    parasol: [0, 1, 24, 23],
+    merguez: [0, 1, 24, 19],
   }
   const POOLS = {
     early: ['chaise', 'palette', 'frigo', 'canape', 'voiture', 'armoire'],
     full: Object.keys(ITEMS).slice(0, 24),
     rupture: ['frigo', 'canape'],
     treve: ['barbecue', 'glaciere', 'parasol', 'merguez'],
+  }
+  /** Physical size of an object, in logical pixels. */
+  function sizeOf(item) {
+    const b = BOUNDS[item]
+    const k = ITEMS[item].scale
+    return { w: b[2] * k, h: b[3] * k }
   }
 
   /* ---------- seeded random ---------- */
@@ -155,13 +198,13 @@
       over: false,
       endReason: null,
       nextId: 1,
-      cells: [],
+      objects: [],
       deliveries: [],
       balls: [],
       people: [],
       launchers: [],
       announces: [],
-      stock: { x: C.STOCK_LEFT.x, y: C.STOCK_LEFT.y, readyAt: 0, next: null, side: 'left' },
+      stock: { x: C.STOCK_MAIN.x, y: C.STOCK_MAIN.y, readyAt: 0, next: null, side: 'main' },
       lastSent: null,
       bag: [],
       poolKey: null,
@@ -169,57 +212,48 @@
       events: {},
       activeEvent: null,
       spacing: C.CROWD_SPACING,
-      stats: { sent: 0, delivered: 0, tooLate: 0, destroyed: 0, evacuated: 0, passedTop: 0, lost: 0, shots: 0, capSkipped: 0, byItem: {} },
+      stats: { sent: 0, delivered: 0, tooLate: 0, hits: 0, destroyed: 0, kicked: 0, evacuated: 0, passedLeft: 0, lost: 0, shots: 0, capSkipped: 0, byItem: {} },
       out: [],
     }
-    for (let i = 0; i < C.COLS * C.ROWS; i++) s.cells.push({ state: 'EMPTY', item: null, objId: 0, placedAt: 0 })
     let n = 0
-    C.CROWD_ROWS.forEach((y, row) => {
-      for (let i = 0; i < C.CROWD_PER_ROW; i++) {
-        const x = C.CROWD_CENTER_X + (i - (C.CROWD_PER_ROW - 1) / 2) * C.CROWD_SPACING
-        s.people.push({ id: s.nextId++, index: n++, row, x, y, tx: x, alive: true, lostAt: 0 })
+    C.CROWD_LINES.forEach((x, line) => {
+      for (let i = 0; i < C.CROWD_PER_LINE; i++) {
+        const y = C.CROWD_CENTER_Y + (i - (C.CROWD_PER_LINE - 1) / 2) * C.CROWD_SPACING
+        s.people.push({ id: s.nextId++, index: n++, line, x, y, ty: y, alive: true, lostAt: 0 })
       }
     })
-    s.launchers.push({ id: s.nextId++, x: 240, tx: 240, active: true, lockedUntil: -1, firedAt: -9 })
-    s.launchers.push({ id: s.nextId++, x: C.W + 30, tx: C.W + 30, active: false, lockedUntil: -1, firedAt: -9 })
+    const midY = (C.STREET_T + C.STREET_B) / 2
+    s.launchers.push({ id: s.nextId++, y: midY, ty: midY, active: true, lockedUntil: -1, firedAt: -9 })
+    s.launchers.push({ id: s.nextId++, y: C.STREET_B + 30, ty: C.STREET_B + 30, active: false, lockedUntil: -1, firedAt: -9 })
     for (const ev of C.EVENTS) s.events[ev.id] = 'pending'
     refreshPool(s)
     return s
   }
 
-  /* ---------- geometry helpers ---------- */
-  function cellIndex(s, col, row) {
-    return row * s.C.COLS + col
-  }
-  function cellRect(s, i) {
+  /* ---------- placement geometry ---------- */
+  function inZone(s, x, y) {
     const C = s.C
-    const col = i % C.COLS
-    const row = (i / C.COLS) | 0
-    const x = C.GRID_X + col * C.CELL
-    const y = C.GRID_Y + row * C.CELL
-    return { x, y, w: C.CELL, h: C.CELL, cx: x + C.CELL / 2, cy: y + C.CELL / 2, col, row }
+    return x >= C.ZONE_L && x <= C.ZONE_R && y >= C.STREET_T && y <= C.STREET_B
   }
-  /** Logical point → cell index, or -1 outside the grid. */
-  function cellAt(s, x, y) {
+  /** Box of `item` dropped at (x, y): centred on the point, kept inside the build zone. */
+  function boxAt(s, item, x, y) {
     const C = s.C
-    const col = Math.floor((x - C.GRID_X) / C.CELL)
-    const row = Math.floor((y - C.GRID_Y) / C.CELL)
-    if (col < 0 || row < 0 || col >= C.COLS || row >= C.ROWS) return -1
-    return cellIndex(s, col, row)
+    const { w, h } = sizeOf(item)
+    // Snapped to whole pixels so the art stays crisp; physics uses the same box.
+    const bx = Math.round(Math.min(C.ZONE_R - w, Math.max(C.ZONE_L, x - w / 2)))
+    const by = Math.round(Math.min(C.STREET_B - h, Math.max(C.STREET_T, y - h / 2)))
+    return { x: bx, y: by, w, h, cx: bx + w / 2, cy: by + h / 2 }
   }
   function maxDistance(s, origin) {
+    const C = s.C
     let best = 0
-    for (let i = 0; i < s.cells.length; i++) {
-      const r = cellRect(s, i)
-      best = Math.max(best, Math.hypot(r.cx - origin.x, r.cy - origin.y))
-    }
+    for (const x of [C.ZONE_L, C.ZONE_R]) for (const y of [C.STREET_T, C.STREET_B]) best = Math.max(best, Math.hypot(x - origin.x, y - origin.y))
     return best
   }
-  function deliveryTime(s, origin, i) {
+  function deliveryTime(s, origin, x, y) {
     const C = s.C
     if (s.activeEvent === 'rupture') return C.RUPTURE_FLIGHT
-    const r = cellRect(s, i)
-    const d = Math.hypot(r.cx - origin.x, r.cy - origin.y)
+    const d = Math.hypot(x - origin.x, y - origin.y)
     const t = C.DELIVERY_MIN + (C.DELIVERY_MAX - C.DELIVERY_MIN) * (d / maxDistance(s, origin))
     return Math.min(C.DELIVERY_MAX, Math.max(C.DELIVERY_MIN, t))
   }
@@ -252,7 +286,6 @@
     if (!s.bag.length) refill(s)
     let k = s.bag.findIndex((id) => id !== s.lastSent)
     if (k < 0) {
-      // Only the last item is left: start a new bag and take something else from it.
       refill(s)
       k = Math.max(0, s.bag.findIndex((id) => id !== s.lastSent))
     }
@@ -269,36 +302,33 @@
   }
 
   /* ---------- commands ---------- */
-  /** Returns { ok, reason }. A refused order consumes nothing and does not restart the reload. */
-  function command(s, i) {
+  /** Order the next object at (x, y). A refused order consumes nothing. Overlaps are allowed. */
+  function command(s, x, y) {
     if (s.over) return { ok: false, reason: 'over' }
-    if (i < 0 || i >= s.cells.length) return { ok: false, reason: 'out' }
+    if (!inZone(s, x, y)) return { ok: false, reason: 'out' }
     if (s.t < s.stock.readyAt - 1e-9) return { ok: false, reason: 'reload' }
-    const cell = s.cells[i]
-    if (cell.state !== 'EMPTY') return { ok: false, reason: cell.state === 'RESERVED' ? 'reserved' : 'occupied' }
     const C = s.C
+    const item = s.stock.next
+    const box = boxAt(s, item, x, y)
     const from = { x: s.stock.x, y: s.stock.y }
-    const r = cellRect(s, i)
-    const duration = deliveryTime(s, from, i)
-    const dist = Math.hypot(r.cx - from.x, r.cy - from.y)
+    const duration = deliveryTime(s, from, box.cx, box.cy)
+    const dist = Math.hypot(box.cx - from.x, box.cy - from.y)
     const d = {
       id: s.nextId++,
-      cell: i,
-      item: s.stock.next,
+      item,
+      box,
       from,
-      to: { x: r.cx, y: r.cy },
+      to: { x: box.cx, y: box.cy },
       sentAt: s.t,
       duration,
       arriveAt: s.t + duration,
       arc: C.ARC_MIN + (C.ARC_MAX - C.ARC_MIN) * Math.min(1, dist / maxDistance(s, from)),
       landed: false,
     }
-    cell.state = 'RESERVED'
-    cell.item = d.item
     s.deliveries.push(d)
     s.stock.readyAt = s.t + C.RELOAD
     s.stats.sent++
-    s.lastSent = d.item
+    s.lastSent = item
     s.stock.next = drawItem(s)
     s.out.push({ type: 'send', delivery: d })
     return { ok: true, delivery: d }
@@ -338,35 +368,25 @@
   function insideGrown(b, x0, y0, x1, y1, r) {
     return b.x > x0 - r && b.x < x1 + r && b.y > y0 - r && b.y < y1 + r
   }
-  function solidAt(s, col, row) {
-    const C = s.C
-    if (col < 0 || col >= C.COLS) return col < 0 ? C.GRID_X <= C.STREET_L : C.GRID_X + C.COLS * C.CELL >= C.STREET_R
-    if (row < 0 || row >= C.ROWS) return false
-    return s.cells[cellIndex(s, col, row)].state === 'OCCUPIED'
-  }
-  /** A corner whose neighbour continues the surface is really a face. */
-  function settleCorner(s, i, b) {
-    const r = cellRect(s, i)
-    const sideCol = b.vx > 0 ? r.col - 1 : r.col + 1
-    const sideRow = b.vy > 0 ? r.row - 1 : r.row + 1
-    const horiz = solidAt(s, sideCol, r.row)
-    const vert = solidAt(s, r.col, sideRow)
-    if (horiz && !vert) return 'y'
-    if (vert && !horiz) return 'x'
-    return 'xy'
-  }
 
   function spawnBall(s, x, y, vx, vy, extra) {
     const b = Object.assign({ id: s.nextId++, x, y, vx, vy, alive: true, born: s.t, hits: 0 }, extra || {})
     s.balls.push(b)
     return b
   }
+  /** Test and debug helper: an object already standing at (x, y). */
+  function placeNow(s, item, x, y) {
+    const box = boxAt(s, item, x, y)
+    const o = { id: s.nextId++, item, box, hp: ITEMS[item].hp, maxHp: ITEMS[item].hp, alive: true, placedAt: s.t }
+    s.objects.push(o)
+    return o
+  }
 
   function moveBall(s, b, dt) {
     const C = s.C
     const r = C.BALL_RADIUS
     let remaining = dt
-    for (let iter = 0; iter < 10 && remaining > 1e-12 && b.alive; iter++) {
+    for (let iter = 0; iter < 12 && remaining > 1e-12 && b.alive; iter++) {
       const dx = b.vx * remaining
       const dy = b.vy * remaining
       let best = null
@@ -374,33 +394,28 @@
         if (!best || hit.t < best.t - 1e-12) best = hit
         else if (Math.abs(hit.t - best.t) <= 1e-12 && hit.prio < best.prio) best = hit
       }
-      // Side walls.
-      const minX = C.STREET_L + r
-      const maxX = C.STREET_R - r
-      if (dx < 0 && b.x + dx < minX) consider({ t: Math.max(0, (minX - b.x) / dx), kind: 'wall', axis: 'x', prio: 2 })
-      if (dx > 0 && b.x + dx > maxX) consider({ t: Math.max(0, (maxX - b.x) / dx), kind: 'wall', axis: 'x', prio: 2 })
-      // Barricades near the swept path.
+      // Curbs, top and bottom.
+      const minY = C.STREET_T + r
+      const maxY = C.STREET_B - r
+      if (dy < 0 && b.y + dy < minY) consider({ t: Math.max(0, (minY - b.y) / dy), kind: 'wall', prio: 2 })
+      if (dy > 0 && b.y + dy > maxY) consider({ t: Math.max(0, (maxY - b.y) / dy), kind: 'wall', prio: 2 })
+      // Barricades (free boxes, possibly overlapping).
       const x0 = Math.min(b.x, b.x + dx) - r
       const x1 = Math.max(b.x, b.x + dx) + r
       const y0 = Math.min(b.y, b.y + dy) - r
       const y1 = Math.max(b.y, b.y + dy) + r
-      const c0 = Math.max(0, Math.floor((x0 - C.GRID_X) / C.CELL))
-      const c1 = Math.min(C.COLS - 1, Math.floor((x1 - C.GRID_X) / C.CELL))
-      const r0 = Math.max(0, Math.floor((y0 - C.GRID_Y) / C.CELL))
-      const r1 = Math.min(C.ROWS - 1, Math.floor((y1 - C.GRID_Y) / C.CELL))
-      for (let row = r0; row <= r1; row++)
-        for (let col = c0; col <= c1; col++) {
-          const i = cellIndex(s, col, row)
-          if (s.cells[i].state !== 'OCCUPIED') continue
-          const cr = cellRect(s, i)
-          const hit = sweep(b.x, b.y, dx, dy, cr.x - r, cr.y - r, cr.x + cr.w + r, cr.y + cr.h + r)
-          if (!hit) continue
-          // Ties between cells: a face beats a corner, then the cell facing the ball most.
-          const off = hit.axis === 'y' ? Math.abs(b.x + dx * hit.t - cr.cx) : Math.abs(b.y + dy * hit.t - cr.cy)
-          consider({ t: hit.t, kind: 'cell', axis: hit.axis, cell: i, prio: (hit.axis === 'xy' ? 0.5 : 0) + off / 1000 })
-        }
+      for (const o of s.objects) {
+        if (!o.alive) continue
+        const q = o.box
+        if (q.x > x1 || q.x + q.w < x0 || q.y > y1 || q.y + q.h < y0) continue
+        const hit = sweep(b.x, b.y, dx, dy, q.x - r, q.y - r, q.x + q.w + r, q.y + q.h + r)
+        if (!hit) continue
+        // Ties between boxes: a face beats a corner, then the box facing the ball most.
+        const off = hit.axis === 'y' ? Math.abs(b.x + dx * hit.t - q.cx) : Math.abs(b.y + dy * hit.t - q.cy)
+        consider({ t: hit.t, kind: 'object', axis: hit.axis, obj: o, prio: (hit.axis === 'xy' ? 0.5 : 0) + off / 10000 })
+      }
       // Demonstrators, at their real (moving) position.
-      if (Math.min(b.y, b.y + dy) - r < C.CROWD_ROWS[C.CROWD_ROWS.length - 1] + C.PERSON_H) {
+      if (Math.min(b.x, b.x + dx) - r < C.CROWD_LINES[C.CROWD_LINES.length - 1] + C.PERSON_W) {
         const hw = C.PERSON_W / 2
         const hh = C.PERSON_H / 2
         for (const p of s.people) {
@@ -423,37 +438,45 @@
       b.y += dy * best.t
       remaining *= 1 - best.t
       if (best.kind === 'wall') {
-        b.vx = -b.vx
-        b.x = Math.min(maxX, Math.max(minX, b.x))
+        b.vy = -b.vy
+        b.y = Math.min(maxY, Math.max(minY, b.y))
         s.out.push({ type: 'wall', x: b.x, y: b.y, ball: b.id })
-      } else if (best.kind === 'cell') {
-        const cell = s.cells[best.cell]
-        const axis = best.axis === 'xy' ? settleCorner(s, best.cell, b) : best.axis
-        const item = cell.item
-        cell.state = 'EMPTY'
-        cell.item = null
-        if (axis !== 'y') b.vx = -b.vx
-        if (axis !== 'x') b.vy = -b.vy
-        // Epsilon separation along the new direction.
-        b.x += Math.sign(b.vx) * 1e-6
-        b.y += Math.sign(b.vy) * 1e-6
-        b.hits++
-        s.stats.destroyed++
-        s.out.push({ type: 'destroy', cell: best.cell, item, x: b.x, y: b.y, axis, ball: b.id, objId: cell.objId })
-      } else if (best.kind === 'person') {
-        losePerson(s, best.person, b)
-      }
+      } else if (best.kind === 'object') hitObject(s, best.obj, b, best.axis)
+      else if (best.kind === 'person') losePerson(s, best.person, b)
     }
     if (!b.alive) return
-    if (b.y < C.TOP_ABSORB_Y) {
+    if (b.x < C.LEFT_ABSORB_X) {
       b.alive = false
-      s.stats.passedTop++
-      s.out.push({ type: 'top', x: b.x, ball: b.id })
-    } else if (b.y > C.BOTTOM_EXIT_Y) {
+      s.stats.passedLeft++
+      s.out.push({ type: 'passed', y: b.y, ball: b.id })
+    } else if (b.x > C.RIGHT_EXIT_X) {
       b.alive = false
       s.stats.evacuated++
-      s.out.push({ type: 'evacuated', x: b.x, ball: b.id })
+      s.out.push({ type: 'evacuated', y: b.y, ball: b.id })
     }
+  }
+
+  function hitObject(s, o, b, axis) {
+    if (o.hp <= 0) {
+      // Useless object (the football): kicked away, the ball does not even slow down.
+      o.alive = false
+      s.stats.kicked++
+      s.out.push({ type: 'kicked', obj: o, item: o.item, x: b.x, y: b.y, vx: b.vx, vy: b.vy, ball: b.id })
+      return
+    }
+    if (axis !== 'y') b.vx = -b.vx
+    if (axis !== 'x') b.vy = -b.vy
+    // Epsilon separation along the new direction.
+    b.x += Math.sign(b.vx) * 1e-6
+    b.y += Math.sign(b.vy) * 1e-6
+    b.hits++
+    o.hp--
+    s.stats.hits++
+    if (o.hp <= 0) {
+      o.alive = false
+      s.stats.destroyed++
+      s.out.push({ type: 'destroy', obj: o, item: o.item, x: b.x, y: b.y, axis, ball: b.id })
+    } else s.out.push({ type: 'hit', obj: o, item: o.item, x: b.x, y: b.y, axis, ball: b.id })
   }
 
   function losePerson(s, p, b) {
@@ -462,29 +485,29 @@
     b.alive = false
     s.stats.lost++
     s.out.push({ type: 'lost', person: p, x: p.x, y: p.y, ball: b.id })
-    regroupRow(s, p.row)
+    regroupLine(s, p.line)
   }
 
   /* ---------- crowd: survivors close ranks, slowly, in order ---------- */
-  function regroupRow(s, row) {
+  function regroupLine(s, line) {
     const C = s.C
-    const members = s.people.filter((p) => p.alive && p.row === row).sort((a, b) => a.index - b.index)
+    const members = s.people.filter((p) => p.alive && p.line === line).sort((a, b) => a.index - b.index)
     const n = members.length
     if (!n) return
-    const span = C.STREET_R - C.STREET_L - 2 * C.CROWD_MARGIN
+    const span = C.STREET_B - C.STREET_T - 2 * C.CROWD_MARGIN - C.PERSON_H
     const sp = n > 1 ? Math.min(s.spacing, span / (n - 1)) : 0
-    members.forEach((p, k) => (p.tx = C.CROWD_CENTER_X + (k - (n - 1) / 2) * sp))
+    members.forEach((p, k) => (p.ty = C.CROWD_CENTER_Y + (k - (n - 1) / 2) * sp))
   }
   function regroupAll(s) {
-    for (let row = 0; row < s.C.CROWD_ROWS.length; row++) regroupRow(s, row)
+    for (let line = 0; line < s.C.CROWD_LINES.length; line++) regroupLine(s, line)
   }
   function updateCrowd(s, dt) {
     const step = s.C.CROWD_SPEED * dt
     for (const p of s.people) {
       if (!p.alive) continue
-      const d = p.tx - p.x
+      const d = p.ty - p.y
       p.moving = Math.abs(d) > 1e-6
-      p.x = Math.abs(d) <= step ? p.tx : p.x + Math.sign(d) * step
+      p.y = Math.abs(d) <= step ? p.ty : p.y + Math.sign(d) * step
     }
   }
 
@@ -492,26 +515,21 @@
   function land(s, d) {
     const C = s.C
     const r = C.BALL_RADIUS
-    const cell = s.cells[d.cell]
-    const cr = cellRect(s, d.cell)
+    const q = d.box
     d.landed = true
-    const blocking = s.balls.find((b) => b.alive && insideGrown(b, cr.x, cr.y, cr.x + cr.w, cr.y + cr.h, r))
+    const blocking = s.balls.find((b) => b.alive && insideGrown(b, q.x, q.y, q.x + q.w, q.y + q.h, r))
     if (blocking) {
       // Too late: posed and broken at once, the ball carries on untouched. No refund.
-      cell.state = 'EMPTY'
-      cell.item = null
       s.stats.tooLate++
-      s.out.push({ type: 'toolate', delivery: d, cell: d.cell, item: d.item, x: cr.cx, y: cr.cy })
+      s.out.push({ type: 'toolate', delivery: d, item: d.item, x: q.cx, y: q.cy })
       return
     }
-    cell.state = 'OCCUPIED'
-    cell.item = d.item
-    cell.objId = d.id
-    cell.placedAt = s.t
+    const o = { id: d.id, item: d.item, box: q, hp: ITEMS[d.item].hp, maxHp: ITEMS[d.item].hp, alive: true, placedAt: s.t }
+    s.objects.push(o)
     s.stats.delivered++
     s.stats.byItem[d.item] = (s.stats.byItem[d.item] || 0) + 1
-    const near = s.balls.some((b) => b.alive && Math.hypot(b.x - cr.cx, b.y - cr.cy) < C.CELL / 2 + C.NEAR_MISS)
-    s.out.push({ type: 'land', delivery: d, cell: d.cell, item: d.item, x: cr.cx, y: cr.cy, near })
+    const near = s.balls.some((b) => b.alive && b.x > q.x - C.NEAR_MISS && b.x < q.x + q.w + C.NEAR_MISS && b.y > q.y - C.NEAR_MISS && b.y < q.y + q.h + C.NEAR_MISS)
+    s.out.push({ type: 'land', obj: o, delivery: d, item: d.item, x: q.cx, y: q.cy, near })
   }
 
   /* ---------- police: announces locked 0.6 s ahead, no catch-up ever ---------- */
@@ -551,10 +569,10 @@
       const li = ph.launchers > 1 ? sh.turn++ % 2 : 0
       const L = s.launchers[li]
       if (!L.active) activateLauncher(s, li)
-      const x = Math.min(C.STREET_R - 14, Math.max(C.STREET_L + 14, L.x))
+      const y = Math.min(C.STREET_B - 14, Math.max(C.STREET_T + 14, L.y))
       const angle = (s.rngShots() * 2 - 1) * ph.maxAngle
       L.lockedUntil = f + C.LAUNCHER_RECOVER
-      const a = { id: s.nextId++, launcher: li, x, angle, speed: ph.speed, announcedAt: now, fireAt: f }
+      const a = { id: s.nextId++, launcher: li, y, angle, speed: ph.speed, announcedAt: now, fireAt: f }
       s.announces.push(a)
       s.out.push({ type: 'announce', announce: a })
       if (ph.mode === 'single') sh.nextFire = f + ph.interval
@@ -575,7 +593,7 @@
         continue
       }
       const rad = (a.angle * Math.PI) / 180
-      const b = spawnBall(s, a.x, C.SPAWN_Y, a.speed * Math.sin(rad), -a.speed * Math.cos(rad), { speed: a.speed })
+      const b = spawnBall(s, C.SPAWN_X, a.y, -a.speed * Math.cos(rad), a.speed * Math.sin(rad), { speed: a.speed })
       s.launchers[a.launcher].firedAt = now
       s.stats.shots++
       s.out.push({ type: 'fire', ball: b, launcher: a.launcher })
@@ -586,8 +604,8 @@
     const L = s.launchers[li]
     if (L.active) return
     L.active = true
-    L.x = s.C.STREET_R + 24
-    L.tx = 330
+    L.y = s.C.STREET_B + 24
+    L.ty = 240
   }
   function updateLaunchers(s, dt) {
     const C = s.C
@@ -596,19 +614,20 @@
       if (!L.active) continue
       L.walking = false
       if (s.t < L.lockedUntil || s.activeEvent === 'treve') continue
-      const d = L.tx - L.x
+      const d = L.ty - L.y
       const step = C.LAUNCHER_SPEED * dt
       if (Math.abs(d) <= step) {
-        L.x = L.tx
-        L.tx = C.LAUNCHER_MIN_X + s.rngWalk() * (C.LAUNCHER_MAX_X - C.LAUNCHER_MIN_X)
+        L.y = L.ty
+        L.ty = C.LAUNCHER_MIN_Y + s.rngWalk() * (C.LAUNCHER_MAX_Y - C.LAUNCHER_MIN_Y)
       } else {
-        L.x += Math.sign(d) * step
+        L.y += Math.sign(d) * step
         L.walking = true
       }
     }
     // Keep the two launchers apart so their arrows never overlap.
     const [a, b] = s.launchers
-    if (a.active && b.active && Math.abs(a.tx - b.tx) < 70) b.tx = a.tx < 240 ? Math.max(b.tx, a.tx + 90) : Math.min(b.tx, a.tx - 90)
+    const mid = (C.STREET_T + C.STREET_B) / 2
+    if (a.active && b.active && Math.abs(a.ty - b.ty) < C.LAUNCHER_GAP) b.ty = a.ty < mid ? Math.max(b.ty, a.ty + C.LAUNCHER_GAP + 20) : Math.min(b.ty, a.ty - C.LAUNCHER_GAP - 20)
   }
 
   /* ---------- events ---------- */
@@ -640,7 +659,7 @@
         s.spacing = C.CROWD_EVENT_SPACING
         regroupAll(s)
       }
-      if (ev.id === 'fournisseur') moveStock(s, 'right')
+      if (ev.id === 'fournisseur') moveStock(s, 'alt')
       if (ev.id === 'treve') for (const a of s.announces) a.done = true
     }
     if (phase === 'done') {
@@ -649,12 +668,12 @@
         s.spacing = C.CROWD_SPACING
         regroupAll(s)
       }
-      if (ev.id === 'fournisseur') moveStock(s, 'left')
+      if (ev.id === 'fournisseur') moveStock(s, 'main')
     }
     s.out.push({ type: 'event', id: ev.id, phase })
   }
   function moveStock(s, side) {
-    const p = side === 'right' ? s.C.STOCK_RIGHT : s.C.STOCK_LEFT
+    const p = side === 'alt' ? s.C.STOCK_ALT : s.C.STOCK_MAIN
     s.stock.x = p.x
     s.stock.y = p.y
     s.stock.side = side
@@ -688,6 +707,7 @@
     updateCrowd(s, C.DT)
     updateLaunchers(s, C.DT)
     if (s.balls.some((b) => !b.alive)) s.balls = s.balls.filter((b) => b.alive)
+    if (s.objects.some((o) => !o.alive)) s.objects = s.objects.filter((o) => o.alive)
     const alive = s.people.reduce((n, p) => n + (p.alive ? 1 : 0), 0)
     if (alive === 0) finish(s, 'wiped')
     else if (s.tick >= s.endTick) finish(s, 'time')
@@ -721,7 +741,7 @@
       reason: s.endReason,
     }
   }
-  /** Records: survivors first, then time held, then balls sent back down. */
+  /** Records: survivors first, then time held, then balls sent back. */
   function better(a, b) {
     if (!b) return true
     if (a.survivors !== b.survivors) return a.survivors > b.survivors
@@ -735,16 +755,18 @@
   const api = {
     CONFIG,
     ITEMS,
+    BOUNDS,
     POOLS,
+    sizeOf,
     create,
     step,
     command,
-    cellAt,
-    cellRect,
-    cellIndex,
+    inZone,
+    boxAt,
     deliveryTime,
     maxDistance,
     spawnBall,
+    placeNow,
     survivors,
     summary,
     better,

@@ -5,70 +5,75 @@ const Sim = require('../sim.js')
 
 const C = Sim.CONFIG
 
-/** Cells a ball would cross before reaching the crowd, ignoring barricades, with arrival times. */
-function path(s, b) {
+/** Where a leftward ball will be, ignoring barricades (curbs bounce), until it leaves the zone. */
+function path(b) {
   const out = []
+  if (b.vx >= 0) return out
   let x = b.x
   let y = b.y
-  let vx = b.vx
-  const vy = b.vy
-  if (vy >= 0) return out
-  const dt = 1 / 240
-  let t = 0
-  let last = -1
+  let vy = b.vy
   const r = C.BALL_RADIUS
-  while (y > C.GRID_Y - r && t < 4) {
-    x += vx * dt
-    y += vy * dt
-    t += dt
-    if (x < C.STREET_L + r || x > C.STREET_R - r) vx = -vx
-    // Cells whose grown box contains the centre.
-    for (let col = 0; col < C.COLS; col++)
-      for (let row = 0; row < C.ROWS; row++) {
-        const i = Sim.cellIndex(s, col, row)
-        const cr = Sim.cellRect(s, i)
-        if (x > cr.x - r && x < cr.x + cr.w + r && y > cr.y - r && y < cr.y + cr.h + r && i !== last && !out.some((o) => o.i === i)) out.push({ i, t })
-      }
+  for (let t = 0; t < 4 && x > C.ZONE_L; t += 1 / 120) {
+    x += b.vx / 120
+    y += vy / 120
+    if (y < C.STREET_T + r || y > C.STREET_B - r) vy = -vy
+    if (x < C.ZONE_R) out.push({ t, x, y })
   }
   return out
+}
+function covered(s, pts) {
+  const boxes = s.objects.map((o) => o.box).concat(s.deliveries.map((d) => d.box))
+  return pts.some((p) => boxes.some((q) => p.x > q.x - 5 && p.x < q.x + q.w + 5 && p.y > q.y - 5 && p.y < q.y + q.h + 5))
+}
+function aimAt(s, b, margin) {
+  const pts = path(b)
+  if (!pts.length || covered(s, pts)) return false
+  // The ball meets the box's right edge before its centre.
+  const lead = (Sim.sizeOf(s.stock.next).w / 2 + C.BALL_RADIUS) / Math.abs(b.vx)
+  const target = pts.find((p) => p.t - lead > Sim.deliveryTime(s, s.stock, p.x, p.y) + margin)
+  return target ? Sim.command(s, target.x, target.y).ok : false
+}
+/** Largest vertical gap on the line x = lx, or null when the line is closed. */
+function gap(s, lx) {
+  const spans = s.objects
+    .map((o) => o.box)
+    .concat(s.deliveries.map((d) => d.box))
+    .filter((q) => q.x <= lx && q.x + q.w >= lx)
+    .map((q) => [q.y, q.y + q.h])
+    .sort((a, b) => a[0] - b[0])
+  let y = C.STREET_T
+  let best = null
+  for (const [a, b] of spans) {
+    if (a - y > 9 && (!best || a - y > best[1] - best[0])) best = [y, a]
+    y = Math.max(y, b)
+  }
+  if (C.STREET_B - y > 9 && (!best || C.STREET_B - y > best[1] - best[0])) best = [y, C.STREET_B]
+  return best
 }
 
 const bots = {
   idle: () => {},
-  random(s, st) {
-    // A frantic clicker: about 4 clicks per second anywhere on the grid.
-    if (Math.random() < 4 * C.DT) Sim.command(s, Math.floor(Math.random() * s.cells.length))
+  random(s) {
+    // A frantic clicker: about 4 clicks per second anywhere in the zone.
+    if (Math.random() < 4 * C.DT) Sim.command(s, C.ZONE_L + Math.random() * (C.ZONE_R - C.ZONE_L), C.STREET_T + Math.random() * (C.STREET_B - C.STREET_T))
   },
   novice(s, st) {
-    // Reacts to balls already flying, 0.45 s late, aims at the ball's next cell.
+    // Reacts to balls already flying, 0.45 s late.
     if (s.t < s.stock.readyAt) return
     for (const b of s.balls) {
-      if (!b.alive || b.vy >= 0 || s.t - b.born < 0.45 || st.handled.has(b.id)) continue
-      const p = path(s, b)
-      if (p.some((o) => s.cells[o.i].state !== 'EMPTY')) {
-        st.handled.add(b.id)
-        continue
-      }
-      const target = p.find((o) => o.t > Sim.deliveryTime(s, s.stock, o.i) + 0.05) || p[p.length - 1]
-      if (target && Sim.command(s, target.i).ok) st.handled.add(b.id)
-      return
+      if (!b.alive || b.vx >= 0 || s.t - b.born < 0.45 || st.handled.has(b.id)) continue
+      st.handled.add(b.id)
+      if (aimAt(s, b, 0.05)) return
     }
   },
-  builder(s, st) {
-    // Anticipation: keep two full lines (rows 2 and 4), refill holes, then cover live threats.
+  builder(s) {
+    // Anticipation: close a wall, then a second one, and cover live threats first.
     if (s.t < s.stock.readyAt) return
-    for (const b of s.balls) {
-      if (!b.alive || b.vy >= 0) continue
-      const p = path(s, b)
-      if (p.some((o) => s.cells[o.i].state !== 'EMPTY')) continue
-      const target = p.find((o) => o.t > Sim.deliveryTime(s, s.stock, o.i) + 0.03)
-      if (target && Sim.command(s, target.i).ok) return
+    for (const b of s.balls) if (b.alive && aimAt(s, b, 0.03)) return
+    for (const lx of [300, 420, 200]) {
+      const g = gap(s, lx)
+      if (g && Sim.command(s, lx, (g[0] + g[1]) / 2).ok) return
     }
-    for (const row of [2, 4, 3, 1, 5, 0])
-      for (const col of [3, 2, 4, 1, 5, 0, 6]) {
-        const i = Sim.cellIndex(s, col, row)
-        if (s.cells[i].state === 'EMPTY' && Sim.command(s, i).ok) return
-      }
   },
 }
 
