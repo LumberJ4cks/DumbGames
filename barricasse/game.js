@@ -1,15 +1,14 @@
 /*
  * BARRICASSE — « Tout fait barricade. Même le poisson. »
  *
- * A defensive, upside-down brick-breaker in landscape. Demonstrators on the left of the
- * street, a police line on the right sending big arcade balls, and in between the player
+ * A defensive, upside-down brick-breaker, in portrait. Demonstrators at the top of the
+ * street, a police line at the bottom sending big arcade balls, and in between the player
  * drops furniture anywhere (overlaps allowed): it flies from a single stock icon and only
  * protects once it lands. Big sturdy objects take several hits; the football takes none.
  * Ninety seconds, keep as many people as possible.
  *
  * This file: screens, input, rendering, particles and the glue to sim.js (rules) and
  * audio.js (sound). The simulation runs at a fixed step; the renderer only reads it.
- * Portrait phones get the whole 640 × 360 frame rotated, never cropped.
  */
 ;(function () {
   'use strict'
@@ -64,7 +63,7 @@
     rupture: ['RUPTURE DE PALETTES', 'FRIGOS ET CANAPÉS SEULEMENT · LIVRAISON 1 S'],
     groupes: ['ON RESTE GROUPÉS', 'LA BANDEROLE EST TROP LONGUE'],
     treve: ['TRÊVE MERGUEZ', 'PLUS AUCUN TIR'],
-    fournisseur: ['CHANGEMENT DE FOURNISSEUR', 'LE STOCK CHANGE DE TROTTOIR'],
+    fournisseur: ['CHANGEMENT DE FOURNISSEUR', 'LE STOCK PASSE À DROITE'],
   }
 
   const app = {
@@ -85,7 +84,6 @@
     result: null,
     newRecord: false,
     resultsAt: 0,
-    rotated: false,
   }
   audio.setMuted(app.muted)
 
@@ -182,22 +180,22 @@
   function buttons() {
     const b = []
     if (app.mode === 'PLAYING' || app.mode === 'PAUSED') {
-      b.push({ x: 588, y: 1, w: 24, h: 22, icon: 'pause', act: () => setPaused(app.mode === 'PLAYING') })
-      b.push({ x: 614, y: 1, w: 24, h: 22, icon: 'sound', act: toggleMute })
+      b.push({ x: 396, y: 8, w: 32, h: 32, icon: 'pause', act: () => setPaused(app.mode === 'PLAYING') })
+      b.push({ x: 438, y: 8, w: 32, h: 32, icon: 'sound', act: toggleMute })
     }
     if (app.mode === 'MENU') {
-      b.push({ x: 210, y: 240, w: 220, h: 36, label: 'TENIR 90 SECONDES', big: true, act: () => startGame() })
-      b.push({ x: 210, y: 284, w: 106, h: 22, label: app.muted ? 'SON : NON' : 'SON : OUI', act: toggleMute })
-      b.push({ x: 324, y: 284, w: 106, h: 22, label: app.reduced ? 'MOUVEMENT : -' : 'MOUVEMENT : +', act: toggleReduced })
+      b.push({ x: 100, y: 446, w: 280, h: 46, label: 'TENIR 90 SECONDES', big: true, act: () => startGame() })
+      b.push({ x: 100, y: 560, w: 134, h: 26, label: app.muted ? 'SON : NON' : 'SON : OUI', act: toggleMute })
+      b.push({ x: 246, y: 560, w: 134, h: 26, label: app.reduced ? 'MOUVEMENT : -' : 'MOUVEMENT : +', act: toggleReduced })
     }
     if (app.mode === 'PAUSED') {
-      b.push({ x: 220, y: 156, w: 200, h: 34, label: 'REPRENDRE', big: true, act: () => setPaused(false) })
-      b.push({ x: 220, y: 198, w: 200, h: 24, label: app.reduced ? 'MOUVEMENTS RÉDUITS : OUI' : 'MOUVEMENTS RÉDUITS : NON', act: toggleReduced })
+      b.push({ x: 130, y: 290, w: 220, h: 40, label: 'REPRENDRE', big: true, act: () => setPaused(false) })
+      b.push({ x: 130, y: 342, w: 220, h: 28, label: app.reduced ? 'MOUVEMENTS RÉDUITS : OUI' : 'MOUVEMENTS RÉDUITS : NON', act: toggleReduced })
       b.push({
-        x: 220,
-        y: 230,
-        w: 200,
-        h: 24,
+        x: 130,
+        y: 380,
+        w: 220,
+        h: 28,
         label: 'ABANDONNER',
         act: () => {
           audio.stopMusic()
@@ -206,8 +204,8 @@
       })
     }
     if (app.mode === 'RESULTS' && app.real - app.resultsAt > 0.5) {
-      b.push({ x: 140, y: 312, w: 172, h: 36, label: 'REJOUER (R)', big: true, act: () => startGame() })
-      b.push({ x: 328, y: 312, w: 172, h: 36, label: 'MÊME PARTIE', big: true, act: () => startGame(app.result.seed) })
+      b.push({ x: 50, y: 556, w: 184, h: 42, label: 'REJOUER (R)', big: true, act: () => startGame() })
+      b.push({ x: 246, y: 556, w: 184, h: 42, label: 'MÊME PARTIE', big: true, act: () => startGame(app.result.seed) })
     }
     return b
   }
@@ -215,8 +213,6 @@
   /* ---------- input ---------- */
   function toLogical(e) {
     const r = canvas.getBoundingClientRect()
-    // Rotated frame (portrait phone): the canvas is turned a quarter clockwise.
-    if (app.rotated) return { x: ((e.clientY - r.top) / r.height) * W, y: ((r.right - e.clientX) / r.width) * H }
     return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }
   }
   let firstTouch = true
@@ -224,12 +220,12 @@
     e.preventDefault()
     audio.init()
     if (firstTouch && e.pointerType !== 'mouse') {
-      // Phones: full screen in landscape when the browser allows it.
+      // Phones: full screen in portrait when the browser allows it.
       firstTouch = false
       try {
         const fs = document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })
         if (fs && fs.then)
-          fs.then(() => screen.orientation?.lock?.('landscape'))
+          fs.then(() => screen.orientation?.lock?.('portrait'))
             .catch(() => {})
             .finally(() => setTimeout(fit, 300))
       } catch {}
@@ -282,7 +278,7 @@
     if (r.reason === 'reload' && s.t - fx.chargeMsgAt > 0.45) {
       // One small message, not one per click.
       fx.chargeMsgAt = s.t
-      popup('ÇA CHARGE', s.stock.x, s.stock.side === 'main' ? C.STREET_B - 12 : C.STREET_T + 18, '#ffd23f', 0.6, 1)
+      popup('ÇA CHARGE', s.stock.x, s.stock.y + 60, '#ffd23f', 0.6, 1)
       audio.play('refuse')
     }
   }
@@ -373,13 +369,13 @@
           shake(2, 0.12)
           break
         }
-        case 'passed':
-          particle({ x: C.LEFT_ABSORB_X, y: e.y, vx: -6, vy: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.4 })
+        case 'top':
+          particle({ x: e.x, y: C.TOP_ABSORB_Y, vx: 0, vy: -6, g: 0, sprite: S.props.fumee, scale: 2, life: 0.4 })
           audio.play('top')
           break
         case 'evacuated':
           fx.evacBlink = t
-          for (let k = 0; k < 4; k++) particle({ x: C.RIGHT_EXIT_X, y: e.y + rnd(-4, 4), vx: rnd(0, 10), vy: rnd(-10, 10), g: 0, sprite: S.props.fumee, scale: 1, life: 0.35 })
+          for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-4, 4), y: C.BOTTOM_EXIT_Y, vx: rnd(-10, 10), vy: rnd(0, 10), g: 0, sprite: S.props.fumee, scale: 1, life: 0.35 })
           audio.play('evacuated')
           break
         case 'announce':
@@ -387,7 +383,7 @@
           break
         case 'fire':
           audio.play('fire')
-          for (let k = 0; k < 3; k++) particle({ x: C.SPAWN_X - 4, y: e.ball.y + rnd(-3, 3), vx: rnd(-6, 4), vy: rnd(-12, 12), g: 0, sprite: S.props.fumee, scale: 2, life: 0.3 })
+          for (let k = 0; k < 3; k++) particle({ x: e.ball.x + rnd(-3, 3), y: C.SPAWN_Y + 4, vx: rnd(-12, 12), vy: rnd(-4, 6), g: 0, sprite: S.props.fumee, scale: 2, life: 0.3 })
           break
         case 'event':
           eventFx(e, t)
@@ -414,8 +410,8 @@
         poof(C.STOCK_MAIN.x, C.STOCK_MAIN.y)
         poof(C.STOCK_ALT.x, C.STOCK_ALT.y)
       }
-      if (e.phase === 'warn') fx.transient = { text: 'RETOUR EN BAS', sub: 'DANS 1 S', until: t + 1.0, color: '#ffd23f' }
-      if (e.phase === 'done') fx.transient = { text: 'LE STOCK EST REVENU', sub: 'EN BAS', until: t + 1.2, color: '#9cf27a' }
+      if (e.phase === 'warn') fx.transient = { text: 'RETOUR À GAUCHE', sub: 'DANS 1 S', until: t + 1.0, color: '#ffd23f' }
+      if (e.phase === 'done') fx.transient = { text: 'LE STOCK EST REVENU', sub: 'À GAUCHE', until: t + 1.2, color: '#9cf27a' }
     }
   }
 
@@ -922,12 +918,13 @@
     }
   }
 
-  /* ---------- crowd: three lines facing right ---------- */
+  /* ---------- crowd: three rows facing the police ---------- */
   function drawCrowd(s) {
     const t = vt()
-    const people = s.people.filter((p) => p.alive).sort((a, b) => a.y - b.y || a.line - b.line)
-    for (const p of people) drawPerson(p, t)
-    if (s.activeEvent === 'groupes') drawBanderole(s)
+    for (let row = 0; row < C.CROWD_ROWS.length; row++) {
+      if (row === 2 && s.activeEvent === 'groupes') drawBanderole(s)
+      for (const p of s.people) if (p.alive && p.row === row) drawPerson(p, t)
+    }
   }
   function drawPerson(p, t) {
     const sign = SIGN_OF[p.index]
@@ -956,56 +953,52 @@
     }
   }
   function drawBanderole(s) {
-    // The banner is too long: it runs along the middle line, letters stacked.
-    const mid = s.people.filter((p) => p.alive && p.line === 1)
+    // The banner is too long: held across the middle row.
+    const mid = s.people.filter((p) => p.alive && p.row === 1)
     if (mid.length < 2) return
-    const y0 = Math.round(Math.min(...mid.map((p) => p.y))) - 4
-    const y1 = Math.round(Math.max(...mid.map((p) => p.y))) + 4
-    const x = C.CROWD_LINES[1] + 12
-    rect(x - 1, y0, 9, y1 - y0, '#1d1726')
-    rect(x, y0 + 1, 7, y1 - y0 - 2, '#f4ead2')
-    rect(x - 2, y0 - 3, 11, 2, '#7a5a3a')
-    rect(x - 2, y1 + 1, 11, 2, '#7a5a3a')
-    const text = 'ON RESTE GROUPÉS'
-    const step = Math.max(8, Math.floor((y1 - y0 - 6) / text.length))
-    const start = Math.round((y0 + y1) / 2 - (text.length * step) / 2)
-    for (let i = 0; i < text.length; i++) F.drawText(ctx, text[i], x + 2, start + i * step, '#d6402f')
+    const x0 = Math.round(Math.min(...mid.map((p) => p.x))) - 6
+    const x1 = Math.round(Math.max(...mid.map((p) => p.x))) + 6
+    const y = 113
+    rect(x0, y, x1 - x0, 9, '#1d1726')
+    rect(x0 + 1, y + 1, x1 - x0 - 2, 7, '#f4ead2')
+    rect(x0 - 1, y - 6, 2, 16, '#7a5a3a')
+    rect(x1 - 1, y - 6, 2, 16, '#7a5a3a')
+    F.drawTextC(ctx, 'ON RESTE GROUPÉS', (x0 + x1) / 2, y, '#d6402f')
   }
 
-  /* ---------- police, on the right, facing left ---------- */
+  /* ---------- police, at the bottom ---------- */
   function drawPolice(s) {
     const t = vt()
     const truce = s.activeEvent === 'treve'
     const f = app.reduced ? 0 : Math.floor(t * 2) % 2
     const frameFor = (k) => S.crs[truce ? 2 + ((f + k) % 2) : f]
-    for (let k = 0; k < 8; k++) ctx.drawImage(frameFor(k), 574 - 9 + (truce ? 0 : f), 76 + k * 32 - 9)
-    for (let k = 0; k < 7; k++) ctx.drawImage(frameFor(k + 1), 602 - 9, 92 + k * 32 - 9)
+    for (let k = 0; k < 9; k++) ctx.drawImage(frameFor(k), 96 + k * 36 - 9, 560 - 9 + (truce ? 0 : f))
+    for (let k = 0; k < 8; k++) ctx.drawImage(frameFor(k + 1), 114 + k * 36 - 9, 582 - 9)
     s.launchers.forEach((L, li) => {
       if (!L.active) return
-      const y = Math.round(L.y)
+      const x = Math.round(L.x)
       const a = s.announces.find((q) => q.launcher === li)
       if (a) L.lastAngle = a.angle
       const ang = a ? a.angle : L.lastAngle ?? 0
-      ctx.drawImage(S.crs[truce ? 2 + f : L.walking ? f : 0], C.LAUNCHER_X + 6, y - 9)
+      ctx.drawImage(S.crs[truce ? 2 + f : L.walking ? f : 0], x - 9, C.LAUNCHER_Y + 6)
       // The tube points where the next ball goes.
       const rad = (ang * Math.PI) / 180
-      const tx = -Math.cos(rad)
-      const ty = Math.sin(rad)
-      const x0 = C.LAUNCHER_X - 2
-      for (let k = 0; k < 12; k++) rect(Math.round(x0 + tx * k) - 2, Math.round(y + ty * k) - 2, 5, 5, k > 9 ? '#ff8a2a' : '#1d1726')
-      for (let k = 0; k < 10; k++) rect(Math.round(x0 + tx * k) - 1, Math.round(y + ty * k) - 1, 3, 3, '#3a4a7a')
-      ctx.drawImage(S.launcher, C.LAUNCHER_X - 9, y - 11)
+      const tx = Math.sin(rad)
+      const ty = -Math.cos(rad)
+      for (let k = 0; k < 12; k++) rect(Math.round(x + tx * k) - 2, Math.round(C.LAUNCHER_Y - 2 + ty * k) - 2, 5, 5, k > 9 ? '#ff8a2a' : '#1d1726')
+      for (let k = 0; k < 10; k++) rect(Math.round(x + tx * k) - 1, Math.round(C.LAUNCHER_Y - 2 + ty * k) - 1, 3, 3, '#3a4a7a')
+      ctx.drawImage(S.launcher, x - 11, C.LAUNCHER_Y - 9)
       if (a) drawAnnounce(a, s.t)
     })
   }
   function drawAnnounce(a, t) {
     const k = Math.min(1, Math.max(0, (t - a.announcedAt) / (a.fireAt - a.announcedAt)))
     const rad = (a.angle * Math.PI) / 180
-    const dx = -Math.cos(rad)
-    const dy = Math.sin(rad)
-    const len = 60
-    const x0 = C.SPAWN_X - 6
-    const y0 = a.y
+    const dx = Math.sin(rad)
+    const dy = -Math.cos(rad)
+    const len = 64
+    const x0 = a.x
+    const y0 = C.SPAWN_Y - 6
     for (let d = 0; d < len; d += 6) {
       const x = Math.round(x0 + dx * d)
       const y = Math.round(y0 + dy * d)
@@ -1026,58 +1019,58 @@
     }
   }
 
-  /* ---------- stock ---------- */
+  /* ---------- stock, on the sidewalk ---------- */
   function drawStock(s) {
     const t = s.t
-    const cx = s.stock.x
-    const cy = s.stock.y
-    const x = cx - 17
-    const y = cy - 17
+    const x = s.stock.x - 28
+    const y = s.stock.y - 28
     const k = Math.min(1, Math.max(0, (s.stock.readyAt - t) / C.RELOAD))
     const item = s.stock.next
-    F.drawTextO(ctx, 'STOCK', x - 26, cy - 4, '#f4ead2')
-    rect(x - 2, y - 2, 38, 38, '#10131c')
-    rect(x, y, 34, 34, t - fx.readyFlash < 0.18 ? '#ffffff' : '#f4ead2')
-    rect(x + 2, y + 2, 30, 30, '#2a3046')
-    ctx.drawImage(S.items[item], x + 5, y + 5)
+    F.drawTextOC(ctx, 'STOCK', s.stock.x, y - 13, '#f4ead2')
+    rect(x - 2, y - 2, 60, 60, '#10131c')
+    rect(x, y, 56, 56, t - fx.readyFlash < 0.18 ? '#ffffff' : '#f4ead2')
+    rect(x + 3, y + 3, 50, 50, '#2a3046')
+    rect(x + 3, y + 3, 50, 2, '#3a4260')
+    ctx.drawImage(S.items[item], x + 4, y + 4, 48, 48)
     if (k > 0) {
-      const hh = Math.ceil(30 * k)
-      rect(x + 2, y + 2, 30, hh, 'rgba(10,12,22,0.66)')
-      rect(x + 2, y + 2 + hh - 1, 30, 1, '#ffd23f')
+      const hh = Math.ceil(50 * k)
+      rect(x + 3, y + 3, 50, hh, 'rgba(10,12,22,0.66)')
+      rect(x + 3, y + 3 + hh - 1, 50, 1, '#ffd23f')
     }
-    // What is coming: its name, how sturdy it is, and the reload.
-    const info = Sim.ITEMS[item]
-    const tx = x + 42
-    F.drawTextO(ctx, info.name.toUpperCase(), tx, y, '#ffffff')
-    if (info.hp === 0) F.drawTextO(ctx, 'NE SERT À RIEN', tx, y + 11, '#ff9a7a')
-    else {
-      F.drawTextO(ctx, 'SOLIDE', tx, y + 11, '#a8b0c4')
+    rect(x, y + 60, 56, 6, '#10131c')
+    rect(x + 1, y + 61, Math.round(54 * (1 - k)), 4, k > 0 ? '#ffd23f' : '#9cf27a')
+    // How sturdy the next object is.
+    const hp = Sim.ITEMS[item].hp
+    if (hp === 0) F.drawTextOC(ctx, 'INUTILE', s.stock.x, y + 70, '#ff9a7a')
+    else
       for (let n = 0; n < 3; n++) {
-        rect(tx + 26 + n * 8, y + 12, 6, 6, '#10131c')
-        rect(tx + 27 + n * 8, y + 13, 4, 4, n < info.hp ? '#9cf27a' : '#3a4260')
+        rect(x + 10 + n * 13, y + 71, 10, 8, '#10131c')
+        rect(x + 11 + n * 13, y + 72, 8, 6, n < hp ? '#9cf27a' : '#3a4260')
       }
+    if (app.firstRun && t < 9 && fx.sends < 4) {
+      const lines = ['LE STOCK', 'RECHARGE', 'APRÈS', 'CHAQUE', 'ENVOI']
+      const by = y - 72
+      rect(s.stock.x - 31, by - 3, 62, lines.length * 9 + 5, 'rgba(16,19,28,0.85)')
+      lines.forEach((l, i) => F.drawTextC(ctx, l, s.stock.x, by + i * 9, '#ffd23f'))
     }
-    rect(tx, y + 24, 60, 6, '#10131c')
-    rect(tx + 1, y + 25, Math.round(58 * (1 - k)), 4, k > 0 ? '#ffd23f' : '#9cf27a')
-    if (app.firstRun && t < 9 && fx.sends < 4) F.drawTextO(ctx, '← LE STOCK RECHARGE APRÈS CHAQUE ENVOI', tx + 72, y + 24, '#ffd23f')
   }
 
   /* ---------- HUD ---------- */
   function drawHud(s) {
     const t = s.t
-    rect(0, 0, W, 24, '#151a28')
-    rect(0, 23, W, 1, '#2c3346')
+    rect(0, 0, W, 48, '#151a28')
+    rect(0, 47, W, 1, '#2c3346')
     const alive = Sim.survivors(s)
     const blink = t - fx.lostBlink < 0.6 && Math.floor((t - fx.lostBlink) * 10) % 2 === 0
-    F.drawText(ctx, 'SURVIVANTS', 8, 8, '#a8b0c4')
-    F.drawText(ctx, `${alive}/${s.people.length}`, 52, 3, blink ? '#ff5a4a' : '#ffffff', 2)
+    F.drawText(ctx, 'SURVIVANTS', 12, 6, '#a8b0c4')
+    F.drawText(ctx, `${alive}/${s.people.length}`, 12, 15, blink ? '#ff5a4a' : '#ffffff', 3)
     const remain = Math.max(0, Math.ceil(C.RUN_DURATION - t - 1e-9))
     const urgent = remain <= 10 && Math.floor(t * 4) % 2 === 0
-    F.drawTextC(ctx, String(remain), 320, -3, urgent ? '#ffd23f' : '#ffffff', 3)
-    F.drawText(ctx, 'S', 342, 13, '#a8b0c4')
+    F.drawTextC(ctx, String(remain), 240, -2, urgent ? '#ffd23f' : '#ffffff', 5)
+    F.drawTextC(ctx, 'SECONDES', 240, 38, '#a8b0c4')
     const eb = t - fx.evacBlink < 0.3
-    F.drawText(ctx, 'RENVOYÉES', 430, 8, '#a8b0c4')
-    F.drawText(ctx, String(s.stats.evacuated), 470, 3, eb ? '#9cf27a' : '#c8d0e0', 2)
+    F.drawText(ctx, 'RENVOYÉES', 300, 6, '#a8b0c4')
+    F.drawText(ctx, String(s.stats.evacuated), 300, 16, eb ? '#9cf27a' : '#c8d0e0', 2)
   }
   function drawButtons() {
     for (const b of buttons()) {
@@ -1085,25 +1078,25 @@
       if (b.icon) {
         rect(b.x, b.y, b.w, b.h, '#10131c')
         rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2, hot ? '#3a4260' : '#262c40')
-        const cx = b.x + 12
-        const cy = b.y + 11
+        const cx = b.x + 16
+        const cy = b.y + 16
         if (b.icon === 'pause') {
-          if (app.mode === 'PAUSED') for (let k = 0; k < 7; k++) rect(cx - 3 + k, cy - 6 + k * 0.85, 1, 12 - k * 1.7, '#f4ead2')
+          if (app.mode === 'PAUSED') for (let k = 0; k < 10; k++) rect(cx - 4 + k / 2, cy - 7 + k * 0.7, 2, 14 - k * 1.4, '#f4ead2')
           else {
-            rect(cx - 5, cy - 6, 3, 12, '#f4ead2')
-            rect(cx + 2, cy - 6, 3, 12, '#f4ead2')
+            rect(cx - 6, cy - 7, 4, 14, '#f4ead2')
+            rect(cx + 2, cy - 7, 4, 14, '#f4ead2')
           }
         } else {
-          rect(cx - 7, cy - 2, 3, 5, '#f4ead2')
-          for (let k = 0; k < 4; k++) rect(cx - 4 + k, cy - 2 - k, 1, 5 + 2 * k, '#f4ead2')
+          rect(cx - 8, cy - 3, 4, 6, '#f4ead2')
+          for (let k = 0; k < 5; k++) rect(cx - 4 + k, cy - 3 - k, 1, 6 + 2 * k, '#f4ead2')
           if (app.muted) {
-            for (let k = 0; k < 6; k++) {
-              rect(cx + 2 + k, cy - 3 + k, 1, 1, '#ff5a4a')
-              rect(cx + 2 + k, cy + 2 - k, 1, 1, '#ff5a4a')
+            for (let k = 0; k < 8; k++) {
+              rect(cx + 3 + k, cy - 4 + k, 1, 1, '#ff5a4a')
+              rect(cx + 3 + k, cy + 3 - k, 1, 1, '#ff5a4a')
             }
           } else {
-            rect(cx + 2, cy - 1, 1, 3, '#f4ead2')
-            rect(cx + 5, cy - 4, 1, 9, '#f4ead2')
+            rect(cx + 4, cy - 2, 1, 4, '#f4ead2')
+            rect(cx + 7, cy - 5, 1, 10, '#f4ead2')
           }
         }
         continue
@@ -1115,7 +1108,7 @@
       F.drawTextC(ctx, b.label, b.x + b.w / 2, b.y + Math.round((b.h - 9 * sc) / 2) - (b.big ? 1 : 0), '#ffffff', sc)
     }
   }
-  /** Event banner, on the sidewalk the stock is not using. */
+  /** Event banner, in the strip under the police. */
   function drawBanner(s) {
     const t = s.t
     let text = null
@@ -1123,7 +1116,7 @@
     let color = '#ffd23f'
     if (t < C.FIRST_SHOT - C.ANNOUNCE) {
       text = 'CONSTRUIS !'
-      sub = `PREMIERS TIRS DANS ${Math.ceil(C.FIRST_SHOT - C.ANNOUNCE - t)} S · CLIQUE N’IMPORTE OÙ DANS LA RUE`
+      sub = `PREMIERS TIRS DANS ${Math.ceil(C.FIRST_SHOT - C.ANNOUNCE - t)} S · CLIQUE OÙ TU VEUX`
       color = '#9cf27a'
     }
     for (const ev of C.EVENTS) {
@@ -1145,17 +1138,15 @@
       color = '#9cf27a'
     }
     if (!text) return
-    const top = s.stock.side === 'main'
-    const y = top ? 28 : 322
-    F.drawTextOC(ctx, text, 320, y, color, 2)
-    if (sub) F.drawTextOC(ctx, sub, 320, y + 18, '#e8ecf4')
+    F.drawTextOC(ctx, text, 240, 604, color, 2)
+    if (sub) F.drawTextC(ctx, sub, 240, 626, '#c8d0e0')
   }
 
   /* ---------- overlays ---------- */
   function drawPause() {
-    rect(0, 24, W, H - 24, 'rgba(12,14,22,0.78)')
-    F.drawTextOC(ctx, 'PAUSE', 320, 70, '#ffffff', 5)
-    F.drawTextC(ctx, 'LE TEMPS EST SUSPENDU. LES CRS AUSSI.', 320, 124, '#a8b0c4')
+    rect(0, 48, W, H - 48, 'rgba(12,14,22,0.78)')
+    F.drawTextOC(ctx, 'PAUSE', 240, 200, '#ffffff', 6)
+    F.drawTextC(ctx, 'LE TEMPS EST SUSPENDU. LES CRS AUSSI.', 240, 258, '#a8b0c4')
   }
   function resultTitle(r) {
     if (r.survivors === 0) return 'CORTÈGE DISPERSÉ. LE FRIGO VA BIEN.'
@@ -1167,12 +1158,11 @@
   }
   function drawResults() {
     const r = app.result
-    rect(0, 24, W, H - 24, 'rgba(12,14,22,0.88)')
-    F.drawTextOC(ctx, resultTitle(r), 320, 34, '#ffd23f', 2)
-    if (r.reason === 'wiped') F.drawTextC(ctx, `PLUS PERSONNE APRÈS ${r.time.toFixed(1).replace('.', ',')} S`, 320, 56, '#ff8a7a')
-    // Left: the big number. Right: the details.
-    F.drawTextOC(ctx, `${r.survivors}/${r.total}`, 168, 82, r.survivors ? '#ffffff' : '#ff6a5a', 8)
-    F.drawTextC(ctx, 'SURVIVANTS', 168, 160, '#a8b0c4', 2)
+    rect(0, 48, W, H - 48, 'rgba(12,14,22,0.86)')
+    F.drawTextOC(ctx, resultTitle(r), 240, 84, '#ffd23f', 2)
+    if (r.reason === 'wiped') F.drawTextC(ctx, `PLUS PERSONNE APRÈS ${r.time.toFixed(1).replace('.', ',')} S`, 240, 110, '#ff8a7a')
+    F.drawTextOC(ctx, `${r.survivors}/${r.total}`, 240, 128, r.survivors ? '#ffffff' : '#ff6a5a', 11)
+    F.drawTextC(ctx, 'SURVIVANTS', 240, 232, '#a8b0c4', 2)
     const lines = [
       ['TEMPS TENU', `${Math.floor(r.time)} S`],
       ['BALLES RENVOYÉES', String(r.evacuated)],
@@ -1180,16 +1170,17 @@
       ['LE PLUS UTILISÉ', r.mostUsed ? Sim.ITEMS[r.mostUsed].name.toUpperCase() : 'AUCUN'],
     ]
     lines.forEach(([k, v], i) => {
-      const y = 82 + i * 24
-      F.drawText(ctx, k, 330, y, '#a8b0c4')
-      F.drawText(ctx, v, 612 - F.textWidth(v), y + 9, '#ffffff')
-      rect(330, y + 20, 282, 1, '#2c3346')
+      const y = 274 + i * 30
+      F.drawText(ctx, k, 64, y, '#a8b0c4', 2)
+      const sc = F.textWidth(v, 2) > 200 ? 1 : 2
+      F.drawText(ctx, v, 416 - F.textWidth(v, sc), y + (sc === 1 ? 5 : 0), '#ffffff', sc)
+      rect(64, y + 22, 352, 1, '#2c3346')
     })
-    if (r.mostUsed) ctx.drawImage(S.items[r.mostUsed], 330, 182, 48, 48)
+    if (r.mostUsed) ctx.drawImage(S.items[r.mostUsed], 216, 392, 48, 48)
     const rec = app.record
-    if (app.newRecord) F.drawTextOC(ctx, 'NOUVEAU RECORD !', 320, 250, Math.floor(app.real * 4) % 2 ? '#9cf27a' : '#ffffff', 2)
-    else if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} · ${Math.floor(rec.time)} S · ${rec.evacuated} RENVOYÉES`, 320, 254, '#a8b0c4')
-    F.drawTextC(ctx, `PARTIE ${String(r.seed).toUpperCase()}`, 320, 290, '#5d6578')
+    if (app.newRecord) F.drawTextOC(ctx, 'NOUVEAU RECORD !', 240, 456, Math.floor(app.real * 4) % 2 ? '#9cf27a' : '#ffffff', 2)
+    else if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} · ${Math.floor(rec.time)} S · ${rec.evacuated} RENVOYÉES`, 240, 460, '#a8b0c4')
+    F.drawTextC(ctx, `PARTIE ${String(r.seed).toUpperCase()}`, 240, 530, '#5d6578')
   }
 
   /* ---------- menu ---------- */
@@ -1197,7 +1188,7 @@
   function drawMenuScene() {
     if (!menuScene) {
       menuScene = Sim.create('menu', { NO_SHOTS: true })
-      for (const [item, x, y] of [['canape', 200, 110], ['frigo', 300, 270], ['poisson', 420, 120], ['voiture', 440, 270], ['armoire', 160, 260], ['ballon', 360, 190]]) Sim.placeNow(menuScene, item, x, y)
+      for (const [item, x, y] of [['palette', 100, 456], ['armoire', 170, 440], ['canape', 280, 448], ['ballon', 350, 470], ['chaise', 386, 462]]) Sim.placeNow(menuScene, item, x, y)
     }
     const s = menuScene
     s.t = app.real
@@ -1207,37 +1198,38 @@
   }
   function drawMenu() {
     const t = app.real
-    rect(110, 34, 420, 296, 'rgba(12,14,22,0.8)')
+    rect(0, 150, W, 270, 'rgba(12,14,22,0.74)')
     const bounce = app.reduced ? 0 : Math.round(Math.sin(t * 3) * 2)
-    F.drawTextOC(ctx, 'BARRICASSE', 320, 44 + bounce, '#ffd23f', 6, '#1d1726')
-    F.drawTextC(ctx, '« TOUT FAIT BARRICADE. MÊME LE POISSON. »', 320, 104, '#ffffff', 2)
-    F.drawTextC(ctx, SLOGANS[Math.floor(t / 2.2) % SLOGANS.length], 320, 124, '#ff9a7a')
-    const tuto = ['CLIQUE DANS LA RUE POUR LIVRER UNE BARRICADE.', 'ELLE DOIT ARRIVER AVANT LA BALLE.', 'SAUVE LE PLUS DE MANIFESTANTS POSSIBLE.']
-    tuto.forEach((l, i) => F.drawTextC(ctx, l, 320, 146 + i * 20, '#e8ecf4', 2))
-    F.drawTextC(ctx, 'LE STOCK RECHARGE APRÈS CHAQUE ENVOI. UN CANAPÉ ENCAISSE, UN BALLON NON.', 320, 212, '#a8b0c4')
+    F.drawTextOC(ctx, 'BARRICASSE', 240, 164 + bounce, '#ffd23f', 7, '#1d1726')
+    F.drawTextC(ctx, '« TOUT FAIT BARRICADE. MÊME LE POISSON. »', 240, 238, '#ffffff', 2)
+    F.drawTextC(ctx, SLOGANS[Math.floor(t / 2.2) % SLOGANS.length], 240, 262, '#ff9a7a')
+    const tuto = ['CLIQUE POUR LIVRER UNE BARRICADE.', 'ELLE DOIT ARRIVER AVANT LA BALLE.', 'SAUVE LE PLUS DE MANIFESTANTS POSSIBLE.']
+    tuto.forEach((l, i) => F.drawTextC(ctx, l, 240, 300 + i * 22, '#e8ecf4', 2))
+    F.drawTextC(ctx, 'LE STOCK RECHARGE APRÈS CHAQUE ENVOI.', 240, 374, '#a8b0c4')
+    F.drawTextC(ctx, 'UN CANAPÉ ENCAISSE TROIS BALLES. UN BALLON, AUCUNE.', 240, 388, '#a8b0c4')
     const rec = app.record
-    if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} SURVIVANTS · ${Math.floor(rec.time)} S`, 320, 312, '#ffffff')
-    F.drawTextOC(ctx, 'ÉCHAP : PAUSE · M : SON', 320, 340, '#a8b0c4')
+    if (rec) F.drawTextOC(ctx, `RECORD : ${rec.survivors}/${rec.total} SURVIVANTS · ${Math.floor(rec.time)} S`, 240, 508, '#ffffff')
+    F.drawTextOC(ctx, 'ÉCHAP : PAUSE · M : SON', 240, 600, '#a8b0c4')
   }
 
   /* ---------- debug ---------- */
   function drawDebug(s) {
     ctx.save()
     ctx.globalAlpha = 0.85
-    frameRect(C.ZONE_L, C.STREET_T, C.ZONE_R - C.ZONE_L, C.STREET_B - C.STREET_T, 'rgba(255,255,255,0.3)')
+    frameRect(C.STREET_L, C.ZONE_T, C.STREET_R - C.STREET_L, C.ZONE_B - C.ZONE_T, 'rgba(255,255,255,0.3)')
     for (const o of s.objects) frameRect(o.box.x, o.box.y, o.box.w, o.box.h, '#40ff60')
     for (const d of s.deliveries) frameRect(d.box.x, d.box.y, d.box.w, d.box.h, '#ffe066')
-    for (const p of s.people) if (p.alive) frameRect(p.x - 7, Math.round(p.y - 9), 14, 18, '#40e0ff')
+    for (const p of s.people) if (p.alive) frameRect(Math.round(p.x - 7), p.y - 9, 14, 18, '#40e0ff')
     ctx.strokeStyle = '#ff40ff'
     for (const b of s.balls) {
       ctx.beginPath()
       ctx.arc(b.x, b.y, C.BALL_RADIUS, 0, Math.PI * 2)
       ctx.stroke()
     }
-    rect(0, C.STREET_T, W, 1, '#ff40ff')
-    rect(0, C.STREET_B, W, 1, '#ff40ff')
-    rect(C.LEFT_ABSORB_X, 24, 1, H - 24, '#ff40ff')
-    rect(C.RIGHT_EXIT_X, 24, 1, H - 24, '#ff40ff')
+    rect(C.STREET_L, 48, 1, 548, '#ff40ff')
+    rect(C.STREET_R, 48, 1, 548, '#ff40ff')
+    rect(0, C.TOP_ABSORB_Y, W, 1, '#ff40ff')
+    rect(0, C.BOTTOM_EXIT_Y, W, 1, '#ff40ff')
     ctx.restore()
     const lines = [
       `T ${s.t.toFixed(2)}  PHASE ${Sim.phaseAt(s)}  GRAINE ${s.seed}`,
@@ -1249,23 +1241,19 @@
       const q = Sim.boxAt(s, s.stock.next, app.hover.x, app.hover.y)
       lines.push(`LIVRAISON ICI ${Sim.deliveryTime(s, s.stock, q.cx, q.cy).toFixed(2)} S`)
     }
-    rect(124, 26, 220, lines.length * 9 + 4, 'rgba(0,0,0,0.7)')
-    lines.forEach((l, i) => F.drawText(ctx, l, 128, 28 + i * 9, '#40ff60'))
+    rect(76, 50, 250, lines.length * 9 + 4, 'rgba(0,0,0,0.7)')
+    lines.forEach((l, i) => F.drawText(ctx, l, 80, 52 + i * 9, '#40ff60'))
   }
 
-  /* ---------- fit the logical 640 × 360 frame; portrait phones get it rotated ---------- */
+  /* ---------- fit the logical 480 × 640 frame to the window ---------- */
   function fit() {
     const sw = window.innerWidth
     const sh = window.innerHeight
-    app.rotated = sh > sw && sw < 760
-    const availW = app.rotated ? sh : sw
-    const availH = app.rotated ? sw : sh
-    let scale = Math.min(availW / W, availH / H)
+    let scale = Math.min(sw / W, sh / H)
     // Desktop: whole pixels when there is room; phones fill the screen.
     if (!matchMedia('(pointer: coarse)').matches && scale >= 2) scale = Math.floor(scale)
     canvas.style.width = Math.floor(W * scale) + 'px'
     canvas.style.height = Math.floor(H * scale) + 'px'
-    canvas.style.transform = app.rotated ? 'rotate(90deg)' : ''
   }
   addEventListener('resize', fit)
   if (screen.orientation) screen.orientation.addEventListener('change', fit)

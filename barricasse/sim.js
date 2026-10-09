@@ -7,7 +7,7 @@
  * police pattern whatever the player does. Rendering, audio and particles live in game.js
  * and read `state.out`, the list of notifications produced by the last steps.
  *
- * Landscape street: demonstrators on the left, police on the right, balls travel leftwards.
+ * Portrait street: demonstrators at the top, police at the bottom, balls travel upwards.
  * Barricades are placed freely (overlaps allowed); each object's box is its sprite's real
  * opaque bounds × its scale, and it takes `hp` hits (the football takes none at all).
  */
@@ -16,20 +16,20 @@
 
   /* ---------- configuration (every tunable number lives here) ---------- */
   const CONFIG = {
-    W: 640,
-    H: 360,
+    W: 480,
+    H: 640,
     DT: 1 / 120,
     RUN_DURATION: 90,
-    // Street: curbs at the top and bottom bounce the balls; the build zone sits in between.
-    STREET_T: 60,
-    STREET_B: 316,
-    ZONE_L: 120,
-    ZONE_R: 500,
-    LEFT_ABSORB_X: 14,
-    RIGHT_EXIT_X: 612,
-    // Stock and deliveries.
-    STOCK_MAIN: { x: 300, y: 338 },
-    STOCK_ALT: { x: 300, y: 42 },
+    // Street: side walls bounce the balls; the build zone spans the street between crowd and police.
+    STREET_L: 72,
+    STREET_R: 408,
+    ZONE_T: 168,
+    ZONE_B: 484,
+    TOP_ABSORB_Y: 58,
+    BOTTOM_EXIT_Y: 596,
+    // Stock and deliveries: left sidewalk, right one during the supplier change.
+    STOCK_MAIN: { x: 36, y: 330 },
+    STOCK_ALT: { x: 444, y: 330 },
     RELOAD: 0.8,
     DELIVERY_MIN: 0.2,
     DELIVERY_MAX: 1.0,
@@ -40,10 +40,10 @@
     BALL_RADIUS: 5,
     BALL_CAP: 10,
     ANNOUNCE: 0.6,
-    LAUNCHER_X: 542,
-    SPAWN_X: 522,
-    LAUNCHER_MIN_Y: 84,
-    LAUNCHER_MAX_Y: 292,
+    LAUNCHER_Y: 532,
+    SPAWN_Y: 512,
+    LAUNCHER_MIN_X: 104,
+    LAUNCHER_MAX_X: 376,
     LAUNCHER_SPEED: 55,
     LAUNCHER_RECOVER: 0.18,
     LAUNCHER_GAP: 70,
@@ -60,14 +60,14 @@
       { from: 75, mode: 'burst', count: 6, gap: 0.4, rest: 1.1, speed: 215, maxAngle: 35, launchers: 2 },
       { from: 89, mode: 'none' },
     ],
-    // Crowd: three lines facing right, the front line closest to the police.
-    CROWD_LINES: [34, 58, 82],
-    CROWD_PER_LINE: 8,
-    CROWD_CENTER_Y: 188,
-    CROWD_SPACING: 30,
-    CROWD_EVENT_SPACING: 34,
+    // Crowd: three rows facing the police, the front row closest to it.
+    CROWD_ROWS: [82, 106, 130],
+    CROWD_PER_ROW: 8,
+    CROWD_CENTER_X: 240,
+    CROWD_SPACING: 36,
+    CROWD_EVENT_SPACING: 44,
     CROWD_SPEED: 18,
-    CROWD_MARGIN: 10,
+    CROWD_MARGIN: 12,
     PERSON_W: 14,
     PERSON_H: 18,
     // Absurd events, fixed order for the first prototype.
@@ -212,19 +212,18 @@
       events: {},
       activeEvent: null,
       spacing: C.CROWD_SPACING,
-      stats: { sent: 0, delivered: 0, tooLate: 0, hits: 0, destroyed: 0, kicked: 0, evacuated: 0, passedLeft: 0, lost: 0, shots: 0, capSkipped: 0, byItem: {} },
+      stats: { sent: 0, delivered: 0, tooLate: 0, hits: 0, destroyed: 0, kicked: 0, evacuated: 0, passedTop: 0, lost: 0, shots: 0, capSkipped: 0, byItem: {} },
       out: [],
     }
     let n = 0
-    C.CROWD_LINES.forEach((x, line) => {
-      for (let i = 0; i < C.CROWD_PER_LINE; i++) {
-        const y = C.CROWD_CENTER_Y + (i - (C.CROWD_PER_LINE - 1) / 2) * C.CROWD_SPACING
-        s.people.push({ id: s.nextId++, index: n++, line, x, y, ty: y, alive: true, lostAt: 0 })
+    C.CROWD_ROWS.forEach((y, row) => {
+      for (let i = 0; i < C.CROWD_PER_ROW; i++) {
+        const x = C.CROWD_CENTER_X + (i - (C.CROWD_PER_ROW - 1) / 2) * C.CROWD_SPACING
+        s.people.push({ id: s.nextId++, index: n++, row, x, y, tx: x, alive: true, lostAt: 0 })
       }
     })
-    const midY = (C.STREET_T + C.STREET_B) / 2
-    s.launchers.push({ id: s.nextId++, y: midY, ty: midY, active: true, lockedUntil: -1, firedAt: -9 })
-    s.launchers.push({ id: s.nextId++, y: C.STREET_B + 30, ty: C.STREET_B + 30, active: false, lockedUntil: -1, firedAt: -9 })
+    s.launchers.push({ id: s.nextId++, x: 240, tx: 240, active: true, lockedUntil: -1, firedAt: -9 })
+    s.launchers.push({ id: s.nextId++, x: C.STREET_R + 30, tx: C.STREET_R + 30, active: false, lockedUntil: -1, firedAt: -9 })
     for (const ev of C.EVENTS) s.events[ev.id] = 'pending'
     refreshPool(s)
     return s
@@ -233,21 +232,21 @@
   /* ---------- placement geometry ---------- */
   function inZone(s, x, y) {
     const C = s.C
-    return x >= C.ZONE_L && x <= C.ZONE_R && y >= C.STREET_T && y <= C.STREET_B
+    return x >= C.STREET_L && x <= C.STREET_R && y >= C.ZONE_T && y <= C.ZONE_B
   }
   /** Box of `item` dropped at (x, y): centred on the point, kept inside the build zone. */
   function boxAt(s, item, x, y) {
     const C = s.C
     const { w, h } = sizeOf(item)
     // Snapped to whole pixels so the art stays crisp; physics uses the same box.
-    const bx = Math.round(Math.min(C.ZONE_R - w, Math.max(C.ZONE_L, x - w / 2)))
-    const by = Math.round(Math.min(C.STREET_B - h, Math.max(C.STREET_T, y - h / 2)))
+    const bx = Math.round(Math.min(C.STREET_R - w, Math.max(C.STREET_L, x - w / 2)))
+    const by = Math.round(Math.min(C.ZONE_B - h, Math.max(C.ZONE_T, y - h / 2)))
     return { x: bx, y: by, w, h, cx: bx + w / 2, cy: by + h / 2 }
   }
   function maxDistance(s, origin) {
     const C = s.C
     let best = 0
-    for (const x of [C.ZONE_L, C.ZONE_R]) for (const y of [C.STREET_T, C.STREET_B]) best = Math.max(best, Math.hypot(x - origin.x, y - origin.y))
+    for (const x of [C.STREET_L, C.STREET_R]) for (const y of [C.ZONE_T, C.ZONE_B]) best = Math.max(best, Math.hypot(x - origin.x, y - origin.y))
     return best
   }
   function deliveryTime(s, origin, x, y) {
@@ -394,11 +393,11 @@
         if (!best || hit.t < best.t - 1e-12) best = hit
         else if (Math.abs(hit.t - best.t) <= 1e-12 && hit.prio < best.prio) best = hit
       }
-      // Curbs, top and bottom.
-      const minY = C.STREET_T + r
-      const maxY = C.STREET_B - r
-      if (dy < 0 && b.y + dy < minY) consider({ t: Math.max(0, (minY - b.y) / dy), kind: 'wall', prio: 2 })
-      if (dy > 0 && b.y + dy > maxY) consider({ t: Math.max(0, (maxY - b.y) / dy), kind: 'wall', prio: 2 })
+      // Side walls.
+      const minX = C.STREET_L + r
+      const maxX = C.STREET_R - r
+      if (dx < 0 && b.x + dx < minX) consider({ t: Math.max(0, (minX - b.x) / dx), kind: 'wall', prio: 2 })
+      if (dx > 0 && b.x + dx > maxX) consider({ t: Math.max(0, (maxX - b.x) / dx), kind: 'wall', prio: 2 })
       // Barricades (free boxes, possibly overlapping).
       const x0 = Math.min(b.x, b.x + dx) - r
       const x1 = Math.max(b.x, b.x + dx) + r
@@ -415,7 +414,7 @@
         consider({ t: hit.t, kind: 'object', axis: hit.axis, obj: o, prio: (hit.axis === 'xy' ? 0.5 : 0) + off / 10000 })
       }
       // Demonstrators, at their real (moving) position.
-      if (Math.min(b.x, b.x + dx) - r < C.CROWD_LINES[C.CROWD_LINES.length - 1] + C.PERSON_W) {
+      if (Math.min(b.y, b.y + dy) - r < C.CROWD_ROWS[C.CROWD_ROWS.length - 1] + C.PERSON_H) {
         const hw = C.PERSON_W / 2
         const hh = C.PERSON_H / 2
         for (const p of s.people) {
@@ -438,21 +437,21 @@
       b.y += dy * best.t
       remaining *= 1 - best.t
       if (best.kind === 'wall') {
-        b.vy = -b.vy
-        b.y = Math.min(maxY, Math.max(minY, b.y))
+        b.vx = -b.vx
+        b.x = Math.min(maxX, Math.max(minX, b.x))
         s.out.push({ type: 'wall', x: b.x, y: b.y, ball: b.id })
       } else if (best.kind === 'object') hitObject(s, best.obj, b, best.axis)
       else if (best.kind === 'person') losePerson(s, best.person, b)
     }
     if (!b.alive) return
-    if (b.x < C.LEFT_ABSORB_X) {
+    if (b.y < C.TOP_ABSORB_Y) {
       b.alive = false
-      s.stats.passedLeft++
-      s.out.push({ type: 'passed', y: b.y, ball: b.id })
-    } else if (b.x > C.RIGHT_EXIT_X) {
+      s.stats.passedTop++
+      s.out.push({ type: 'top', x: b.x, ball: b.id })
+    } else if (b.y > C.BOTTOM_EXIT_Y) {
       b.alive = false
       s.stats.evacuated++
-      s.out.push({ type: 'evacuated', y: b.y, ball: b.id })
+      s.out.push({ type: 'evacuated', x: b.x, ball: b.id })
     }
   }
 
@@ -485,29 +484,29 @@
     b.alive = false
     s.stats.lost++
     s.out.push({ type: 'lost', person: p, x: p.x, y: p.y, ball: b.id })
-    regroupLine(s, p.line)
+    regroupRow(s, p.row)
   }
 
   /* ---------- crowd: survivors close ranks, slowly, in order ---------- */
-  function regroupLine(s, line) {
+  function regroupRow(s, row) {
     const C = s.C
-    const members = s.people.filter((p) => p.alive && p.line === line).sort((a, b) => a.index - b.index)
+    const members = s.people.filter((p) => p.alive && p.row === row).sort((a, b) => a.index - b.index)
     const n = members.length
     if (!n) return
-    const span = C.STREET_B - C.STREET_T - 2 * C.CROWD_MARGIN - C.PERSON_H
+    const span = C.STREET_R - C.STREET_L - 2 * C.CROWD_MARGIN
     const sp = n > 1 ? Math.min(s.spacing, span / (n - 1)) : 0
-    members.forEach((p, k) => (p.ty = C.CROWD_CENTER_Y + (k - (n - 1) / 2) * sp))
+    members.forEach((p, k) => (p.tx = C.CROWD_CENTER_X + (k - (n - 1) / 2) * sp))
   }
   function regroupAll(s) {
-    for (let line = 0; line < s.C.CROWD_LINES.length; line++) regroupLine(s, line)
+    for (let row = 0; row < s.C.CROWD_ROWS.length; row++) regroupRow(s, row)
   }
   function updateCrowd(s, dt) {
     const step = s.C.CROWD_SPEED * dt
     for (const p of s.people) {
       if (!p.alive) continue
-      const d = p.ty - p.y
+      const d = p.tx - p.x
       p.moving = Math.abs(d) > 1e-6
-      p.y = Math.abs(d) <= step ? p.ty : p.y + Math.sign(d) * step
+      p.x = Math.abs(d) <= step ? p.tx : p.x + Math.sign(d) * step
     }
   }
 
@@ -569,10 +568,10 @@
       const li = ph.launchers > 1 ? sh.turn++ % 2 : 0
       const L = s.launchers[li]
       if (!L.active) activateLauncher(s, li)
-      const y = Math.min(C.STREET_B - 14, Math.max(C.STREET_T + 14, L.y))
+      const x = Math.min(C.STREET_R - 14, Math.max(C.STREET_L + 14, L.x))
       const angle = (s.rngShots() * 2 - 1) * ph.maxAngle
       L.lockedUntil = f + C.LAUNCHER_RECOVER
-      const a = { id: s.nextId++, launcher: li, y, angle, speed: ph.speed, announcedAt: now, fireAt: f }
+      const a = { id: s.nextId++, launcher: li, x, angle, speed: ph.speed, announcedAt: now, fireAt: f }
       s.announces.push(a)
       s.out.push({ type: 'announce', announce: a })
       if (ph.mode === 'single') sh.nextFire = f + ph.interval
@@ -593,7 +592,7 @@
         continue
       }
       const rad = (a.angle * Math.PI) / 180
-      const b = spawnBall(s, C.SPAWN_X, a.y, -a.speed * Math.cos(rad), a.speed * Math.sin(rad), { speed: a.speed })
+      const b = spawnBall(s, a.x, C.SPAWN_Y, a.speed * Math.sin(rad), -a.speed * Math.cos(rad), { speed: a.speed })
       s.launchers[a.launcher].firedAt = now
       s.stats.shots++
       s.out.push({ type: 'fire', ball: b, launcher: a.launcher })
@@ -604,8 +603,8 @@
     const L = s.launchers[li]
     if (L.active) return
     L.active = true
-    L.y = s.C.STREET_B + 24
-    L.ty = 240
+    L.x = s.C.STREET_R + 24
+    L.tx = 330
   }
   function updateLaunchers(s, dt) {
     const C = s.C
@@ -614,20 +613,20 @@
       if (!L.active) continue
       L.walking = false
       if (s.t < L.lockedUntil || s.activeEvent === 'treve') continue
-      const d = L.ty - L.y
+      const d = L.tx - L.x
       const step = C.LAUNCHER_SPEED * dt
       if (Math.abs(d) <= step) {
-        L.y = L.ty
-        L.ty = C.LAUNCHER_MIN_Y + s.rngWalk() * (C.LAUNCHER_MAX_Y - C.LAUNCHER_MIN_Y)
+        L.x = L.tx
+        L.tx = C.LAUNCHER_MIN_X + s.rngWalk() * (C.LAUNCHER_MAX_X - C.LAUNCHER_MIN_X)
       } else {
-        L.y += Math.sign(d) * step
+        L.x += Math.sign(d) * step
         L.walking = true
       }
     }
     // Keep the two launchers apart so their arrows never overlap.
     const [a, b] = s.launchers
-    const mid = (C.STREET_T + C.STREET_B) / 2
-    if (a.active && b.active && Math.abs(a.ty - b.ty) < C.LAUNCHER_GAP) b.ty = a.ty < mid ? Math.max(b.ty, a.ty + C.LAUNCHER_GAP + 20) : Math.min(b.ty, a.ty - C.LAUNCHER_GAP - 20)
+    const mid = (C.STREET_L + C.STREET_R) / 2
+    if (a.active && b.active && Math.abs(a.tx - b.tx) < C.LAUNCHER_GAP) b.tx = a.tx < mid ? Math.max(b.tx, a.tx + C.LAUNCHER_GAP + 20) : Math.min(b.tx, a.tx - C.LAUNCHER_GAP - 20)
   }
 
   /* ---------- events ---------- */
