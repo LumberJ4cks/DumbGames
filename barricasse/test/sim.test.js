@@ -376,3 +376,40 @@ test('item bag: no immediate repeat, familiar objects before 20 s', () => {
   for (let k = 1; k < seq.length; k++) assert.notEqual(seq[k][1], seq[k - 1][1])
   assert.ok(seq.filter(([t]) => t < 20).every(([, it]) => Sim.POOLS.early.includes(it)))
 })
+
+test('score: a ball sent back scores and feeds the combo; a loss breaks it', () => {
+  const s = quiet()
+  Sim.placeNow(s, 'frigo', 340, 100)
+  Sim.placeNow(s, 'frigo', 340, 260)
+  Sim.spawnBall(s, 200, 100, 300, 0)
+  run(s, 2)
+  assert.equal(s.stats.evacuated, 1)
+  assert.equal(s.score, C.SCORE_HIT + C.SCORE_EVAC)
+  assert.equal(s.combo, 1)
+  const p = s.people.find((q) => q.line === 2)
+  Sim.spawnBall(s, 400, p.y, 300, 0)
+  run(s, 1)
+  assert.equal(s.combo, 0)
+  assert.equal(s.mult, 1)
+})
+
+test('combo: multiplier climbs with the tiers and ends after the window', () => {
+  const s = quiet()
+  for (let k = 0; k < 10; k++) {
+    Sim.spawnBall(s, 60, 80 + k * 20, -300, 0)
+    run(s, 0.3)
+  }
+  assert.equal(s.combo, 10)
+  assert.equal(s.mult, 3)
+  assert.equal(s.bestCombo, 10)
+  run(s, C.COMBO_WINDOW + 0.5)
+  assert.equal(s.combo, 0)
+  assert.equal(s.bestCombo, 10)
+})
+
+test('end bonus: survivors add points; records rank by score', () => {
+  const s = Sim.create('bonus', { NO_SHOTS: true })
+  run(s, 100)
+  assert.equal(Sim.summary(s).score, 24 * C.SCORE_SURVIVOR)
+  assert.ok(Sim.better({ score: 10, survivors: 1, time: 1, evacuated: 0 }, { score: 5, survivors: 24, time: 90, evacuated: 9 }))
+})

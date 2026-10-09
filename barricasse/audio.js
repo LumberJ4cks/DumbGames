@@ -160,6 +160,27 @@
         tone(900, 0.16, 'sine', 0.11, 2000, t)
         tone(1400, 0.1, 'sine', 0.06, 700, t + 0.15)
       },
+      score(mult) {
+        // Ball sent back: a short coin, higher with the multiplier.
+        if (!allow('score', 0.05)) return
+        const base = 660 * Math.pow(1.12, Math.min(8, mult - 1))
+        tone(base, 0.05, 'square', 0.05)
+        tone(base * 1.5, 0.07, 'square', 0.045, null, ac.currentTime + 0.045)
+      },
+      tier(mult) {
+        // New combo multiplier: a little fanfare that climbs with the tier.
+        if (!allow('tier', 0.2)) return
+        const t = ac.currentTime
+        const root = 64 + Math.min(4, mult) * 2
+        ;[0, 4, 7, 12, 16].forEach((d, i) => tone(midi(root + d), 0.12, 'square', 0.07, null, t + i * 0.06))
+        noise(0.3, 0.05, 6000, t + 0.25, 'highpass')
+      },
+      comboEnd() {
+        if (!allow('comboEnd', 0.3)) return
+        const t = ac.currentTime
+        tone(520, 0.3, 'triangle', 0.08, 180, t)
+        tone(390, 0.25, 'triangle', 0.05, 140, t + 0.1)
+      },
       lost() {
         if (!allow('lost', 0.06)) return
         const t = ac.currentTime
