@@ -46,7 +46,12 @@ export const CONFIG = {
   PERFECT: 7,
   LAND_AFTER: 9,
   JUMP_HEIGHT: 15,
-  JUMP_MIN: 0.45,
+  JUMP_MIN: 0.4,
+  // Mashing guard: after a jump the next press needs RECOVERY s. A press too soon, or with
+  // nobody in the zone, is a FAUX DÉPART: no jump at all for LOCKOUT s (and pressing during
+  // the lockout restarts it). Rhythm beats hammering.
+  RECOVERY: 0.2,
+  LOCKOUT: 0.65,
   SPAWN_X: -14,
   // Score.
   SAVE_POINTS: 100,
@@ -56,13 +61,17 @@ export const CONFIG = {
   MULTS: [1, 2, 3, 5, 8],
   // Waves, by arrival time at the mat. size/gap/spacing/speed are [min, max]; spacing is px
   // between rows of a group, `abreast` skaters per row, `vary` the individual speed spread.
+  // `fast` and `slow` are the share of FUSÉES and PROMENEURS in a group: they ride at
+  // FAST_SPEED / SLOW_SPEED times the group speed, break the group up and arrive off-beat.
   WAVES: [
-    { until: 20, size: [1, 1], gap: [2.3, 3.0], spacing: [0, 0], speed: [42, 46], abreast: 1, vary: 0 },
-    { until: 45, size: [2, 3], gap: [2.3, 3.0], spacing: [7, 12], speed: [44, 50], abreast: 1, vary: 0.5 },
-    { until: 75, size: [3, 5], gap: [1.9, 2.6], spacing: [5, 11], speed: [40, 62], abreast: 2, vary: 1.5 },
-    { until: 105, size: [5, 10], gap: [1.5, 2.1], spacing: [4, 8], speed: [46, 64], abreast: 2, vary: 2.5 },
-    { until: Infinity, size: [16, 28], gap: [1.0, 1.5], spacing: [3, 5], speed: [54, 66], abreast: 4, vary: 2.5 },
+    { until: 20, size: [1, 1], gap: [1.7, 2.5], spacing: [0, 0], speed: [36, 62], abreast: 1, vary: 0, fast: 0, slow: 0 },
+    { until: 45, size: [2, 4], gap: [1.6, 2.4], spacing: [6, 12], speed: [40, 60], abreast: 1, vary: 3, fast: 0.15, slow: 0.15 },
+    { until: 75, size: [4, 8], gap: [1.3, 2.0], spacing: [4, 10], speed: [40, 64], abreast: 2, vary: 5, fast: 0.2, slow: 0.2 },
+    { until: 105, size: [8, 16], gap: [1.0, 1.6], spacing: [3, 8], speed: [44, 66], abreast: 3, vary: 6, fast: 0.25, slow: 0.2 },
+    { until: Infinity, size: [22, 38], gap: [0.6, 1.1], spacing: [3, 5], speed: [50, 70], abreast: 4, vary: 6, fast: 0.3, slow: 0.15 },
   ],
+  FAST_SPEED: 1.5,
+  SLOW_SPEED: 0.65,
   BREATHER_EVERY: [4, 6],
   BREATHER_FACTOR: 1.9,
   FIRST_ARRIVAL: 3.2,
@@ -311,6 +320,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       precision: 0, // consecutive presses with at least one PARFAIT; an empty press breaks it
       bestPrecision: 0,
       emptyPresses: 0,
+      falseStarts: 0,
+      readyAt: 0, // G.t from which the next press may jump
+      lockedUntil: 0, // FAUX DÉPART lockout
       presses: 0,
       biggestJump: 0,
       phase: 0,
@@ -347,7 +359,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         w.abreast === 1
           ? C.LANE_TOP + (n === 1 ? lane : (lane * 0.6 + random() * 0.4)) * depth
           : C.LANE_TOP + ((col + 0.15 + random() * 0.7) / w.abreast) * depth
-      members.push({ behind: row * spacing + (w.abreast > 1 ? random() * 3 : 0), y, v: speed + (random() * 2 - 1) * w.vary })
+      const roll = random()
+      const kind = roll < w.fast ? 'fast' : roll < w.fast + w.slow ? 'slow' : 'normal'
+      const factor = kind === 'fast' ? C.FAST_SPEED : kind === 'slow' ? C.SLOW_SPEED : 1
+      const v = (speed + (random() * 2 - 1) * w.vary) * factor
+      members.push({ behind: row * spacing + (w.abreast > 1 ? random() * 3 : 0), y, v, kind })
     }
     const span = (Math.ceil(n / w.abreast) - 1) * spacing
     return { arrival, speed, members, span, gap: rand(w.gap) }
@@ -357,7 +373,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     let g = G.nextGroup
     while (g && G.t >= g.arrival - (zoneMid() - C.SPAWN_X) / g.speed) {
       const lead = zoneMid() - g.speed * (g.arrival - G.t)
-      for (const m of g.members) skaters.push(makeSkater(lead - m.behind, m.y, m.v))
+      for (const m of g.members) skaters.push(makeSkater(lead - m.behind, m.y, m.v, m.kind))
       let gap = g.gap
       if (--G.breatherIn <= 0) {
         gap *= C.BREATHER_FACTOR
@@ -368,9 +384,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
   }
 
-  function makeSkater(x, y, v) {
+  function makeSkater(x, y, v, kind = 'normal') {
     return {
       id: nextId++,
+      kind, // normal | fast (FUSÉE) | slow (PROMENEUR)
       x,
       y,
       vx: v,
@@ -437,14 +454,23 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (state !== 'PLAYING' || G.over) return
     G.presses++
     const jumpers = skaters.filter((s) => s.state === 'roll' && s.x >= matX(s.y) - C.ZONE)
-    if (!jumpers.length) {
-      // Too early (or nobody at all): nobody jumps, the precision streak breaks, no points lost.
-      G.emptyPresses++
+    const locked = G.t < G.lockedUntil
+    const tooSoon = G.t < G.readyAt
+    if (!jumpers.length || locked || tooSoon) {
+      // FAUX DÉPART: nobody jumps, the precision streak breaks, and the zone is closed for a
+      // moment. No points are taken, but whoever reaches the mat meanwhile meets it.
+      if (!jumpers.length) G.emptyPresses++
+      G.falseStarts++
       G.precision = 0
-      audio.whiff()
-      popup(matX(C.LANE_TOP) - C.ZONE - 6, C.LANE_TOP - 26, 'TROP TÔT', P.white, 0.5)
+      G.lockedUntil = G.t + C.LOCKOUT
+      if (!locked) {
+        audio.falseStart()
+        popup(matX(C.LANE_TOP) - C.ZONE / 2, C.LANE_TOP - 26, jumpers.length ? 'UN SAUT À LA FOIS !' : 'FAUX DÉPART !', P.red, 0.7)
+        if (G.falseStarts === 3 || G.falseStarts % 15 === 0) notify('FAUX DÉPARTS : ' + G.falseStarts + ' (PV DRESSÉ)', P.stamp)
+      }
       return
     }
+    G.readyAt = G.t + C.RECOVERY
     const anyPerfect = jumpers.some((s) => s.x >= matX(s.y) - C.PERFECT)
     G.precision = anyPerfect ? G.precision + 1 : 0
     G.bestPrecision = Math.max(G.bestPrecision, G.precision)
@@ -552,6 +578,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         bestCombo: G.bestCombo,
         bestPrecision: G.bestPrecision,
         biggestJump: G.biggestJump,
+        falseStarts: G.falseStarts,
       },
       durationMs: Math.round(C.RUN_DURATION * 1000),
     })
@@ -745,8 +772,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       const x = finishX(y)
       for (let k = 0; k < 3; k++) r(x + k * 2, y, 2, 1, (Math.floor((y - C.TRACK_TOP) / 2) + k) % 2 ? P.white : P.ink)
     }
-    // Painted deceleration zone: a dashed line where the jump zone begins (subtle).
-    for (let y = C.TRACK_TOP + 6; y < C.TRACK_BOTTOM - 3; y += 3) r(matX(y) - C.ZONE, y, 1, 2, 'rgba(255,255,255,0.35)')
     // Curb and lawn in front.
     for (let x = 0; x < W; x += 8) r(x, C.TRACK_BOTTOM, 8, 3, (x / 8) % 2 ? P.red : P.white)
     r(0, C.TRACK_BOTTOM + 3, W, H - C.TRACK_BOTTOM - 3, P.grass)
@@ -862,6 +887,14 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
 
   /* ---------- the mat (the boss) ---------- */
+  function drawZone() {
+    // Painted line where the jump zone begins; red tape across the zone during a FAUX DÉPART.
+    const locked = G && state === 'PLAYING' && G.t < G.lockedUntil
+    for (let y = C.TRACK_TOP + 6; y < C.TRACK_BOTTOM - 3; y += 3) {
+      rect(matX(y) - C.ZONE, y, 1, 2, locked ? P.red : 'rgba(255,255,255,0.35)')
+      if (locked && Math.floor(now * 10) % 2) rect(matX(y) - C.ZONE + 1, y, C.ZONE - 1, 1, 'rgba(226,59,59,0.35)')
+    }
+  }
   function drawMat() {
     for (let y = C.TRACK_TOP + 6; y < C.TRACK_BOTTOM - 3; y++) {
       const x = matX(y)
@@ -919,6 +952,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
   function poseFor(s) {
     const f = Math.floor(s.anim) % 4
+    const panic = s.x >= matX(s.y) - C.ZONE - 14
+    if (s.state === 'roll' && s.kind === 'fast' && !panic) return [ARMS_STIFF, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 2]
+    if (s.state === 'roll' && s.kind === 'slow' && !panic) return [ARMS_STAR, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 0]
     if (s.state === 'jump') return [ARMS_STIFF, LEGS_TOGETHER, HEAD, 0]
     if (s.state === 'land') return [f % 2 ? ARMS_UP : ARMS_UP_B, LEGS_TOGETHER, HEAD, 0]
     if (s.state === 'fall') return [ARMS_STAR, LEGS_STAR, HEAD_PANIC, 0]
@@ -939,11 +975,18 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const draw = (list, dx = 0) => {
       for (const [x, y, w, h, k] of list) part(ox, oy, rot, x + dx, y, w, h, colour(k))
     }
+    if (s.kind === 'fast' && s.state === 'roll') {
+      // FUSÉE: speed lines behind and a pointed aero helmet.
+      rect(ox - 10 - (Math.floor(now * 20) % 3), oy - 14, 4, 1, P.white)
+      rect(ox - 12 - (Math.floor(now * 20 + 1) % 3), oy - 9, 5, 1, P.white)
+    }
     draw(legs)
     draw(TORSO, lean)
     if (s.look.bib) draw(BIB, lean)
     draw(arms, lean)
     draw(head, lean)
+    if (s.kind === 'fast' && s.state === 'roll') part(ox, oy, rot, lean - 5, -19, 2, 1, s.look.H)
+    if (s.kind === 'slow' && s.state === 'roll') part(ox, oy, rot, lean - 2, -17, 1, 2, '#d8d8d8')
   }
 
   /* ---------- overlays ---------- */
@@ -1025,6 +1068,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     drawBarriers()
     drawArchBack()
     drawVolunteers()
+    drawZone()
     drawMat()
     const sorted = [...skaters].sort((a, b) => a.y - b.y)
     for (const s of sorted) drawSkater(s)
@@ -1058,7 +1102,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       big('FIN DE L’ÉPREUVE', 160, 60, P.white)
     }
     if (G.t < 7 && !G.over && Math.floor(now * 2) % 2)
-      drawTextC(ctx, pointerTouch ? 'TAPOTE QUAND ILS PANIQUENT !' : 'ESPACE QUAND ILS PANIQUENT !', 160, 150, P.yellow)
+      drawTextC(ctx, pointerTouch ? 'UN TAP QUAND ILS PANIQUENT. PAS AVANT.' : 'ESPACE QUAND ILS PANIQUENT. PAS AVANT.', 160, 150, P.yellow)
     drawNote()
     drawHud()
     if (paused) {
@@ -1083,10 +1127,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       ['VICTIMES DE LA MOUSSE', String(G.victims), P.red],
       ['SAUTS PARFAITS', String(G.perfects), P.white],
       ['PLUS GRAND SAUT COLLECTIF', String(G.biggestJump), P.white],
+      ['FAUX DÉPARTS', String(G.falseStarts), P.white],
     ]
     lines.forEach(([label, value, colour], i) => {
       if (since < 0.2 + i * 0.15) return
-      const y = 64 + i * 11
+      const y = 60 + i * 10
       drawText(ctx, label, 56, y, P.grey)
       drawText(ctx, value, 264 - textWidth(value), y, colour)
       for (let x = 56 + textWidth(label) + 4; x < 260 - textWidth(value); x += 3) rect(x, y + 6, 1, 1, '#4a5a6e')
@@ -1206,7 +1251,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 }
 
 /* A two-minute run brings a few hundred skaters at most (see WAVES). */
-const MAX_SKATERS = 600
+const MAX_SKATERS = 1500
 const MAX_PER_SAVE = (CONFIG.SAVE_POINTS + CONFIG.PERFECT_BONUS * CONFIG.PRECISION_CAP) * CONFIG.MULTS[CONFIG.MULTS.length - 1]
 
 export function validate(result) {
@@ -1224,5 +1269,5 @@ export function validate(result) {
 
 export function grade(result) {
   const s = result.score
-  return s >= 380000 ? 'S' : s >= 280000 ? 'A' : s >= 160000 ? 'B' : s >= 60000 ? 'C' : 'D'
+  return s >= 600000 ? 'S' : s >= 300000 ? 'A' : s >= 160000 ? 'B' : s >= 60000 ? 'C' : 'D'
 }
