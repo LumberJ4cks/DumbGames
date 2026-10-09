@@ -83,6 +83,14 @@
     SUPPLIER_RETURN_WARN: 1,
     TRUCE_RESUME_DELAY: 1.0,
     EARLY_POOL_UNTIL: 20,
+    // Score and combos: points never reward a loss. A ball sent back feeds the combo; the combo
+    // ends after COMBO_WINDOW s without one, or at once when someone is hit.
+    SCORE_EVAC: 100,
+    SCORE_HIT: 10,
+    SCORE_JUST_IN_TIME: 50,
+    SCORE_SURVIVOR: 500,
+    COMBO_WINDOW: 4,
+    COMBO_TIERS: [0, 4, 9, 16, 25],
     // Test hook: no police at all.
     NO_SHOTS: false,
   }
@@ -213,6 +221,11 @@
       events: {},
       activeEvent: null,
       spacing: C.CROWD_SPACING,
+      score: 0,
+      combo: 0,
+      comboUntil: 0,
+      bestCombo: 0,
+      mult: 1,
       stats: { sent: 0, delivered: 0, tooLate: 0, hits: 0, destroyed: 0, kicked: 0, evacuated: 0, passedCrowd: 0, lost: 0, shots: 0, capSkipped: 0, byItem: {} },
       out: [],
     }
@@ -383,6 +396,32 @@
     return o
   }
 
+  /* ---------- score and combos ---------- */
+  function multiplierFor(s, combo) {
+    let m = 1
+    s.C.COMBO_TIERS.forEach((need, i) => {
+      if (combo >= need) m = i + 1
+    })
+    return m
+  }
+  function addScore(s, amount, reason, x, y) {
+    s.score += amount
+    s.out.push({ type: 'score', amount, reason, x, y, mult: s.mult, combo: s.combo })
+  }
+  function feedCombo(s) {
+    s.combo++
+    s.comboUntil = s.t + s.C.COMBO_WINDOW
+    s.bestCombo = Math.max(s.bestCombo, s.combo)
+    const m = multiplierFor(s, s.combo)
+    if (m > s.mult) s.out.push({ type: 'combo-tier', mult: m, combo: s.combo })
+    s.mult = m
+  }
+  function breakCombo(s, why) {
+    if (s.combo > 0) s.out.push({ type: 'combo-end', combo: s.combo, why })
+    s.combo = 0
+    s.mult = 1
+  }
+
   function moveBall(s, b, dt) {
     const C = s.C
     const r = C.BALL_RADIUS
@@ -453,6 +492,8 @@
     } else if (b.x < C.EXIT_X) {
       b.alive = false
       s.stats.evacuated++
+      addScore(s, C.SCORE_EVAC * s.mult, 'evac', b.x, b.y)
+      feedCombo(s)
       s.out.push({ type: 'evacuated', y: b.y, ball: b.id })
     }
   }
@@ -473,6 +514,7 @@
     b.hits++
     o.hp--
     s.stats.hits++
+    addScore(s, s.C.SCORE_HIT, 'hit', b.x, b.y)
     if (o.hp <= 0) {
       o.alive = false
       s.stats.destroyed++
@@ -486,6 +528,7 @@
     b.alive = false
     s.stats.lost++
     s.out.push({ type: 'lost', person: p, x: p.x, y: p.y, ball: b.id })
+    breakCombo(s, 'lost')
     regroupLine(s, p.line)
   }
 
@@ -531,6 +574,7 @@
     s.stats.byItem[d.item] = (s.stats.byItem[d.item] || 0) + 1
     const near = s.balls.some((b) => b.alive && b.x > q.x - C.NEAR_MISS && b.x < q.x + q.w + C.NEAR_MISS && b.y > q.y - C.NEAR_MISS && b.y < q.y + q.h + C.NEAR_MISS)
     s.out.push({ type: 'land', obj: o, delivery: d, item: d.item, x: q.cx, y: q.cy, near })
+    if (near) addScore(s, C.SCORE_JUST_IN_TIME * s.mult, 'just', q.cx, q.y)
   }
 
   /* ---------- police: announces locked 0.6 s ahead, no catch-up ever ---------- */
@@ -704,6 +748,7 @@
     if (due.length) s.deliveries = s.deliveries.filter((d) => !d.landed)
     s.tick++
     s.t = t1
+    if (s.combo > 0 && s.t > s.comboUntil) breakCombo(s, 'timeout')
     if (!C.NO_SHOTS) scheduleShots(s, t1)
     updateCrowd(s, C.DT)
     updateLaunchers(s, C.DT)
@@ -720,6 +765,8 @@
   function finish(s, reason) {
     s.over = true
     s.endReason = reason
+    const alive = survivors(s)
+    if (alive) addScore(s, alive * s.C.SCORE_SURVIVOR, 'survivors', 0, 0)
     s.out.push({ type: 'end', reason })
   }
 
@@ -740,11 +787,14 @@
       tooLate: s.stats.tooLate,
       mostUsed,
       reason: s.endReason,
+      score: s.score,
+      bestCombo: s.bestCombo,
     }
   }
-  /** Records: survivors first, then time held, then balls sent back. */
+  /** Records: score first, then survivors, then time held, then balls sent back. */
   function better(a, b) {
     if (!b) return true
+    if ((a.score ?? 0) !== (b.score ?? 0)) return (a.score ?? 0) > (b.score ?? 0)
     if (a.survivors !== b.survivors) return a.survivors > b.survivors
     if (Math.abs(a.time - b.time) > 1e-6) return a.time > b.time
     return a.evacuated > b.evacuated
