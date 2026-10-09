@@ -12,6 +12,7 @@ Des jeux à la con, un à la fois. Sites statiques, pixel art dessiné au code, 
 
 Prototypes gardés hors de l'accueil (dossier présent, non listé) :
 
+- **CONS DE MIME !** — *Vous êtes à Cannes. Lui aussi.* Prototype gris v0 : vue de dessus, la Croisette défile, Serge court après un tueur toujours à 320 m, le joueur frôle les Cannois pour le combo (jusqu'à ×5) et pète dessus pour les envoyer exploser sur la plage. La fille en roller en jaune (regarder = bonus, contrôles inversés), la mamie et son caddie écrasés par le camion, les cons de mime dont le mur mimé est bien solide et immunisé au prout, puis un saut en longueur final tamponné « C'est bon, j'ai du papier ». Quatre-vingt-dix secondes, tout en rectangles étiquetés, l'art viendra après le réglage. `?seed=42` rejoue la même partie, `?debug=1` montre les hitboxes et le cône du prout ; `node cons-de-mime/test/bot.mjs` joue une partie entière dans Chromium pour vérifier qu'elle va au bout.
 - **GRAND THEFT FIFA** — *Vous êtes presque arrivé.* Conduite arcade vue du dessus ; le gag administratif tenait, le moteur de conduite demandait trop de travail pour être agréable.
 
 Chaque jeu est un dossier autonome avec son `index.html`, servi tel quel par GitHub Pages.
