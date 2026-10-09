@@ -1,5 +1,5 @@
-import { createAudio } from './audio.js'
-import { drawText, drawTextC, textWidth } from './font.js'
+import { createAudio } from './audio.js?v=3'
+import { drawText, drawTextC, textWidth } from './font.js?v=3'
 
 /*
  * ATTENTION À LA MOUSSE ! — « 10 kilomètres d'effort. 20 centimètres de catastrophe. »
@@ -575,8 +575,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     needRelease = true
     if (paused) {
       // The resume press is consumed without jumping.
-      paused = false
-      lastFrame = performance.now()
+      resume()
       return
     }
     if (state === 'TITLE') return startRun()
@@ -1706,13 +1705,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function pause() {
     if (paused || state !== 'PLAYING') return
     paused = true
-    audio.music(false)
-    audio.hush()
+    audio.suspend()
   }
   function resume() {
     if (!paused) return
     paused = false
     lastFrame = performance.now()
+    audio.resume()
   }
   function onVisibility() {
     if (document.hidden) pause()
@@ -1759,7 +1758,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       return paused ? 'paused' : state === 'TITLE' ? 'idle' : state === 'RESULTS' ? 'over' : 'playing'
     },
     get debug() {
-      return debug ? { state, G, skaters, matX, C } : null
+      return debug ? { state, G, skaters, matX, C, audio } : null
     },
   }
 }

@@ -4,11 +4,15 @@
  * stamps for notifications, a whistle, and the announcer: the real « Attention à la mousse ! »
  * meme, cut into short clips in mousse.mp3 (the only recorded sound; the rest is synthesised).
  */
-/** The meme file and its clips: [start, duration] in seconds inside mousse.mp3. */
-export const SHOUT_FILE = new URL('./mousse.mp3', import.meta.url).href
-export const SHOUT_CLIPS = [
-  // Filled in from the timestamps of the shouts in the source recording.
-]
+/**
+ * The soundtrack: the meme's own recording (mousse.mp3, 1:27, looped) plays as the music of a
+ * run. Clips of it can also be used as the announcer (SHOUT_CLIPS: [start, duration] in
+ * seconds); the list is empty while the whole file is the soundtrack.
+ */
+export const TRACK_FILE = new URL('./mousse.mp3', import.meta.url).href
+export const SHOUT_CLIPS = []
+// The synthesised arcade loop under the track. Off: the recording carries the music.
+export const SYNTH_MUSIC = false
 
 export function createAudio() {
   let ac = null
@@ -126,17 +130,39 @@ export function createAudio() {
   // Clips inside mousse.mp3: [start, duration] in seconds. `calm` ones open the run, the
   // others come with the crowd.
   const SHOUTS = SHOUT_CLIPS
+  let trackSrc = null
+  let trackGain = null
+  let trackWanted = false
   function loadShouts() {
     if (shoutLoading || !ac) return
-    shoutLoading = fetch(SHOUT_FILE)
+    shoutLoading = fetch(TRACK_FILE)
       .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
       .then((buf) => ac.decodeAudioData(buf))
       .then((decoded) => {
         shoutBuffer = decoded
+        if (trackWanted) startTrack()
       })
       .catch(() => {
         shoutBuffer = null
       })
+  }
+
+  function startTrack() {
+    if (!ac || !shoutBuffer || trackSrc) return
+    const src = ac.createBufferSource()
+    src.buffer = shoutBuffer
+    src.loop = true
+    trackGain = ac.createGain()
+    trackGain.gain.value = 0.9
+    src.connect(trackGain)
+    trackGain.connect(musicDuck)
+    src.start(ac.currentTime + 0.02)
+    trackSrc = src
+  }
+  function stopTrack() {
+    if (!trackSrc) return
+    try { trackSrc.stop() } catch {}
+    trackSrc = null
   }
 
   return {
@@ -155,8 +181,13 @@ export function createAudio() {
     setIntensity(level) {
       intensity = level
     },
+    /** Music of a run: the recording, looped (started as soon as it is decoded), plus the synth loop when enabled. */
     music(on) {
       if (!ac) return
+      trackWanted = on
+      if (on) startTrack()
+      else stopTrack()
+      if (!SYNTH_MUSIC) return
       if (on && pumpTimer === null) {
         step = 0
         nextStep = ac.currentTime + 0.05
@@ -165,6 +196,13 @@ export function createAudio() {
         clearInterval(pumpTimer)
         pumpTimer = null
       }
+    },
+    /** Pause and resume keep the track's position (the whole context is suspended). */
+    suspend() {
+      if (ac && ac.state === 'running') ac.suspend().catch(() => {})
+    },
+    get playingTrack() {
+      return !!trackSrc
     },
     /**
      * The announcer: one clip of the meme. Never queues: while a clip plays, the call is
