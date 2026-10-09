@@ -1,5 +1,5 @@
-import { createAudio } from './audio.js?v=3'
-import { drawText, drawTextC, textWidth } from './font.js?v=3'
+import { createAudio } from './audio.js'
+import { drawText, drawTextC, textWidth } from './font.js'
 
 /*
  * ATTENTION À LA MOUSSE ! — « 10 kilomètres d'effort. 20 centimètres de catastrophe. »
@@ -561,7 +561,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (!force && G && G.t - G.lastVoice < interval) return
     if (G) G.lastVoice = G.t
     bubble(262, 64, 'ATTENTION À LA MOUSSE !', 1.4)
-    audio.say(intensity)
+    audio.say('Attention à la mousse !', intensity)
     // From the crowd phase, the spectators take up the chant.
     if (G && G.phase >= 2) {
       const echoes = G.phase - 1
@@ -575,7 +575,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     needRelease = true
     if (paused) {
       // The resume press is consumed without jumping.
-      resume()
+      paused = false
+      lastFrame = performance.now()
       return
     }
     if (state === 'TITLE') return startRun()
@@ -720,6 +721,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function startRun() {
     audio.resume()
+    audio.primeVoice()
     G = newGame()
     G.nextGroup = planGroup(C.FIRST_ARRIVAL)
     skaters = []
@@ -905,7 +907,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         audio.setIntensity(phase)
         if (phase === 4) {
           G.banner = { text: 'LE PELOTON DU DIMANCHE', at: now }
-          audio.say(1)
+          audio.say('Le peloton du dimanche !', 1)
           G.lastVoice = G.t
         } else if (PHASE_NOTES[phase]) notify(PHASE_NOTES[phase], P.ink)
       }
@@ -1705,13 +1707,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function pause() {
     if (paused || state !== 'PLAYING') return
     paused = true
-    audio.suspend()
+    audio.music(false)
+    audio.hush()
   }
   function resume() {
     if (!paused) return
     paused = false
     lastFrame = performance.now()
-    audio.resume()
   }
   function onVisibility() {
     if (document.hidden) pause()
@@ -1758,7 +1760,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       return paused ? 'paused' : state === 'TITLE' ? 'idle' : state === 'RESULTS' ? 'over' : 'playing'
     },
     get debug() {
-      return debug ? { state, G, skaters, matX, C, audio } : null
+      return debug ? { state, G, skaters, matX, C } : null
     },
   }
 }

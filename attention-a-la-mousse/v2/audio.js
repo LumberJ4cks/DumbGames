@@ -1,19 +1,9 @@
 /*
  * Attention à la mousse ! — sound: a fête-communale arcade loop that gains tempo and layers
  * with the crowd, boings for jumps, a ding for PARFAIT, roulé-boulé crashes, administrative
- * stamps for notifications, a whistle, and the announcer: the real « Attention à la mousse ! »
- * meme, cut into short clips in mousse.mp3 (the only recorded sound; the rest is synthesised).
+ * stamps for notifications, a whistle, and the announcer's voice through the browser's speech
+ * synthesis (French voice when one is installed). Everything is local, nothing is downloaded.
  */
-/**
- * The soundtrack: the meme's own recording (mousse.mp3, 1:27, looped) plays as the music of a
- * run. Clips of it can also be used as the announcer (SHOUT_CLIPS: [start, duration] in
- * seconds); the list is empty while the whole file is the soundtrack.
- */
-export const TRACK_FILE = new URL('./mousse.mp3', import.meta.url).href
-export const SHOUT_CLIPS = []
-// The synthesised arcade loop under the track. Off: the recording carries the music.
-export const SYNTH_MUSIC = false
-
 export function createAudio() {
   let ac = null
   let master = null
@@ -24,12 +14,7 @@ export function createAudio() {
   let intensity = 0
   let lastFall = 0
   let lastJump = 0
-  // The announcer: the real meme, cut into short clips (see SHOUTS), played from one buffer.
-  let shoutBuffer = null
-  let shoutLoading = null
-  let shoutSrc = null
-  let shoutGain = null
-  let musicDuck = null
+  let voiceFr = null
 
   function init() {
     if (ac) return
@@ -40,16 +25,9 @@ export function createAudio() {
     master = ac.createGain()
     master.gain.value = muted ? 0 : 0.4
     master.connect(ac.destination)
-    // Music goes through a duck gain so the announcer stays intelligible above it.
-    musicDuck = ac.createGain()
-    musicDuck.connect(master)
-    shoutGain = ac.createGain()
-    shoutGain.gain.value = 1.6
-    shoutGain.connect(master)
-    loadShouts()
   }
   /** `at` is an absolute AudioContext time; null means now. */
-  function tone(freq, dur, type, vol, slide, at = null, dest = null) {
+  function tone(freq, dur, type, vol, slide, at = null) {
     if (!ac) return
     const t = at ?? ac.currentTime
     const o = ac.createOscillator()
@@ -61,11 +39,11 @@ export function createAudio() {
     g.gain.exponentialRampToValueAtTime(vol, t + 0.008)
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
     o.connect(g)
-    g.connect(dest || master)
+    g.connect(master)
     o.start(t)
     o.stop(t + dur + 0.05)
   }
-  function noise(dur, vol, cutoff, at = null, type = 'lowpass', dest = null) {
+  function noise(dur, vol, cutoff, at = null, type = 'lowpass') {
     if (!ac) return
     const t = at ?? ac.currentTime
     const buffer = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate)
@@ -80,7 +58,7 @@ export function createAudio() {
     g.gain.value = vol
     src.connect(f)
     f.connect(g)
-    g.connect(dest || master)
+    g.connect(master)
     src.start(t)
   }
   const later = (d) => (ac ? ac.currentTime + d : 0)
@@ -101,20 +79,19 @@ export function createAudio() {
     const i = s % 16
     const chord = CHORDS[bar]
     // Kick on the beat, a little snare from the third phase.
-    const M = musicDuck
-    if (i % 4 === 0) tone(110, 0.12, 'sine', 0.22, 40, t, M)
-    if (intensity >= 2 && (i === 4 || i === 12)) noise(0.09, 0.16, 2500, t, 'highpass', M)
+    if (i % 4 === 0) tone(110, 0.12, 'sine', 0.22, 40, t)
+    if (intensity >= 2 && (i === 4 || i === 12)) noise(0.09, 0.16, 2500, t, 'highpass')
     // Hats: offbeats, then every sixteenth for the peloton.
-    if (i % 4 === 2 || (intensity >= 4 && i % 2 === 1)) noise(0.025, 0.06 + intensity * 0.01, 7000, t, 'highpass', M)
+    if (i % 4 === 2 || (intensity >= 4 && i % 2 === 1)) noise(0.025, 0.06 + intensity * 0.01, 7000, t, 'highpass')
     // Oom-pah bass.
-    if (i % 4 === 0) tone(ROOTS[bar] * 2, 0.16, 'triangle', 0.16, null, t, M)
-    if (i % 4 === 2) tone(ROOTS[bar] * 3, 0.1, 'triangle', 0.08, null, t, M)
+    if (i % 4 === 0) tone(ROOTS[bar] * 2, 0.16, 'triangle', 0.16, null, t)
+    if (i % 4 === 2) tone(ROOTS[bar] * 3, 0.1, 'triangle', 0.08, null, t)
     // Arpeggio from the duos.
-    if (intensity >= 1 && i % 2 === 0) tone(chord[(i / 2) % 3] * 2, 0.08, 'square', 0.025 + intensity * 0.004, null, t, M)
+    if (intensity >= 1 && i % 2 === 0) tone(chord[(i / 2) % 3] * 2, 0.08, 'square', 0.025 + intensity * 0.004, null, t)
     // Lead from the crowd onwards.
     if (intensity >= 3 && i % 2 === 0) {
       const n = LEAD[(bar % 2) * 8 + i / 2]
-      if (n) tone(intensity >= 4 ? n * 2 : n, 0.14, 'square', 0.04, null, t, M)
+      if (n) tone(intensity >= 4 ? n * 2 : n, 0.14, 'square', 0.04, null, t)
     }
   }
   function pump() {
@@ -127,43 +104,16 @@ export function createAudio() {
     }
   }
 
-  // Clips inside mousse.mp3: [start, duration] in seconds. `calm` ones open the run, the
-  // others come with the crowd.
-  const SHOUTS = SHOUT_CLIPS
-  let trackSrc = null
-  let trackGain = null
-  let trackWanted = false
-  function loadShouts() {
-    if (shoutLoading || !ac) return
-    shoutLoading = fetch(TRACK_FILE)
-      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
-      .then((buf) => ac.decodeAudioData(buf))
-      .then((decoded) => {
-        shoutBuffer = decoded
-        if (trackWanted) startTrack()
-      })
-      .catch(() => {
-        shoutBuffer = null
-      })
+  function pickVoice() {
+    try {
+      const voices = speechSynthesis.getVoices()
+      voiceFr = voices.find((v) => v.lang === 'fr-FR') || voices.find((v) => v.lang && v.lang.startsWith('fr')) || null
+    } catch {}
   }
-
-  function startTrack() {
-    if (!ac || !shoutBuffer || trackSrc) return
-    const src = ac.createBufferSource()
-    src.buffer = shoutBuffer
-    src.loop = true
-    trackGain = ac.createGain()
-    trackGain.gain.value = 0.9
-    src.connect(trackGain)
-    trackGain.connect(musicDuck)
-    src.start(ac.currentTime + 0.02)
-    trackSrc = src
-  }
-  function stopTrack() {
-    if (!trackSrc) return
-    try { trackSrc.stop() } catch {}
-    trackSrc = null
-  }
+  try {
+    speechSynthesis.addEventListener?.('voiceschanged', pickVoice)
+    pickVoice()
+  } catch {}
 
   return {
     init,
@@ -177,17 +127,13 @@ export function createAudio() {
     setMuted(value) {
       muted = value
       if (master) master.gain.value = muted ? 0 : 0.4
+      if (muted) try { speechSynthesis.cancel() } catch {}
     },
     setIntensity(level) {
       intensity = level
     },
-    /** Music of a run: the recording, looped (started as soon as it is decoded), plus the synth loop when enabled. */
     music(on) {
       if (!ac) return
-      trackWanted = on
-      if (on) startTrack()
-      else stopTrack()
-      if (!SYNTH_MUSIC) return
       if (on && pumpTimer === null) {
         step = 0
         nextStep = ac.currentTime + 0.05
@@ -197,51 +143,34 @@ export function createAudio() {
         pumpTimer = null
       }
     },
-    /** Pause and resume keep the track's position (the whole context is suspended). */
-    suspend() {
-      if (ac && ac.state === 'running') ac.suspend().catch(() => {})
-    },
-    get playingTrack() {
-      return !!trackSrc
-    },
-    /**
-     * The announcer: one clip of the meme. Never queues: while a clip plays, the call is
-     * skipped (returns false). `excitement` in [0, 1] picks calmer clips early, wilder ones
-     * with the crowd. The music ducks under the voice.
-     */
-    say(excitement = 0) {
-      if (!ac || !shoutBuffer || shoutSrc) return false
-      const pool = SHOUTS.filter((c) => (excitement < 0.4 ? c.calm !== false : true))
-      const list = pool.length ? pool : SHOUTS
-      const clip = list[Math.floor(Math.random() * list.length)]
-      if (!clip) return false
-      const src = ac.createBufferSource()
-      src.buffer = shoutBuffer
-      src.connect(shoutGain)
-      const t = ac.currentTime
-      src.start(t, clip.at, clip.dur)
-      shoutSrc = src
-      src.onended = () => {
-        if (shoutSrc === src) shoutSrc = null
+    /** The announcer. Never queues: if the previous line is still being said, this one is skipped. */
+    say(text, excitement = 0) {
+      if (muted || typeof speechSynthesis === 'undefined') return false
+      try {
+        if (speechSynthesis.speaking || speechSynthesis.pending) return false
+        const u = new SpeechSynthesisUtterance(text)
+        u.lang = 'fr-FR'
+        if (voiceFr) u.voice = voiceFr
+        u.rate = 1.05 + excitement * 0.18
+        u.pitch = 1 + excitement * 0.2
+        u.volume = 1
+        speechSynthesis.speak(u)
+        return true
+      } catch {
+        return false
       }
-      const g = musicDuck.gain
-      g.cancelScheduledValues(t)
-      g.setValueAtTime(g.value, t)
-      g.linearRampToValueAtTime(0.35, t + 0.05)
-      g.setValueAtTime(0.35, t + clip.dur - 0.1)
-      g.linearRampToValueAtTime(1, t + clip.dur + 0.3)
-      return true
     },
-    /** True once the meme clips are decoded (debug and tests). */
-    get ready() {
-      return !!shoutBuffer
+    /** iOS only lets speech start from a user gesture: say nothing once inside the tap. */
+    primeVoice() {
+      if (muted || typeof speechSynthesis === 'undefined') return
+      try {
+        const u = new SpeechSynthesisUtterance(' ')
+        u.volume = 0
+        speechSynthesis.speak(u)
+      } catch {}
     },
     hush() {
-      if (shoutSrc) {
-        try { shoutSrc.stop() } catch {}
-        shoutSrc = null
-      }
-      if (musicDuck) musicDuck.gain.value = 1
+      try { speechSynthesis.cancel() } catch {}
     },
     /** n patineurs en l'air d'un coup : a stiffer, fuller boing for groups. */
     jump(n, perfect) {
