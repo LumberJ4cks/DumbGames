@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1d2a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>ATTENTION À LA MOUSSE !</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #1d2a3a; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; touch-action: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  /* Portrait phone: the whole 16:9 frame is kept and rotated, so nothing is cut. */
+  #stage.rotated canvas { transform: rotate(90deg); transform-origin: center center; }
+  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #2f4054; background: #152030; white-space: nowrap; overflow: auto; font-size: 12px; }
+  #shell b { color: #f4f4f4; }
+  #shell .ok { color: #79AE69; } #shell .ko { color: #d13c3c; }
+  @media (pointer: coarse), (max-width: 760px) { #shell { display: none; } }
+  @media (pointer: fine) and (min-width: 761px) { #stage { inset: 0 0 40px 0; } }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="shell">
+  <span>Coquille de test · <b id="title"></b></span>
+  <span>État : <b id="state">idle</b></span>
+  <span>Dernier résultat : <b id="result">—</b></span>
+  <span>Ajoute <code>?debug=1</code> ou <code>?seed=42</code> à l’adresse pour le mode debug.</span>
+</div>
+<script type="module">
+  import { manifest, create, validate, grade } from './game.js'
+
+  const canvas = document.getElementById('c')
+  const stage = document.getElementById('stage')
+  const $ = (id) => document.getElementById(id)
+  $('title').textContent = manifest.title + ' — ' + manifest.tagline
+  const { width: GW, height: GH } = manifest.size
+  const params = new URLSearchParams(location.search)
+
+  const game = create({
+    canvas,
+    settings: {
+      debug: params.get('debug') === '1',
+      seed: params.has('seed') ? params.get('seed') : null,
+      // Debug only: ?run=8 shortens the run to eight seconds to reach the results quickly.
+      config: params.has('run') ? { RUN_DURATION: Number(params.get('run')) } : null,
+    },
+    onState: (state) => { $('state').textContent = state },
+    onEnd: (result) => {
+      const ok = validate(result)
+      $('result').innerHTML = `${result.score.toLocaleString('fr-FR')} pts · rang ${grade(result)} · validation <span class="${ok ? 'ok' : 'ko'}">${ok ? 'acceptée' : 'refusée'}</span>`
+    },
+  })
+
+  // Debug only: expose the game to the console and to test bots.
+  if (params.get('debug') === '1') window.game = game
+
+  let rotated = false
+  function fit() {
+    const sw = stage.clientWidth
+    const sh = stage.clientHeight
+    rotated = sh > sw && sw < 700
+    stage.classList.toggle('rotated', rotated)
+    const availW = rotated ? sh : sw
+    const availH = rotated ? sw : sh
+    let scale = Math.min(availW / GW, availH / GH)
+    scale = scale >= 2 ? Math.floor(scale) : Math.max(1, scale)
+    canvas.style.width = GW * scale + 'px'
+    canvas.style.height = GH * scale + 'px'
+  }
+  addEventListener('resize', fit)
+  if (screen.orientation) screen.orientation.addEventListener('change', fit)
+  fit()
+
+  function toInternal(event) {
+    const r = canvas.getBoundingClientRect()
+    if (!rotated) return { x: ((event.clientX - r.left) / r.width) * GW, y: ((event.clientY - r.top) / r.height) * GH }
+    return { x: ((event.clientY - r.top) / r.height) * GW, y: ((r.right - event.clientX) / r.width) * GH }
+  }
+
+  // Pointer Events: one touch is one action (no synthetic click afterwards). Down fires, up releases.
+  const payload = (event, type) => ({ type, touch: event.pointerType !== 'mouse', ...toInternal(event) })
+  stage.addEventListener('pointerdown', (e) => { e.preventDefault(); game.unlock(); game.input('pointer', payload(e, 'down')) })
+  stage.addEventListener('pointerup', (e) => game.input('pointer', payload(e, 'up')))
+  stage.addEventListener('pointercancel', (e) => game.input('pointer', payload(e, 'up')))
+
+  // Keyboard: Space on key down only (auto-repeat ignored), released on key up; M toggles sound.
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) { game.unlock(); game.input('press', { down: true }) } }
+    if (e.code === 'KeyM' && !e.repeat) game.input('mute')
+  })
+  addEventListener('keyup', (e) => { if (e.code === 'Space') game.input('press', { down: false }) })
+  addEventListener('blur', () => game.input('press', { down: false }))
+
+  // Phones: full screen in landscape on the first tap, when the browser allows it; iOS audio unlock.
+  stage.addEventListener('pointerdown', async (e) => {
+    game.start()
+    if (e.pointerType !== 'mouse') {
+      try { await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }) } catch {}
+      try { await screen.orientation?.lock?.('landscape') } catch {}
+      setTimeout(fit, 300)
+    }
+  }, { once: true })
+  const silence = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=')
+  silence.setAttribute('playsinline', '')
+  silence.volume = 0.01
+  let silenced = false
+  function unlock() { game.unlock(); if (!silenced) { silenced = true; silence.play().catch(() => {}) } }
+  stage.addEventListener('touchend', unlock, { passive: true })
+  stage.addEventListener('click', unlock)
+</script>
+</body>
+</html>
