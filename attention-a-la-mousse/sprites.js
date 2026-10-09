@@ -104,6 +104,11 @@ const LEGS = {
   together: { skin: [[-2, -7, 1, 4], [1, -7, 1, 4]], socks: [[-2, -3], [1, -3]], boots: [[-3, -2, 3], [1, -2, 3]], wheels: [-3, -1, 1, 3] },
   stride: { skin: [[-3, -7, 1, 3], [-4, -5, 1, 2], [1, -7, 1, 4]], socks: [[-4, -3], [1, -3]], boots: [[-7, -2, 3], [1, -2, 3]], wheels: [-7, -5, 1, 3] },
   star: { skin: [[-3, -7, 1, 3], [-4, -5, 1, 2], [2, -7, 1, 3], [3, -5, 1, 2]], socks: [[-4, -3], [3, -3]], boots: [[-6, -2, 3], [3, -2, 3]], wheels: [-6, 5] },
+  // The push cycle: one leg glides under the body, the other extends back and lifts.
+  pushA: { skin: [[1, -7, 1, 4], [-3, -7, 1, 2], [-5, -6, 1, 2], [-7, -5, 1, 2]], socks: [[1, -3], [-8, -4]], boots: [[1, -2, 3], [-11, -4, 3]], wheels: [1, 3, -11, -9] },
+  pushB: { skin: [[-1, -7, 1, 4], [-3, -7, 1, 1], [-5, -7, 1, 2], [-7, -6, 1, 2]], socks: [[-1, -3], [-8, -5]], boots: [[-2, -2, 3], [-11, -5, 3]], wheels: [-2, 0, -11, -9] },
+  // Knees bent, both skates down: the anticipation before a jump and the landing.
+  crouch: { skin: [[-3, -5, 1, 2], [2, -5, 1, 2]], socks: [[-3, -3], [2, -3]], boots: [[-4, -2, 3], [1, -2, 3]], wheels: [-4, -2, 1, 3] },
 }
 const ARMS = {
   swingA: [[-3, -13, 1, 2], [-4, -11, 1, 2], [2, -13, 1, 1], [3, -12, 2, 1]],
@@ -112,8 +117,13 @@ const ARMS = {
   upB: [[-5, -18, 1, 4], [-4, -14, 1, 1], [4, -18, 1, 4], [3, -14, 1, 1]],
   stiff: [[-3, -14, 1, 6], [2, -14, 1, 6]],
   star: [[-5, -16, 3, 1], [-6, -17, 1, 1], [2, -16, 3, 1], [5, -17, 1, 1]],
+  // Arms swept back (crouch, and the stretched pose at the top of a jump).
+  back: [[-3, -13, 1, 1], [-4, -12, 1, 2], [-5, -10, 1, 1], [2, -13, 1, 1], [3, -12, 1, 2], [4, -10, 1, 1]],
+  // Opposite swing for the second half of the push cycle.
+  swingC: [[-3, -13, 1, 1], [-4, -12, 2, 1], [2, -13, 1, 2], [3, -11, 1, 2]],
+  swingD: [[-3, -13, 1, 2], [-4, -11, 1, 1], [2, -13, 1, 3]],
 }
-export const SKATER_W = 16
+export const SKATER_W = 24
 export const SKATER_H = 24
 
 /**
@@ -132,9 +142,10 @@ export function skaterSprite(look, pose) {
     D: [D, 3], d: [D, 2], x: [D, 1],
     B: [P.white], E: [P.ink], W: [P.white], M: [P.redD],
   })
-  return sprite(SKATER_W, SKATER_H, 8, 22, (a) => {
+  return sprite(SKATER_W, SKATER_H, 12, 22, (a) => {
     const legs = LEGS[pose.legs]
     const lean = pose.lean || 0
+    const dy = pose.dy || 0 // crouch: the body sits lower on the legs
     for (const [x, y, w, h] of legs.skin) a.shaded(x, y, w, h, S)
     for (const [x, y] of legs.socks) a.px(x, y, P.white)
     for (const [x, y, w] of legs.boots) {
@@ -149,14 +160,16 @@ export function skaterSprite(look, pose) {
       a.px(-2, -5, P.white)
       a.px(1, -5, P.white)
     }
-    a.map(look.bib ? TORSO_BIB_ROWS : TORSO_ROWS, lg, -2 + lean, -14)
-    for (const [x, y, w, h] of ARMS[pose.arms]) a.shaded(x + lean, y, w, h, S)
+    a.map(look.bib ? TORSO_BIB_ROWS : TORSO_ROWS, lg, -2 + lean, -14 + dy)
+    for (const [x, y, w, h] of ARMS[pose.arms]) a.shaded(x + lean, y + dy, w, h, S)
     const head = pose.kind === 'fast' && pose.head !== 'panic' ? HEAD_AERO_ROWS : pose.head === 'panic' ? HEAD_PANIC_ROWS : HEAD_ROWS
-    a.map(head, lg, -3 + lean, -20)
+    a.map(head, lg, -3 + lean, -20 + dy)
     // Chin strap and a visor glint.
-    a.px(-2 + lean, -16, H[1])
-    a.px(-1 + lean, -19, H[3])
-    if (pose.kind === 'slow') a.px(-2 + lean, -17, P.grey1) // the promeneur's goggles
+    a.px(-2 + lean, -16 + dy, H[1])
+    a.px(-1 + lean, -19 + dy, H[3])
+    // The bib flutters a pixel in the air.
+    if (look.bib && pose.flutter) a.px(lean, -12 + dy, P.white)
+    if (pose.kind === 'slow') a.px(-2 + lean, -17 + dy, P.grey1) // the promeneur's goggles
   })
 }
 /* ---------- fall poses: the roulé-boulé, drawn for real ---------- */
@@ -243,6 +256,18 @@ const FALL_ROWS = {
     'hhhhJjjjjjii......',
     'hHhhhzsjjii.......',
     '.hhhhzzz..........',
+  ],
+  // Squashed flat on the foam, the frame after impact.
+  squash: [
+    '..................',
+    '..................',
+    '..................',
+    '..................',
+    '.......kK....kK...',
+    'hhhh..Jjjjjjddx...',
+    'hHhsSEJjjjjjddxss.',
+    'hhhzzzijjjjiixxss.',
+    '.zz..............s',
   ],
   // Head planted in the ground, legs in a V, arms spread: the municipal classic.
   slideHead: [
@@ -585,23 +610,40 @@ export function spectatorSprite(look, frame) {
   const Hr = R[look.hair]
   const Sh = R[look.shirt]
   const lg = legend({ s: [Sk, 2], S: [Sk, 3], z: [Sk, 1], G: [Hr, 2], g: [Hr, 1], H: [Hr, 3], T: [Sh, 3], t: [Sh, 2], u: [Sh, 1], E: [P.ink], M: [P.redD] })
-  const hats = [null, 'cap', 'hat', null, 'bald', null, 'bun']
+  const hats = [null, 'cap', 'hat', null, 'bald', null, 'bun', 'kid']
   const hat = hats[look.v % hats.length]
-  return sprite(12, 24, 6, 22, (a) => {
+  return sprite(14, 32, 7, 30, (a) => {
     let head
     if (hat === 'cap') head = ['.HGGg.', 'GGGGgg', '.sSSz.', '.sSEz.', '.zssz.']
     else if (hat === 'hat') head = ['.GGGg.', 'HGGGgg', '.sSSz.', '.sSEz.', '.zssz.']
     else if (hat === 'bald') head = ['......', '.sSSz.', 'ssSSzz', '.sSEz.', '.zssz.']
     else if (hat === 'bun') head = ['..GG..', '.GGGg.', 'GsSSzg', '.sSEz.', '.zssz.']
     else head = ['.GGGg.', 'GGGGgg', 'GsSSzg', '.sSEz.', '.zssz.']
-    const y0 = frame ? -15 : -14
+    const y0 = frame === 1 ? -15 : -14
     a.map(head, lg, -3, y0)
-    if (frame) a.map(['.zMMz.'], lg, -3, y0 + 4) // mouth open while shouting
+    if (frame === 1) a.map(['.zMMz.'], lg, -3, y0 + 4) // mouth open while shouting
+    if (frame === 2) a.map(['sSSSs.'], { s: Sk[2], S: Sk[3] }, -3, y0 + 3) // hands over the eyes
+    if (hat === 'kid') {
+      // A child on the shoulders, waving.
+      a.map(['.GGg..', 'GsSEz.', '.zssz.', '.TTt..'], { G: R.hairBlond[2], g: R.hairBlond[1], s: Sk[2], S: Sk[3], z: Sk[1], E: P.ink, T: P.red, t: P.redD }, -2, y0 - 8)
+      a.px(2, y0 - 9, Sk[2])
+      a.px(2, y0 - 10, Sk[2])
+    }
     // Shoulders and chest (the rest hides behind the barrier).
     a.map(['TTttu.', 'TTttu.', 'Tttuu.', 'ttuuu.', 'ttuuu.', 'ttuuu.', 'ttuuu.'], lg, -3, y0 + 5)
-    if (frame) {
+    if (frame === 1) {
       a.shaded(-4, y0 - 5, 1, 9, Sk)
       a.shaded(3, y0 - 5, 1, 9, Sk)
+    } else if (frame === 2) {
+      a.shaded(-4, y0 + 1, 1, 4, Sk)
+      a.shaded(3, y0 + 1, 1, 4, Sk)
+    } else if (frame === 3) {
+      // Filming: one arm up with a phone, the screen lit.
+      a.shaded(3, y0 - 2, 1, 7, Sk)
+      a.rect(2, y0 - 5, 3, 4, P.ink)
+      a.px(3, y0 - 4, P.cyan)
+      a.px(3, y0 - 3, P.cyan)
+      a.shaded(-4, y0 + 5, 1, 5, Sk)
     } else {
       a.shaded(-4, y0 + 5, 1, 5, Sk)
       a.shaded(3, y0 + 5, 1, 5, Sk)
@@ -839,7 +881,14 @@ export function stampSprite() {
 }
 
 /* ---------- background (320 × 180, drawn once) ---------- */
-export function backgroundSprite(C, W, H) {
+export function backgroundSprite(C, W, H, daylight = 0) {
+  // 0 noon, 1 afternoon, 2 evening: the sky warms up and the lawn goes golden.
+  const SKY = [
+    [P.blue, P.cyan, P.grey1, P.white],
+    [P.blueD, P.blue, P.cyan, P.cream],
+    [P.blueD, P.blue, P.pink, P.amber],
+  ][daylight]
+  const skyLo = [0.15, 0.1, 0.05][daylight]
   const finishX = (y) => C.FINISH_X + (y - C.TRACK_TOP) * C.SLANT
   const matX0 = (y) => C.MAT_X + (y - C.TRACK_TOP) * C.SLANT
   const p = new Pix(W, H)
@@ -847,7 +896,7 @@ export function backgroundSprite(C, W, H) {
   // Sky: three bands dithered into each other, light at the horizon.
   for (let y = 0; y < 64; y++) {
     const k = y / 64
-    for (let x = 0; x < W; x++) p.px(x, y, shade([P.blue, P.cyan, P.grey1, P.white], 0.15 + k * 0.6, x, y))
+    for (let x = 0; x < W; x++) p.px(x, y, shade(SKY, skyLo + k * 0.6, x, y))
   }
   // Clouds: flat-bottomed, lit on top.
   for (const [x, y, w] of [[26, 20, 26], [186, 14, 30], [280, 26, 22], [100, 30, 18]]) {
@@ -945,8 +994,10 @@ export function backgroundSprite(C, W, H) {
     }
     p.px(x + 1, y + 1, c === P.white ? P.white : darker(c, 0))
   }
-  // Lawn behind the barriers: two greens with a soft dither, a few tufts.
-  p.dither(0, 64, W, 36, R.grass[2], R.grass[3], 0.35)
+  // Lawn behind the barriers: two greens with a soft dither, a few tufts (golden by evening).
+  p.dither(0, 64, W, 36, R.grass[2], daylight === 2 ? R.vest[0] : R.grass[3], daylight ? 0.2 : 0.35)
+  // Long shadows of the posts and trees in the evening.
+  if (daylight === 2) for (const x of [46, 120, 252]) p.dither(x + 6, 64, 22, 3, R.grass[2], R.grass[1], 0.6)
   for (let i = 0; i < 90; i++) {
     const x = (i * 71) % W
     const y = 66 + ((i * 37) % 32)
@@ -1027,6 +1078,345 @@ export function drawMatInto(px, matX, ext, C) {
 }
 
 /* ---------- build everything ---------- */
+export function volunteerSitSprite() {
+  const Sk = R.skinTan
+  const lg = legend({ V: [R.vest, 2], v: [R.vest, 1], Y: [R.vest, 0], s: [Sk, 2], S: [Sk, 3], z: [Sk, 1], E: [P.ink], r: [P.red], R: [P.redD], G: [P.grey1], T: [R.navy, 2], t: [R.navy, 1], M: [P.redD] })
+  return sprite(16, 16, 8, 14, (a) => {
+    a.map(
+      [
+        '..rrrR..',
+        '.rrrrRR.',
+        '..sSEz..',
+        '..sMMz..', // puffing
+        '..zssz..',
+        '.VVvvY..',
+        '.VGGGY..',
+        '.VvvvY..',
+        'TTvvvYTt', // legs out in front
+        'TTTTtTTt',
+      ],
+      lg,
+      -4,
+      -13
+    )
+    a.rect(-5, -4, 1, 3, Sk[2]) // hands on the ground
+    a.rect(4, -4, 1, 3, Sk[2])
+    a.rect(-4, -1, 3, 1, P.slateD)
+    a.rect(5, -1, 3, 1, P.slateD)
+  })
+}
+export function flagSprite(frame) {
+  // Chequered flag on a stick, two frames of waving.
+  return sprite(14, 14, 0, 12, (a) => {
+    a.rect(0, -12, 1, 12, R.wood[2])
+    const w = frame ? 9 : 7
+    for (let y = 0; y < 6; y++)
+      for (let x = 0; x < w; x++) {
+        const yy = -12 + y + (frame ? Math.floor(x / 3) % 2 : 0)
+        a.px(1 + x, yy, (Math.floor(x / 2) + Math.floor(y / 2)) % 2 ? P.white : P.ink)
+      }
+  })
+}
+
+/* ---------- debris: drawn, not squares ---------- */
+export function debrisSprite(kind, ramp = R.red) {
+  return sprite(6, 6, 3, 3, (a) => {
+    if (kind === 'wheel') {
+      a.rect(-1, -2, 2, 1, P.grey1)
+      a.rect(-2, -1, 4, 2, P.grey2)
+      a.rect(-1, 1, 2, 1, P.grey3)
+      a.px(-1, -1, P.white)
+      a.px(0, 0, P.slate)
+    } else if (kind === 'helmet') {
+      a.rect(-2, -2, 4, 1, ramp[3])
+      a.rect(-3, -1, 6, 2, ramp[2])
+      a.rect(-3, 1, 6, 1, ramp[1])
+    } else if (kind === 'glove') {
+      a.rect(-1, -2, 2, 3, P.white)
+      a.px(-2, -1, P.white)
+      a.px(1, 1, P.grey1)
+    } else if (kind === 'poireau') {
+      a.rect(-3, 0, 4, 1, P.white)
+      a.rect(0, -1, 3, 1, P.green)
+      a.px(2, -2, P.greenM)
+    } else if (kind === 'bouteille') {
+      a.rect(-2, -1, 4, 2, P.cyan)
+      a.px(2, 0, P.blue)
+      a.px(-2, -1, P.white)
+    } else if (kind === 'pizza') {
+      a.rect(-2, -2, 4, 4, P.amber)
+      a.px(-1, -1, P.red)
+      a.px(1, 0, P.red)
+      a.px(-2, -2, P.yellow)
+    } else if (kind === 'confetti') {
+      a.rect(-1, -1, 2, 2, ramp[2])
+    }
+  }, { outline: false })
+}
+/** Impact burst on the foam. */
+export function burstSprite() {
+  return sprite(14, 14, 7, 7, (a) => {
+    for (const [x, y] of [[0, -6], [0, 6], [-6, 0], [6, 0], [-4, -4], [4, -4], [-4, 4], [4, 4]]) a.line(0, 0, x, y, P.yellow)
+    a.rect(-1, -1, 3, 3, P.white)
+  }, { outline: false })
+}
+
+/* ---------- the guests: one appearance per run ---------- */
+export function dinoSprite(frame) {
+  // An inflatable T-Rex costume with a race bib: huge head, tiny arms, a human's legs below.
+  const lg = legend({ G: [R.green, 3], g: [R.green, 2], d: [R.green, 1], Y: [P.yellow], W: [P.white], E: [P.ink], s: [R.skinPale, 2], T: [R.navy, 2], t: [R.navy, 1], k: [P.slateD], B: [P.white], r: [P.red] })
+  return sprite(28, 30, 12, 28, (a) => {
+    a.map(
+      [
+        '......GGGGGGg.....',
+        '.....GGGgggggg....',
+        '....GGGgWEggggg...',
+        '....GGggggggggg...',
+        '.....GgggWWWWWg...',
+        '......ggggggd.....',
+        '.......gggd.......',
+        '....GGGgggdd......',
+        '..GGGGggggdd.g....',
+        'GGGGGgggggdd.d....',
+        'GGGggggBBgdd......',
+        '.GGggggBBgdd......',
+        '..ggggggggd.......',
+        '...dgggggdd.......',
+        '....ddddd.........',
+      ],
+      lg,
+      -11,
+      -28
+    )
+    // Tiny arms and a human's legs in jeans.
+    a.rect(2, -17, 2, 1, R.green[2])
+    a.px(4, -18, R.green[2])
+    const L = frame ? [[-3, -13, 2, 12], [1, -13, 2, 12]] : [[-4, -13, 2, 12], [2, -13, 2, 12]]
+    for (const [x, y, w, h] of L) a.shaded(x, y, w, h, R.navy)
+    const B = frame ? [[-4, -1, 3], [1, -1, 3]] : [[-5, -1, 3], [2, -1, 3]]
+    for (const [x, y, w] of B) a.rect(x, y, w, 1, P.slateD)
+    a.text3('9', -2, -13, P.ink)
+  })
+}
+export function cochonSprite(frame) {
+  const lg = legend({ p: [R.pink, 2], P: [R.pink, 3], d: [R.pink, 1], E: [P.ink], n: [P.magenta] })
+  return sprite(16, 12, 8, 10, (a) => {
+    a.map(['..PPPPp.PP.', '.PPpppppppP', 'PpppppppppE', 'ppppppppnnn', '.dpppppddn.', '..dpppd....'], lg, -6, -9)
+    const L = frame ? ['.p..p..p.p.', '.d..d..d.d.'] : ['..p.p.p..p.', '..d.d.d..d.']
+    a.map(L, { p: R.pink[2], d: R.pink[1] }, -5, -3)
+    a.px(-7, -8, R.pink[1]) // curly tail
+    a.px(-8, -9, R.pink[2])
+  })
+}
+export function veloSprite(frame, lifting = false) {
+  const lg = legend({ s: [R.skinTan, 2], S: [R.skinTan, 3], z: [R.skinTan, 1], E: [P.ink], J: [R.yellow, 3], j: [R.yellow, 2], i: [R.yellow, 1], T: [R.black, 2], t: [R.black, 1], h: [P.white], H: [P.grey1] })
+  return sprite(28, 26, 12, 24, (a) => {
+    if (lifting) {
+      // Off the bike, holding the mat up over his head (the game draws the mat).
+      a.map(['.hhhH.', 'hhhhHH', '.sSEz.', '.sSSz.', '.zssz.', 'JJjji.', 'Jjjji.', 'jjjii.', 'ijjii.', '.TTt..', '.TTt..', '.TTt..', '.TTt..', '.TTt..'], lg, -3, -18)
+      a.shaded(-4, -22, 1, 8, R.skinTan)
+      a.shaded(3, -22, 1, 8, R.skinTan)
+      a.rect(-4, -1, 3, 1, P.slateD)
+      a.rect(1, -1, 3, 1, P.slateD)
+      // The bike lying on the ground behind.
+      a.disc(-8, -2, 2, 2, P.slateD)
+      a.rect(-7, -3, 1, 1, P.grey2)
+      return
+    }
+    // Wheels, frame, rider leaning on the bars, pedals turning.
+    for (const wx of [-8, 8]) {
+      a.disc(wx, -3, 3.4, 3.4, P.slateD)
+      a.disc(wx, -3, 2, 2, P.grey3)
+      a.px(wx, -3, P.grey1)
+      a.px(wx - 1, -4, P.grey2)
+    }
+    a.line(-8, -3, -2, -10, P.red)
+    a.line(-2, -10, 6, -10, P.red)
+    a.line(6, -10, 8, -3, P.red)
+    a.line(-2, -10, 0, -4, P.red)
+    a.line(0, -4, 8, -3, P.redD)
+    a.rect(7, -12, 3, 1, P.slateD) // bars
+    a.rect(-4, -11, 3, 1, P.slateD) // saddle
+    a.px(0, -4, P.ink)
+    a.px(frame ? -1 : 1, frame ? -3 : -5, P.grey2) // pedal
+    // The rider: yellow jersey, cap backwards.
+    a.map(['.hhhH.', 'hhhhHH', '.sSEz.', '.zssz.', 'JJjji.', 'Jjjjii', 'jjjii.', 'ijjii.'], lg, 0, -21)
+    a.shaded(3, -18, 1, 6, R.skinTan)
+    a.px(4, -13, R.skinTan[2])
+    a.shaded(-3, -13, 2, 3, R.black)
+    a.shaded(-2, -10, 1, 5, R.skinTan)
+    a.shaded(0, -10, 1, 5, R.skinTan)
+  })
+}
+export function caddieSprite(frame) {
+  const lg = legend({ s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], G: [R.hairGrey, 3], g: [R.hairGrey, 2], E: [P.ink], M: [P.redD], T: [R.blue, 2], t: [R.blue, 1], w: [P.grey1], W: [P.white], d: [P.grey3], k: [R.hairBrown, 2], K: [R.hairBrown, 1], r: [P.red], R: [P.redD] })
+  return sprite(30, 26, 14, 24, (a) => {
+    // The trolley: wire basket (grey), grandpa sitting in it, arms up; the kid pushing behind.
+    a.map(
+      [
+        '......GGGg......',
+        '.....GsSEzg.....',
+        '......sMMz......',
+        '......zssz......',
+        'wwwwwwwTTtwwwwww',
+        'wdwdwdwTTtwdwdww',
+        'wdwdwdTTTttdwdww',
+        'wdwdwdwdwdwdwdww',
+        'wwwwwwwwwwwwwwww',
+        '.d............d.',
+      ],
+      lg,
+      -10,
+      -17
+    )
+    a.rect(-11, -12, 1, 6, P.grey2)
+    a.rect(6, -16, 1, 10, P.grey2) // handle
+    a.rect(6, -17, 4, 1, P.grey2)
+    a.shaded(-8, -14, 1, 4, R.skinPale) // grandpa's arms up
+    a.shaded(-2, -14, 1, 4, R.skinPale)
+    for (const wx of [-9, 4]) {
+      a.rect(wx - 1, -5, 3, 3, P.slateD)
+      a.px(wx, -4, P.grey2)
+    }
+    // The kid.
+    a.map(['.kkK.', 'ksSEz', '.zssz', '.rrR.', '.rrR.', '.rrR.'], lg, 8, -21)
+    a.rect(8, -17, 1, 1, R.skinPale[2])
+    a.rect(7, -16, 1, 1, R.skinPale[2])
+    const L = frame ? [[8, -15, 1, 13], [10, -15, 1, 13]] : [[9, -15, 1, 13], [11, -14, 1, 12]]
+    for (const [x, y, w, h] of L) a.shaded(x, y, w, h, R.navy)
+    a.rect(frame ? 7 : 8, -1, 3, 1, P.slateD)
+    a.rect(frame ? 10 : 11, -1, 3, 1, P.slateD)
+    // Groceries sticking out.
+    a.rect(-6, -19, 1, 3, P.white) // leek
+    a.rect(-6, -21, 1, 2, P.green)
+    a.rect(1, -19, 2, 3, P.cyan) // bottle
+  })
+}
+export function marieeSprite(frame) {
+  const lg = legend({ s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], W: [R.white, 3], w: [R.white, 2], u: [R.white, 1], G: [R.hairBlond, 2], g: [R.hairBlond, 1], M: [P.red], k: [P.slate], K: [P.grey1], v: [P.grey1] })
+  return sprite(28, 26, 14, 24, (a) => {
+    a.map(
+      [
+        '.....wwww.....',
+        '....wGGGgw....',
+        '....GsSEzg....',
+        '....GsMSz.....',
+        '.....zssz.....',
+        '.....WWwu.....',
+        '....WWWwuu....',
+        '....WWWwuu....',
+        '...WWWWwwuu...',
+        '..WWWWWwwuuu..',
+        '.WWWWWwwwuuuu.',
+        'WWWWWWwwwuuuuu',
+        'WWWWWwwwwuuuuu',
+        'WWWWwwwwwuuuuu',
+        'WWwwwwwwwuuuuu',
+        'uuuuuuuuuuuuuu',
+      ],
+      lg,
+      -7,
+      -22
+    )
+    // Veil trailing, bouquet, skates under the dress.
+    a.rect(-9, -20, 2, 6, R.white[3])
+    a.rect(-10, -16, 1, 5, R.white[2])
+    a.rect(4, -14, 2, 2, P.pink)
+    a.px(5, -15, P.red)
+    const skates = frame ? [[-4, -2, 3], [2, -2, 3]] : [[-5, -2, 3], [1, -2, 3]]
+    for (const [x, y, w] of skates) {
+      a.rect(x, y, w, 1, P.slate)
+      a.px(x, y + 1, P.grey1)
+      a.px(x + 2, y + 1, P.grey1)
+    }
+  })
+}
+export function livreurSprite(frame) {
+  const lg = legend({ s: [R.skinDark, 2], S: [R.skinDark, 3], z: [R.skinDark, 1], E: [P.ink], J: [R.teal, 3], j: [R.teal, 2], i: [R.teal, 1], T: [R.black, 2], t: [R.black, 1], h: [P.green], H: [P.greenM] })
+  return sprite(34, 26, 14, 24, (a) => {
+    for (const wx of [-10, 10]) {
+      a.disc(wx, -3, 3.4, 3.4, P.slateD)
+      a.disc(wx, -3, 2, 2, P.grey3)
+      a.px(wx, -3, P.grey1)
+    }
+    // Cargo box up front (left), rider at the back.
+    a.box(-14, -14, 10, 7, 2, R.green)
+    a.text3('!', -10, -14, P.white)
+    a.line(-4, -7, 10, -3, P.red)
+    a.line(2, -10, 10, -3, P.red)
+    a.rect(1, -11, 3, 1, P.slateD)
+    a.map(['.hhhH.', 'hhhhHH', '.sSEz.', '.zssz.', 'JJjji.', 'Jjjjii', 'jjjii.', 'ijjii.'], lg, 2, -21)
+    a.shaded(1, -17, 1, 5, R.skinDark)
+    a.shaded(1, -13, 2, 3, R.black)
+    a.shaded(2, -10, 1, 5, R.skinDark)
+    a.px(frame ? 1 : 3, -4, P.grey2)
+    // Insulated bag on the back.
+    a.box(7, -17, 5, 6, 1, R.red)
+  })
+}
+export function coureurSprite(frame) {
+  const lg = legend({ s: [R.skinTan, 2], S: [R.skinTan, 3], z: [R.skinTan, 1], E: [P.ink], J: [R.orange, 3], j: [R.orange, 2], i: [R.orange, 1], D: [R.black, 3], d: [R.black, 2], B: [P.white], G: [R.hairBlack, 2], g: [R.hairBlack, 1], M: [P.redD] })
+  return sprite(16, 24, 8, 22, (a) => {
+    a.map(['.GGGg.', 'GsSEzg', '.sMMz.', '.zssz.', 'JJjji.', 'JjBBi.', 'jjBEi.', 'jjjii.', 'ijjii.', 'DDddd.'], lg, -3, -20)
+    // Running: long stride, arms pumping; frame 2 is the airborne stride.
+    if (frame === 0) {
+      a.shaded(-2, -10, 1, 4, R.skinTan)
+      a.shaded(-3, -6, 1, 3, R.skinTan)
+      a.shaded(1, -10, 1, 3, R.skinTan)
+      a.shaded(2, -7, 1, 4, R.skinTan)
+      a.rect(-5, -3, 3, 1, P.slateD)
+      a.rect(2, -3, 3, 1, P.slateD)
+      a.shaded(-4, -14, 1, 3, R.skinTan)
+      a.shaded(3, -13, 2, 1, R.skinTan)
+    } else if (frame === 1) {
+      a.shaded(-3, -10, 1, 3, R.skinTan)
+      a.shaded(-5, -8, 2, 1, R.skinTan)
+      a.shaded(2, -10, 1, 3, R.skinTan)
+      a.shaded(3, -8, 2, 1, R.skinTan)
+      a.rect(-7, -8, 2, 1, P.slateD)
+      a.rect(5, -8, 2, 1, P.slateD)
+      a.shaded(-4, -15, 1, 2, R.skinTan)
+      a.shaded(3, -12, 1, 2, R.skinTan)
+    } else {
+      // Jumping the mat on his own: legs tucked, arms up.
+      a.shaded(-2, -10, 2, 2, R.skinTan)
+      a.shaded(1, -10, 2, 2, R.skinTan)
+      a.rect(-3, -8, 3, 1, P.slateD)
+      a.rect(1, -8, 3, 1, P.slateD)
+      a.shaded(-4, -19, 1, 6, R.skinTan)
+      a.shaded(3, -19, 1, 6, R.skinTan)
+    }
+  })
+}
+export function maireTrottSprite(frame) {
+  const lg = legend({ U: [R.navy, 2], u: [R.navy, 1], V: [R.navy, 3], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], G: [R.hairGrey, 2], g: [R.hairGrey, 1], E: [P.ink], W: [P.white], b: [P.blue], w: [P.white], r: [P.red], M: [P.redD] })
+  return sprite(22, 28, 10, 26, (a) => {
+    // E-scooter: deck, stem, two small wheels; the mayor upright, scarf flying.
+    a.rect(-7, -3, 14, 1, P.slate)
+    a.rect(-7, -4, 14, 1, P.grey3)
+    a.rect(6, -20, 1, 17, P.grey2)
+    a.rect(4, -20, 5, 1, P.slateD)
+    for (const wx of [-7, 7]) {
+      a.disc(wx, -2, 2, 2, P.slateD)
+      a.px(wx, -2, P.grey2)
+    }
+    a.map(['.GGGg.', 'GsSSzg', '.sSEz.', '.sSSz.', '.zMMz.', 'VUUUu.', 'VUWUu.', 'UUWUu.', 'UUUUu.', 'uUUUu.', 'uuuuu.', '.UUu..', '.UUu..', '.UUu..', '.UUu..', '.UUu..', '.UUu..'], lg, -3, -24)
+    const sash = [[1, -19, 'b'], [1, -18, 'w'], [0, -18, 'b'], [0, -17, 'w'], [-1, -17, 'r'], [-1, -16, 'w'], [-2, -16, 'r'], [-2, -15, 'r']]
+    for (const [x, y, k] of sash) a.px(x, y, lg[k])
+    a.rect(-3, -5, 3, 1, P.slateD)
+    a.rect(1, -5, 3, 1, P.slateD)
+    // Arm to the bars; the other holds a hat (frame) or waves.
+    a.shaded(2, -18, 1, 2, R.navy)
+    a.rect(3, -17, 3, 1, R.skinPale[2])
+    a.shaded(-4, -18, 1, 4, R.navy)
+    a.px(-4, -14, R.skinPale[2])
+    if (frame) {
+      a.rect(-6, -16, 3, 1, R.hairGrey[2]) // scarf end flying back
+      a.rect(-8, -17, 2, 1, R.hairGrey[2])
+    } else a.rect(-7, -15, 3, 1, R.hairGrey[2])
+  })
+}
+
 export function buildSprites(C) {
   const S = {}
   S.maire = [maireSprite(0, false), maireSprite(1, false)]
@@ -1060,5 +1450,20 @@ export function buildSprites(C) {
   S.heli = [heliSprite(0), heliSprite(1)]
   S.mamie = [mamieSprite(0), mamieSprite(1)]
   S.hud = panelSprite(320, 13, R.navy, { inset: true })
+  S.volunteerSit = volunteerSitSprite()
+  S.flag = [flagSprite(0), flagSprite(1)]
+  S.burst = burstSprite()
+  S.debris = {}
+  for (const k of ['wheel', 'glove', 'poireau', 'bouteille', 'pizza']) S.debris[k] = debrisSprite(k)
+  S.debris.helmet = Object.fromEntries(HELMET_RAMPS.map((h) => [h, debrisSprite('helmet', R[h])]))
+  S.debris.confetti = Object.fromEntries(['red', 'yellow', 'blue', 'green', 'pink'].map((h) => [h, debrisSprite('confetti', R[h])]))
+  S.dino = [dinoSprite(0), dinoSprite(1)]
+  S.cochon = [cochonSprite(0), cochonSprite(1)]
+  S.velo = [veloSprite(0), veloSprite(1), veloSprite(0, true)]
+  S.caddie = [caddieSprite(0), caddieSprite(1)]
+  S.mariee = [marieeSprite(0), marieeSprite(1)]
+  S.livreur = [livreurSprite(0), livreurSprite(1)]
+  S.coureur = [coureurSprite(0), coureurSprite(1), coureurSprite(2)]
+  S.maireTrott = [maireTrottSprite(0), maireTrottSprite(1)]
   return S
 }

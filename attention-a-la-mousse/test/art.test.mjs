@@ -16,11 +16,12 @@ const S = Sp.buildSprites(C)
 const allSprites = []
 // sprites.js imports pixel.js with a cache-busting query, so `instanceof Pix` cannot be used here.
 const isPix = (v) => v && Array.isArray(v.data) && typeof v.w === 'number'
-for (const [name, v] of Object.entries(S)) {
+const collect = (name, v) => {
   if (isPix(v)) allSprites.push([name, v])
-  else if (Array.isArray(v)) v.forEach((p, i) => allSprites.push([name + '[' + i + ']', p]))
-  else for (const [k, p] of Object.entries(v)) allSprites.push([name + '.' + k, p])
+  else if (Array.isArray(v)) v.forEach((p, i) => collect(name + '[' + i + ']', p))
+  else for (const [k, p] of Object.entries(v)) collect(name + '.' + k, p)
 }
+collect('S', S)
 const looks = [
   { H: 'red', J: 'blue', D: 'black', S: 'skinPale', bib: true },
   { H: 'white', J: 'navy', D: 'teal', S: 'skinDark', bib: false },
@@ -60,7 +61,7 @@ test('sprites are not empty and carry an outline (ink on their bottom-right edge
     assert.ok(b, name + ' is empty')
     let ink = 0
     for (const c of p.data) if (c === PAL.ink) ink++
-    if (!/barrier|table|boards|panel/.test(name)) assert.ok(ink > 0, name + ' has no ink outline')
+    if (!/barrier|table|boards|panel|burst|debris/.test(name)) assert.ok(ink > 0, name + ' has no ink outline')
   }
 })
 

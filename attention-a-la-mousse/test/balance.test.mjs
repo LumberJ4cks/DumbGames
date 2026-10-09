@@ -46,7 +46,7 @@ test('same seed, same bot, same result before and after the art pass', { skip: !
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
     await page.addInitScript(() => { try { localStorage.clear() } catch {} })
-    await page.goto(BASE + path + '?debug=1&seed=6&manual=1')
+    await page.goto(BASE + path + '?debug=1&seed=6&manual=1&guests=0')
     await page.waitForTimeout(300)
     const r = await page.evaluate(BOT)
     await page.close()
