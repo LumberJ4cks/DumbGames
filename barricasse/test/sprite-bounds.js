@@ -69,7 +69,7 @@ function measure(c) {
 function bounds() {
   const SP = loadSprites()
   const out = {}
-  for (const [id, fn] of Object.entries(SP.DRAW)) if (!id.includes('_')) out[id] = measure(SP.art(24, 24, fn))
+  for (const id of Object.keys(SP.ITEMS)) out[id] = measure(SP.makeItem(id))
   return out
 }
 

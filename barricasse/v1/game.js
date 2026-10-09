@@ -53,21 +53,9 @@
   const S = SP.build()
   const streetArt = SP.street(seeded(7))
   const audio = window.BarricasseAudio.createAudio()
-  const K = SP.C
-  // Arcade ball: a shaded orange sphere with an ivory glint, ringed in ink.
-  const ballArt = SP.art(11, 11, (p) => {
-    p.ell(5.5, 5.5, 5, 5, [K.rust, K.orange, K.amber, K.yellow, K.white])
-    p.px(3, 3, K.white)
-  })
-  const trailArt = SP.art(5, 5, (p) => p.disc(2.5, 2.5, 2.2, 2.2, K.amber), false)
-  const shadowArt = SP.art(32, 12, (p) => p.disc(16, 6, 15.5, 5.5, K.ink), false)
-  const glowArt = SP.art(40, 24, (p) => {
-    p.disc(20, 12, 19.5, 11.5, K.amber)
-    p.disc(20, 12, 13, 7.5, K.yellow)
-  }, false)
-  const iconCache = {}
-  const iconOf = (item) => iconCache[item] || (iconCache[item] = SP.icon(S.items[item], 28))
-  const UI = { bar: K.slateD, barLine: K.slate, ink: K.ink, text: K.white, dim: K.grey2, accent: K.amber, good: K.green, bad: K.red, panel: K.slateD }
+  const ballArt = SP.art(13, 13, (P) => (P.e(6, 6, 5, 5, '#1d1726'), P.e(6, 6, 4, 4, '#ff8a2a'), P.e(5, 5, 2, 2, '#fff4d6')), null)
+  const trailArt = SP.art(7, 7, (P) => P.e(3, 3, 2, 2, '#ffb25a'), null)
+  const shadowArt = SP.art(32, 12, (P) => P.e(16, 6, 15, 5, 'rgba(16,14,26,0.35)'), null)
 
   /* Signs carried in the crowd (decorative). Index → sign. */
   const SIGN_OF = { 1: 'non', 4: 'frigo', 6: 'truc', 9: 'canape', 12: 'groupe', 14: 'passer', 17: 'bof', 20: 'coeur', 22: 'non' }
@@ -198,13 +186,13 @@
       b.push({ x: 614, y: 1, w: 24, h: 22, icon: 'sound', act: toggleMute })
     }
     if (app.mode === 'MENU') {
-      b.push({ x: 190, y: 250, w: 260, h: 32, label: 'TENIR 90 SECONDES', big: true, act: () => startGame() })
-      b.push({ x: 190, y: 288, w: 126, h: 18, label: app.muted ? 'SON : NON' : 'SON : OUI', act: toggleMute })
-      b.push({ x: 324, y: 288, w: 126, h: 18, label: app.reduced ? 'ANIM. : -' : 'ANIM. : +', act: toggleReduced })
+      b.push({ x: 210, y: 240, w: 220, h: 36, label: 'TENIR 90 SECONDES', big: true, act: () => startGame() })
+      b.push({ x: 210, y: 284, w: 106, h: 22, label: app.muted ? 'SON : NON' : 'SON : OUI', act: toggleMute })
+      b.push({ x: 324, y: 284, w: 106, h: 22, label: app.reduced ? 'MOUVEMENT : -' : 'MOUVEMENT : +', act: toggleReduced })
     }
     if (app.mode === 'PAUSED') {
       b.push({ x: 220, y: 156, w: 200, h: 34, label: 'REPRENDRE', big: true, act: () => setPaused(false) })
-      b.push({ x: 220, y: 198, w: 200, h: 24, label: app.reduced ? 'ANIMATIONS RÉDUITES' : 'ANIMATIONS NORMALES', act: toggleReduced })
+      b.push({ x: 220, y: 198, w: 200, h: 24, label: app.reduced ? 'MOUVEMENTS RÉDUITS : OUI' : 'MOUVEMENTS RÉDUITS : NON', act: toggleReduced })
       b.push({
         x: 220,
         y: 230,
@@ -218,8 +206,8 @@
       })
     }
     if (app.mode === 'RESULTS' && app.real - app.resultsAt > 0.5) {
-      b.push({ x: 130, y: 262, w: 182, h: 30, label: 'REJOUER (R)', big: true, act: () => startGame() })
-      b.push({ x: 328, y: 262, w: 182, h: 30, label: 'MÊME PARTIE', big: true, act: () => startGame(app.result.seed) })
+      b.push({ x: 140, y: 312, w: 172, h: 36, label: 'REJOUER (R)', big: true, act: () => startGame() })
+      b.push({ x: 328, y: 312, w: 172, h: 36, label: 'MÊME PARTIE', big: true, act: () => startGame(app.result.seed) })
     }
     return b
   }
@@ -294,7 +282,7 @@
     if (r.reason === 'reload' && s.t - fx.chargeMsgAt > 0.45) {
       // One small message, not one per click.
       fx.chargeMsgAt = s.t
-      popup('ÇA CHARGE', s.stock.x, s.stock.side === 'main' ? C.STREET_B - 12 : C.STREET_T + 18, K.yellow, 0.6, 1)
+      popup('ÇA CHARGE', s.stock.x, s.stock.side === 'main' ? C.STREET_B - 12 : C.STREET_T + 18, '#ffd23f', 0.6, 1)
       audio.play('refuse')
     }
   }
@@ -302,17 +290,16 @@
   /* ---------- art placement helpers: sprite drawn so its opaque bounds fill the box ---------- */
   function artOrigin(item, box) {
     const b = Sim.BOUNDS[item]
-    return { x: box.x - b[0], y: box.y - b[1], k: 1 }
+    const k = Sim.ITEMS[item].scale
+    return { x: box.x - b[0] * k, y: box.y - b[1] * k, k }
   }
-  /** A named point of the drawing (sprites.js ANCHORS), in screen pixels. Drawing coordinates sit 1 px in (outline border). */
-  function anchor(item, name, box) {
+  function artPoint(item, box, ax, ay) {
     const o = artOrigin(item, box)
-    const [ax, ay] = S.anchors[item][name]
-    return { x: o.x + ax + 1, y: o.y + ay + 1 }
+    return { x: o.x + ax * o.k, y: o.y + ay * o.k, k: o.k }
   }
   function drawArt(sprite, item, box, dx = 0, dy = 0) {
     const o = artOrigin(item, box)
-    ctx.drawImage(sprite, Math.round(o.x + dx), Math.round(o.y + dy))
+    ctx.drawImage(sprite, Math.round(o.x + dx), Math.round(o.y + dy), 24 * o.k, 24 * o.k)
   }
   function spriteFor(item, state) {
     const fr = S.frames[item] || {}
@@ -335,13 +322,13 @@
           fx.visual[e.obj.id] = { landAt: t, hitAt: -9 }
           const q = e.obj.box
           dust(q.cx, q.y + q.h, q.w)
-          if (e.near || Math.random() < 0.06) popup('LIVRÉ', q.cx, q.y - 12, K.green, 0.8, 1)
+          if (e.near || Math.random() < 0.06) popup('LIVRÉ', q.cx, q.y - 12, '#9cf27a', 0.8, 1)
           landingGag(e.obj, t)
           break
         }
         case 'toolate':
           audio.play('toolate')
-          popup('TROP TARD', e.x, e.y - 20, K.red, 0.9, 1)
+          popup('TROP TARD', e.x, e.y - 20, '#ff6a5a', 0.9, 1)
           debris(e.item, e.x, e.y, 8)
           break
         case 'hit': {
@@ -364,7 +351,7 @@
           audio.play('kicked')
           const sp = Math.hypot(e.vx, e.vy) || 1
           particle({ x: e.obj.box.cx, y: e.obj.box.cy, vx: (e.vx / sp) * 160, vy: (e.vy / sp) * 160 + rnd(-30, 30), z: 6, vz: 120, sprite: S.items.ballon, scale: 1, life: 1.2, vr: -14, drag: 0.6, bounce: true })
-          popup('INUTILE', e.obj.box.cx, e.obj.box.y - 10, K.pink, 0.9, 1)
+          popup('INUTILE', e.obj.box.cx, e.obj.box.y - 10, '#ff9a7a', 0.9, 1)
           delete fx.visual[e.obj.id]
           break
         }
@@ -378,16 +365,16 @@
           for (let k = 0; k < (app.reduced ? 8 : 16); k++) {
             const a = rnd(0, Math.PI * 2)
             const v = rnd(20, 60)
-            particle({ x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6, z: rnd(0, 6), vz: rnd(10, 50), color: pick([look.shirt, look.skin, K.white, K.grey1]), size: 2, life: rnd(0.4, 0.8), drag: 2 })
+            particle({ x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6, z: rnd(0, 6), vz: rnd(10, 50), color: pick([look.shirt, look.skin, '#f4f1e8', '#d8d8e0']), size: 2, life: rnd(0.4, 0.8), drag: 2 })
           }
-          for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-6, 6), y: e.y + rnd(-6, 4), vx: rnd(-8, 8), vy: rnd(-14, -4), sprite: S.props.fumee, g: 0, scale: 1, life: 0.6 })
+          for (let k = 0; k < 4; k++) particle({ x: e.x + rnd(-6, 6), y: e.y + rnd(-6, 4), vx: rnd(-8, 8), vy: rnd(-14, -4), sprite: S.props.fumee, g: 0, scale: 2, life: 0.6 })
           fx.flashes.push({ kind: 'danger', x: e.x, y: e.y, born: t, life: 0.5 })
           fx.lostBlink = t
           shake(2, 0.12)
           break
         }
         case 'passed':
-          particle({ x: C.CROWD_ABSORB_X, y: e.y, vx: 6, vy: 0, g: 0, sprite: S.props.fumee, scale: 1, life: 0.4 })
+          particle({ x: C.CROWD_ABSORB_X, y: e.y, vx: 6, vy: 0, g: 0, sprite: S.props.fumee, scale: 2, life: 0.4 })
           audio.play('top')
           break
         case 'evacuated':
@@ -400,7 +387,7 @@
           break
         case 'fire':
           audio.play('fire')
-          for (let k = 0; k < 3; k++) particle({ x: C.SPAWN_X + 4, y: e.ball.y + rnd(-3, 3), vx: rnd(-4, 6), vy: rnd(-12, 12), g: 0, sprite: S.props.fumee, scale: 1, life: 0.3 })
+          for (let k = 0; k < 3; k++) particle({ x: C.SPAWN_X + 4, y: e.ball.y + rnd(-3, 3), vx: rnd(-4, 6), vy: rnd(-12, 12), g: 0, sprite: S.props.fumee, scale: 2, life: 0.3 })
           break
         case 'event':
           eventFx(e, t)
@@ -419,7 +406,7 @@
       if (e.phase === 'done') {
         audio.setTruce(false)
         audio.play('whistle')
-        fx.transient = { text: 'BON, ON REPREND', sub: '', until: t + 1.6, color: K.amber }
+        fx.transient = { text: 'BON, ON REPREND', sub: '', until: t + 1.6, color: '#ffd23f' }
       }
     }
     if (e.id === 'fournisseur') {
@@ -427,8 +414,8 @@
         poof(C.STOCK_MAIN.x, C.STOCK_MAIN.y)
         poof(C.STOCK_ALT.x, C.STOCK_ALT.y)
       }
-      if (e.phase === 'warn') fx.transient = { text: 'RETOUR EN BAS', sub: 'DANS 1 S', until: t + 1.0, color: K.amber }
-      if (e.phase === 'done') fx.transient = { text: 'LE STOCK EST REVENU', sub: 'EN BAS', until: t + 1.2, color: K.green }
+      if (e.phase === 'warn') fx.transient = { text: 'RETOUR EN BAS', sub: 'DANS 1 S', until: t + 1.0, color: '#ffd23f' }
+      if (e.phase === 'done') fx.transient = { text: 'LE STOCK EST REVENU', sub: 'EN BAS', until: t + 1.2, color: '#9cf27a' }
     }
   }
 
@@ -441,7 +428,7 @@
     p.rot = p.rot ?? 0
     p.vr = p.vr ?? 0
     p.drag = p.drag ?? 0
-    p.scale = p.scale ?? 1
+    p.scale = p.scale ?? 2
     fx.particles.push(p)
   }
   function popup(text, x, y, color, life, scale = 1) {
@@ -456,14 +443,14 @@
     const n = app.reduced ? 3 : 6
     for (let k = 0; k < n; k++) {
       const dir = k % 2 ? 1 : -1
-      particle({ x: x + dir * rnd(width * 0.2, width * 0.5), y: y + rnd(-2, 1), vx: dir * rnd(20, 45), vy: rnd(-6, 6), vz: rnd(4, 14), g: 40, color: pick([K.grey1, K.grey2, K.cream]), size: 2, life: rnd(0.25, 0.45), drag: 4 })
+      particle({ x: x + dir * rnd(width * 0.2, width * 0.5), y: y + rnd(-2, 1), vx: dir * rnd(20, 45), vy: rnd(-6, 6), vz: rnd(4, 14), g: 40, color: pick(['#d8d0c0', '#bfb6a6', '#e8e0d0']), size: 2, life: rnd(0.25, 0.45), drag: 4 })
     }
   }
   function spark(x, y) {
-    for (let k = 0; k < 3; k++) particle({ x, y, vx: rnd(-30, 30), vy: rnd(-30, 30), g: 0, color: K.yellow, size: 1, life: 0.15 })
+    for (let k = 0; k < 3; k++) particle({ x, y, vx: rnd(-30, 30), vy: rnd(-30, 30), g: 0, color: '#ffe7b0', size: 1, life: 0.15 })
   }
   function poof(x, y) {
-    for (let k = 0; k < 8; k++) particle({ x: x + rnd(-16, 16), y: y + rnd(-14, 14), vx: rnd(-20, 20), vy: rnd(-20, 5), g: 0, sprite: S.props.fumee, scale: 2, life: rnd(0.3, 0.6) })
+    for (let k = 0; k < 8; k++) particle({ x: x + rnd(-16, 16), y: y + rnd(-14, 14), vx: rnd(-20, 20), vy: rnd(-20, 5), g: 0, sprite: S.props.fumee, scale: 3, life: rnd(0.3, 0.6) })
   }
   function debris(item, x, y, n) {
     const cols = S.palette[item] || ['#888']
@@ -474,7 +461,7 @@
     }
   }
   function prop(name, x, y, opts = {}) {
-    particle(Object.assign({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 10, vz: rnd(80, 140), sprite: S.props[name], scale: 1, life: 1.3, vr: rnd(-8, 8), drag: 1, bounce: true }, opts))
+    particle(Object.assign({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 10, vz: rnd(80, 140), sprite: S.props[name], scale: 2, life: 1.3, vr: rnd(-8, 8), drag: 1, bounce: true }, opts))
   }
   function remnant(frame, o, life, extra) {
     fx.remnants.push(Object.assign({ frame, item: o.item, box: o.box, born: app.sim.t, life }, extra || {}))
@@ -486,13 +473,15 @@
     const q = o.box
     if (o.item === 'planche') v.ironAt = t + 0.35
     if (o.item === 'poisson') for (let k = 0; k < 6; k++) prop('goutte', q.cx + rnd(-q.w / 3, q.w / 3), q.cy + 6, { life: 0.6, vz: rnd(40, 80), scale: 1 })
-    if (o.item === 'carton') for (let k = 0; k < 4; k++) particle({ x: q.cx + rnd(-10, 10), y: q.cy, vx: rnd(-30, 30), vy: rnd(-10, 10), z: 8, vz: rnd(30, 60), color: K.cyan, size: 1, life: 0.5 })
+    if (o.item === 'carton') for (let k = 0; k < 4; k++) particle({ x: q.cx + rnd(-10, 10), y: q.cy, vx: rnd(-30, 30), vy: rnd(-10, 10), z: 8, vz: rnd(30, 60), color: '#d8f0ff', size: 1, life: 0.5 })
   }
   /** The comic part of a destruction. */
   function breakGag(o, t) {
     const q = o.box
     const x = q.cx
     const y = q.cy
+    const k = Sim.ITEMS[o.item].scale
+    const ps = Math.max(1, k - 1)
     switch (o.item) {
       case 'chaise':
         remnant(S.frames.chaise.folded, o, 0.9)
@@ -501,7 +490,7 @@
         for (let n = 0; n < 3; n++) prop('planche_bois', x, y - 8 + n * 7, { vz: rnd(120, 180), vr: rnd(-12, 12), life: 1.4 })
         break
       case 'voiture':
-        prop('roue', x, y)
+        prop('roue', x, y, { scale: k })
         break
       case 'planche':
         prop('fer', x + 8, y - 10)
@@ -511,18 +500,18 @@
         prop('yaourt', x, y, { vz: 160 })
         break
       case 'canape':
-        prop('telecommande', x, y)
+        prop('telecommande', x, y, { scale: ps + 1 })
         for (const p of app.sim.people) if (SIGN_OF[p.index] === 'canape') fx.signDown[p.index] = t + 2.5
         break
       case 'reverbere':
-        for (let n = 0; n < 5; n++) particle({ x: x + 8, y: y - 12, vx: rnd(-40, 40), vy: rnd(-30, 10), z: 10, vz: rnd(30, 80), color: K.yellow, size: 1, life: 0.4 })
+        for (let n = 0; n < 5; n++) particle({ x: x + 8, y: y - 12, vx: rnd(-40, 40), vy: rnd(-30, 10), z: 10, vz: rnd(30, 80), color: '#fff2a8', size: 1, life: 0.4 })
         break
       case 'poisson':
         for (let n = 0; n < 4; n++) prop('goutte', x, y, { scale: 1, life: 0.6 })
         break
       case 'armoire':
         remnant(S.frames.armoire.open, o, 0.8)
-        for (let n = 0; n < 3; n++) prop('cintre', x + (n - 1) * 10, y - 6)
+        for (let n = 0; n < 3; n++) prop('cintre', x + (n - 1) * 10, y - 6, { scale: ps + 1 })
         break
       case 'baignoire':
         prop('canard', x + 8, y - 8, { vz: 170, life: 1.5 })
@@ -531,13 +520,16 @@
       case 'photocopieuse':
         prop('feuille_non', x, y - 6, { vz: 60, g: 50, vr: rnd(-2, 2), life: 1.6, drag: 1.5 })
         break
-      case 'nain':
-        remnant(S.props.bonnet, o, 1.2, { at: anchor('nain', 'hat', q), scale: 1 })
+      case 'nain': {
+        const pt = artPoint('nain', q, 7, 0)
+        remnant(S.props.bonnet, o, 1.2, { at: pt, scale: k })
         break
-      case 'caddie':
+      }
+      case 'caddie': {
         remnant(S.frames.caddie.nowheel, o, 0.3)
-        remnant(null, o, 1.6, { wheel: anchor('caddie', 'wheel', q) })
+        remnant(null, o, 1.6, { wheel: artPoint('caddie', q, 18.5, 20.5) })
         break
+      }
       case 'plante':
         for (let n = 0; n < 10; n++) prop('feuille', x, y - 6, { scale: 1, g: 90, life: 1.2, drag: 2 })
         break
@@ -563,10 +555,10 @@
         prop('saucisse', x, y)
         break
       case 'carton':
-        for (let n = 0; n < 6; n++) particle({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 8, vz: rnd(40, 90), color: K.cyan, size: 1, life: 0.6 })
+        for (let n = 0; n < 6; n++) particle({ x, y, vx: rnd(-50, 50), vy: rnd(-40, 20), z: 8, vz: rnd(40, 90), color: '#d8f0ff', size: 1, life: 0.6 })
         break
       case 'trophee':
-        for (let n = 0; n < 6; n++) particle({ x, y: y - 6, vx: rnd(-30, 30), vy: rnd(-30, 10), z: 10, vz: rnd(30, 60), color: K.yellow, size: 1, life: 0.6 })
+        for (let n = 0; n < 6; n++) particle({ x, y: y - 6, vx: rnd(-30, 30), vy: rnd(-30, 10), z: 10, vz: rnd(30, 60), color: '#fff0a0', size: 1, life: 0.6 })
         break
     }
   }
@@ -715,7 +707,7 @@
       drawArt(spriteFor(item, 'placed'), item, q)
       ctx.globalAlpha = 1
     }
-    corners(q.x - 2, q.y - 2, q.w + 4, q.h + 4, ready ? K.white : K.grey3)
+    corners(q.x - 2, q.y - 2, q.w + 4, q.h + 4, ready ? '#ffffff' : '#8a92a4')
   }
   /** Objects sorted by their foot so the overlaps read in depth. */
   function drawObjects(s) {
@@ -726,13 +718,11 @@
   function drawObject(o, t, v) {
     const q = o.box
     const item = o.item
-    // Cast shadow at the foot, light from the top left (opaque, part of the street).
-    rect(q.x + 3, q.y + q.h - 1, q.w - 2, 2, K.slateD)
-    rect(q.x + q.w, q.y + Math.round(q.h * 0.35), 2, Math.round(q.h * 0.65), K.slateD)
+    const k = Sim.ITEMS[item].scale
     if (item === 'reverbere') {
-      const lp = anchor(item, 'light', q)
-      ctx.globalAlpha = 0.14 + 0.03 * Math.sin(t * 9)
-      ctx.drawImage(glowArt, Math.round(lp.x - 20), Math.round(lp.y + 26))
+      const lp = artPoint(item, q, 14, 9)
+      ctx.globalAlpha = 0.16
+      rect(Math.round(lp.x), Math.round(lp.y), 8 * k, 12 * k, '#fff2a8')
       ctx.globalAlpha = 1
     }
     const sp = spriteFor(item, 'placed')
@@ -748,28 +738,29 @@
       ctx.save()
       ctx.translate(q.cx, q.y + q.h)
       ctx.scale(sx, sy)
-      ctx.drawImage(sp, o0.x - q.cx, o0.y - (q.y + q.h))
+      ctx.drawImage(sp, o0.x - q.cx, o0.y - (q.y + q.h), 24 * k, 24 * k)
       ctx.restore()
     } else if (item === 'cheval' && !app.reduced) {
       const o0 = artOrigin(item, q)
       ctx.save()
       ctx.translate(q.cx, q.y + q.h)
-      ctx.rotate(Math.sin(t * 2.6 + o.id) * 0.06)
-      ctx.drawImage(sp, o0.x - q.cx, o0.y - (q.y + q.h))
+      ctx.rotate(Math.sin(t * 2.6 + o.id) * 0.08)
+      ctx.drawImage(sp, o0.x - q.cx, o0.y - (q.y + q.h), 24 * k, 24 * k)
       ctx.restore()
     } else drawArt(sp, item, q, jolt, 0)
     if (o.maxHp > 1 && o.hp < o.maxHp) drawCracks(o, jolt)
     if (item === 'planche' && v.ironAt !== undefined && t >= v.ironAt - 0.25) {
       const n = Math.min(1, (t - v.ironAt + 0.25) / 0.25)
-      const pt = anchor(item, 'iron', q)
-      ctx.drawImage(S.props.fer, Math.round(pt.x), Math.round(pt.y - (1 - n) * 40))
+      const pt = artPoint(item, q, 13, 2)
+      ctx.drawImage(S.props.fer, Math.round(pt.x), Math.round(pt.y - (1 - n) * 40), 8 * k, 6 * k)
     }
     if (item === 'trophee' && (t * 0.8 + o.id * 0.37) % 1 < 0.12) {
       const sx2 = q.x + 4 + ((o.id * 7) % Math.max(1, q.w - 8))
-      ctx.drawImage(S.props.etincelle, sx2 - 2, q.y + 4)
+      rect(sx2, q.y + 6, 1, 5, '#ffffff')
+      rect(sx2 - 2, q.y + 8, 5, 1, '#ffffff')
     }
-    if (item === 'barbecue' && !app.reduced && (t * 3 + o.id) % 1 < 0.04) particle({ x: q.cx + rnd(-8, 8), y: q.y + 4, vx: rnd(-3, 3), vy: -12, g: 0, sprite: S.props.fumee, scale: 1, life: 0.8 })
-    if (item === 'carton' && age < 0.5) F.drawTextOC(ctx, 'CLING', q.cx, q.y - 10, K.cyan)
+    if (item === 'barbecue' && !app.reduced && (t * 3 + o.id) % 1 < 0.04) particle({ x: q.cx + rnd(-8, 8), y: q.y + 4, vx: rnd(-3, 3), vy: -12, g: 0, sprite: S.props.fumee, scale: 2, life: 0.8 })
+    if (item === 'carton' && age < 0.5) F.drawTextOC(ctx, 'CLING', q.cx, q.y - 10, '#d8f0ff')
   }
   /** Damage shows on the object itself: dark cracks, more of them after each hit. */
   function drawCracks(o, dx) {
@@ -781,7 +772,7 @@
       let y = Math.round(q.y + q.h * (0.15 + 0.5 * r()))
       const len = 4 + Math.floor(r() * (q.h / 4))
       for (let i = 0; i < len; i++) {
-        rect(x, y, 2, 2, K.ink)
+        rect(x, y, 2, 2, '#1d1726')
         y += 1
         x += r() < 0.5 ? -1 : 1
       }
@@ -795,13 +786,15 @@
       ctx.globalAlpha = Math.min(1, (r.life - age) / 0.3)
       if (r.wheel) {
         // The one wheel that keeps spinning.
+        const k = Sim.ITEMS.caddie.scale
         const cx = Math.round(r.wheel.x)
         const cy = Math.round(r.wheel.y)
-        rect(cx - 3, cy - 3, 7, 7, K.ink)
-        rect(cx - 2, cy - 2, 5, 5, K.slateD)
+        const R0 = 2 * k
+        rect(cx - R0 - 1, cy - R0 - 1, 2 * R0 + 2, 2 * R0 + 2, '#1d1726')
+        rect(cx - R0, cy - R0, 2 * R0, 2 * R0, '#4a4756')
         const a = age * 14
-        rect(Math.round(cx + Math.cos(a) * 2), Math.round(cy + Math.sin(a) * 2), 1, 1, K.grey1)
-        rect(Math.round(cx - Math.cos(a) * 2), Math.round(cy - Math.sin(a) * 2), 1, 1, K.grey1)
+        rect(Math.round(cx + Math.cos(a) * (R0 - 1)), Math.round(cy + Math.sin(a) * (R0 - 1)), k, k, '#c9c6bc')
+        rect(Math.round(cx - Math.cos(a) * (R0 - 1)), Math.round(cy - Math.sin(a) * (R0 - 1)), k, k, '#c9c6bc')
       } else if (r.at) ctx.drawImage(r.frame, Math.round(r.at.x), Math.round(r.at.y), r.frame.width * r.scale, r.frame.height * r.scale)
       else drawArt(r.frame, r.item, r.box)
       ctx.globalAlpha = 1
@@ -825,18 +818,18 @@
         const a = Math.max(0, k + off)
         const bw = Math.min(w, k + off + 4)
         if (bw > a) {
-          rect(x0 + a, y0, bw - a, 1, K.yellow)
-          rect(x0 + w - bw, y0 + h - 1, bw - a, 1, K.yellow)
+          rect(x0 + a, y0, bw - a, 1, '#ffe066')
+          rect(x0 + w - bw, y0 + h - 1, bw - a, 1, '#ffe066')
         }
         const bh = Math.min(h, k + off + 4)
         if (bh > a) {
-          rect(x0, y0 + h - bh, 1, bh - a, K.yellow)
-          rect(x0 + w - 1, y0 + a, 1, bh - a, K.yellow)
+          rect(x0, y0 + h - bh, 1, bh - a, '#ffe066')
+          rect(x0 + w - 1, y0 + a, 1, bh - a, '#ffe066')
         }
       }
       const bw = Math.max(10, Math.min(36, q.w - 4))
-      rect(Math.round(q.cx - bw / 2), q.y + q.h + 2, bw, 2, K.ink)
-      rect(Math.round(q.cx - bw / 2), q.y + q.h + 2, Math.round(bw * p), 2, K.yellow)
+      rect(Math.round(q.cx - bw / 2), q.y + q.h + 2, bw, 2, '#1d1726')
+      rect(Math.round(q.cx - bw / 2), q.y + q.h + 2, Math.round(bw * p), 2, '#ffe066')
     }
   }
   function drawFlights(s) {
@@ -846,10 +839,9 @@
       const gx = d.from.x + (d.to.x - d.from.x) * p
       const gy = d.from.y + (d.to.y - d.from.y) * p
       const hgt = Math.sin(Math.PI * p) * d.arc
-      const sw = Math.max(10, d.box.w * 0.7) * (1 - (hgt / C.ARC_MAX) * 0.35)
-      ctx.globalAlpha = 0.35
-      ctx.drawImage(shadowArt, Math.round(gx - sw / 2), Math.round(gy + d.box.h / 2 - 5), Math.round(sw), 7)
-      ctx.globalAlpha = 1
+      const k = Sim.ITEMS[d.item].scale
+      const sw = (14 + 8 * k) * (1 - (hgt / C.ARC_MAX) * 0.35)
+      ctx.drawImage(shadowArt, Math.round(gx - sw / 2), Math.round(gy + d.box.h / 2 - 6), Math.round(sw), 8)
       let rot = Math.sin(p * Math.PI * 2) * 0.22
       let state = 'flying'
       if (d.item === 'fromage') rot = p * Math.PI * 4
@@ -857,12 +849,12 @@
       if (d.item === 'planche') state = p < 0.6 ? 'folded' : 'open'
       if (d.item === 'parasol') state = 'folded'
       if (app.reduced) rot *= 0.3
-      const img = spriteFor(d.item, state)
+      const size = 24 * k
       ctx.save()
-      ctx.globalAlpha = 0.78
+      ctx.globalAlpha = 0.72
       ctx.translate(Math.round(gx), Math.round(gy - hgt))
       ctx.rotate(rot)
-      ctx.drawImage(img, -Math.round(img.width / 2), -Math.round(img.height / 2))
+      ctx.drawImage(spriteFor(d.item, state), -size / 2, -size / 2, size, size)
       ctx.restore()
     }
   }
@@ -879,11 +871,10 @@
       }
       for (let k = 0; k < tr.length - 1; k++) {
         ctx.globalAlpha = 0.12 + (0.4 * k) / tr.length
-        ctx.drawImage(trailArt, Math.round(tr[k][0]) - 2, Math.round(tr[k][1]) - 2)
+        ctx.drawImage(trailArt, Math.round(tr[k][0]) - 3, Math.round(tr[k][1]) - 3)
       }
       ctx.globalAlpha = 1
       ctx.drawImage(ballArt, Math.round(b.x) - 6, Math.round(b.y) - 6)
-      if (Math.floor(b.born * 10 + vt() * 12) % 6 === 0) rect(Math.round(b.x) - 2, Math.round(b.y) - 3, 1, 1, K.white)
     }
     for (const id of fx.trails.keys()) if (!alive.has(id)) fx.trails.delete(id)
   }
@@ -914,7 +905,7 @@
       const age = t - f.born
       // Brief local blink where someone was lost.
       if (f.kind === 'danger' && Math.floor(age * 16) % 2 === 0) {
-        ctx.strokeStyle = K.red
+        ctx.strokeStyle = '#ff3a2a'
         ctx.lineWidth = 2
         ctx.beginPath()
         ctx.arc(f.x, f.y, 10 + age * 30, 0, Math.PI * 2)
@@ -927,7 +918,7 @@
     fx.popups = fx.popups.filter((p) => t - p.born < p.life)
     for (const p of fx.popups) {
       const age = t - p.born
-      F.drawTextLOC(ctx, p.text, Math.round(p.x), Math.round(p.y - age * 18), p.color, p.scale)
+      F.drawTextOC(ctx, p.text, Math.round(p.x), Math.round(p.y - age * 18), p.color, p.scale)
     }
   }
 
@@ -948,18 +939,18 @@
     const set = raised ? S.people[p.index].raised : S.people[p.index].frames
     const x = Math.round(p.x)
     const y = Math.round(p.y)
-    ctx.drawImage(set[f], x - 8, y - 12)
+    ctx.drawImage(set[f], x - 8, y - 10)
     if (sign) {
       const bob = f === 1 ? 1 : 0
       if (raised) {
-        rect(x - 4, y - 11 + bob, 1, 4, K.brown)
-        ctx.drawImage(S.signs[sign], x - 17, y - 25 + bob)
+        rect(x + 7, y - 14 + bob, 1, 8, '#7a5a3a')
+        ctx.drawImage(S.signs[sign], x - 4, y - 24 + bob)
       } else {
         // Sign lowered after the sofa went.
         ctx.save()
-        ctx.translate(x - 6, y + 2)
-        ctx.rotate(-1.1)
-        ctx.drawImage(S.signs[sign], -13, -7)
+        ctx.translate(x + 8, y + 2)
+        ctx.rotate(0.9)
+        ctx.drawImage(S.signs[sign], -4, -6)
         ctx.restore()
       }
     }
@@ -971,15 +962,14 @@
     const y0 = Math.round(Math.min(...mid.map((p) => p.y))) - 4
     const y1 = Math.round(Math.max(...mid.map((p) => p.y))) + 4
     const x = C.CROWD_LINES[1] - 16
-    rect(x - 1, y0, 9, y1 - y0, K.ink)
-    rect(x, y0 + 1, 7, y1 - y0 - 2, K.cream)
-    rect(x + 6, y0 + 1, 1, y1 - y0 - 2, K.sand)
-    rect(x - 2, y0 - 3, 11, 2, K.brown)
-    rect(x - 2, y1 + 1, 11, 2, K.brown)
+    rect(x - 1, y0, 9, y1 - y0, '#1d1726')
+    rect(x, y0 + 1, 7, y1 - y0 - 2, '#f4ead2')
+    rect(x - 2, y0 - 3, 11, 2, '#7a5a3a')
+    rect(x - 2, y1 + 1, 11, 2, '#7a5a3a')
     const text = 'ON RESTE GROUPÉS'
     const step = Math.max(8, Math.floor((y1 - y0 - 6) / text.length))
     const start = Math.round((y0 + y1) / 2 - (text.length * step) / 2)
-    for (let i = 0; i < text.length; i++) F.drawText(ctx, text[i], x + 2, start + i * step, K.red)
+    for (let i = 0; i < text.length; i++) F.drawText(ctx, text[i], x + 2, start + i * step, '#d6402f')
   }
 
   /* ---------- police, on the left, facing right ---------- */
@@ -988,22 +978,23 @@
     const truce = s.activeEvent === 'treve'
     const f = app.reduced ? 0 : Math.floor(t * 2) % 2
     const frameFor = (k) => S.crs[truce ? 2 + ((f + k) % 2) : f]
-    for (let k = 0; k < 7; k++) ctx.drawImage(frameFor(k + 1), 38 - 11, 92 + k * 32 - 13)
-    for (let k = 0; k < 8; k++) ctx.drawImage(frameFor(k), 64 - 11 - (truce ? 0 : f), 76 + k * 32 - 13)
+    for (let k = 0; k < 8; k++) ctx.drawImage(frameFor(k), 66 - 9 - (truce ? 0 : f), 76 + k * 32 - 9)
+    for (let k = 0; k < 7; k++) ctx.drawImage(frameFor(k + 1), 38 - 9, 92 + k * 32 - 9)
     s.launchers.forEach((L, li) => {
       if (!L.active) return
       const y = Math.round(L.y)
       const a = s.announces.find((q) => q.launcher === li)
       if (a) L.lastAngle = a.angle
       const ang = a ? a.angle : L.lastAngle ?? 0
-      ctx.drawImage(S.crs[truce ? 2 + f : L.walking ? f : 0], C.LAUNCHER_X - 30, y - 15)
-      // The cannon tilts towards where the next ball goes.
-      const recoil = s.t - L.firedAt < 0.12 ? -2 : 0
-      ctx.save()
-      ctx.translate(C.LAUNCHER_X + 2 + recoil, y)
-      ctx.rotate(((app.reduced ? 0 : ang) * Math.PI) / 180 / 2)
-      ctx.drawImage(S.launcher, -14, -14)
-      ctx.restore()
+      ctx.drawImage(S.crs[truce ? 2 + f : L.walking ? f : 0], C.LAUNCHER_X - 24, y - 9)
+      // The tube points where the next ball goes.
+      const rad = (ang * Math.PI) / 180
+      const tx = Math.cos(rad)
+      const ty = Math.sin(rad)
+      const x0 = C.LAUNCHER_X + 2
+      for (let k = 0; k < 12; k++) rect(Math.round(x0 + tx * k) - 2, Math.round(y + ty * k) - 2, 5, 5, k > 9 ? '#ff8a2a' : '#1d1726')
+      for (let k = 0; k < 10; k++) rect(Math.round(x0 + tx * k) - 1, Math.round(y + ty * k) - 1, 3, 3, '#3a4a7a')
+      ctx.drawImage(S.launcher, C.LAUNCHER_X - 9, y - 11)
       if (a) drawAnnounce(a, s.t)
     })
   }
@@ -1018,8 +1009,8 @@
     for (let d = 0; d < len; d += 6) {
       const x = Math.round(x0 + dx * d)
       const y = Math.round(y0 + dy * d)
-      rect(x - 2, y - 2, 4, 4, K.ink)
-      rect(x - 1, y - 1, 2, 2, d / len <= k ? K.red : K.yellow)
+      rect(x - 2, y - 2, 4, 4, '#1d1726')
+      rect(x - 1, y - 1, 2, 2, d / len <= k ? '#ff6a3a' : '#ffd23f')
     }
     const hx = x0 + dx * len
     const hy = y0 + dy * len
@@ -1029,134 +1020,99 @@
       for (const sgn of [1, -1]) {
         const px = Math.round(bx - dy * w * sgn)
         const py = Math.round(by + dx * w * sgn)
-        rect(px - 1, py - 1, 3, 3, K.ink)
-        rect(px, py, 1, 1, K.yellow)
+        rect(px - 1, py - 1, 3, 3, '#1d1726')
+        rect(px, py, 1, 1, '#ffd23f')
       }
     }
   }
 
-  /* ---------- UI pieces ---------- */
-  /** Bevelled panel: ink border, light top-left edge, dark bottom-right edge. */
-  function panel(x, y, w, h, fill = K.slateD, light = K.slate, dark = K.ink) {
-    rect(x, y, w, h, K.ink)
-    rect(x + 1, y + 1, w - 2, h - 2, fill)
-    rect(x + 1, y + 1, w - 2, 1, light)
-    rect(x + 1, y + 1, 1, h - 2, light)
-    rect(x + 1, y + h - 2, w - 2, 1, dark)
-    rect(x + w - 2, y + 1, 1, h - 2, dark)
-  }
-  function pip(x, y, on) {
-    rect(x, y, 7, 7, K.ink)
-    rect(x + 1, y + 1, 5, 5, on ? K.greenM : K.slate)
-    rect(x + 1, y + 1, 5, 1, on ? K.green : K.grey3)
-    rect(x + 1, y + 1, 1, 5, on ? K.green : K.grey3)
-  }
-  /** The title, in big pixel letters with a warm vertical ramp and a heavy drop. */
-  function drawLogo(cx, y, scale) {
-    const text = 'BARRICASSE'
-    const x = Math.round(cx - F.textWidthL(text, scale) / 2)
-    const ramp = [K.yellow, K.yellow, K.amber, K.amber, K.orange, K.orange, K.rust]
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) F.drawTextL(ctx, text, x + dx * 2, y + dy * 2, K.ink, scale)
-    for (let k = 3; k <= 5; k++) F.drawTextL(ctx, text, x + k, y + k, k === 5 ? K.ink : K.redD, scale)
-    F.drawTextL(ctx, text, x, y, (r) => ramp[r], scale)
-    F.drawTextL(ctx, text, x, y - 1, (r) => (r === 0 ? K.white : ramp[r]), scale)
-  }
-
-  /* ---------- stock: an inventory slot on the sidewalk ---------- */
+  /* ---------- stock ---------- */
   function drawStock(s) {
     const t = s.t
     const cx = s.stock.x
     const cy = s.stock.y
-    const x = cx - 19
-    const y = cy - 18
+    const x = cx - 17
+    const y = cy - 17
     const k = Math.min(1, Math.max(0, (s.stock.readyAt - t) / C.RELOAD))
     const item = s.stock.next
-    F.drawTextLO(ctx, 'STOCK', x - 38, cy - 6, K.white)
-    panel(x, y, 38, 36, t - fx.readyFlash < 0.18 ? K.white : K.slateD, K.grey3, K.ink)
-    rect(x + 3, y + 3, 32, 30, K.slateD)
-    const ic = iconOf(item)
-    ctx.drawImage(ic, Math.round(cx - ic.width / 2), Math.round(cy - ic.height / 2))
+    F.drawTextO(ctx, 'STOCK', x - 26, cy - 4, '#f4ead2')
+    rect(x - 2, y - 2, 38, 38, '#10131c')
+    rect(x, y, 34, 34, t - fx.readyFlash < 0.18 ? '#ffffff' : '#f4ead2')
+    rect(x + 2, y + 2, 30, 30, '#2a3046')
+    ctx.drawImage(S.items[item], x + 5, y + 5)
     if (k > 0) {
       const hh = Math.ceil(30 * k)
-      ctx.globalAlpha = 0.7
-      rect(x + 3, y + 3, 32, hh, K.ink)
-      ctx.globalAlpha = 1
-      rect(x + 3, y + 3 + hh - 1, 32, 1, K.amber)
+      rect(x + 2, y + 2, 30, hh, 'rgba(10,12,22,0.66)')
+      rect(x + 2, y + 2 + hh - 1, 30, 1, '#ffd23f')
     }
     // What is coming: its name, how sturdy it is, and the reload.
     const info = Sim.ITEMS[item]
-    const tx = x + 44
-    F.drawTextLO(ctx, info.name.toUpperCase(), tx, y - 2, K.white)
-    if (info.hp === 0) F.drawTextLO(ctx, 'NE SERT À RIEN', tx, y + 10, K.pink)
+    const tx = x + 42
+    F.drawTextO(ctx, info.name.toUpperCase(), tx, y, '#ffffff')
+    if (info.hp === 0) F.drawTextO(ctx, 'NE SERT À RIEN', tx, y + 11, '#ff9a7a')
     else {
-      F.drawTextO(ctx, 'SOLIDE', tx, y + 13, K.cream)
-      for (let n = 0; n < 3; n++) pip(tx + 26 + n * 9, y + 14, n < info.hp)
+      F.drawTextO(ctx, 'SOLIDE', tx, y + 11, '#a8b0c4')
+      for (let n = 0; n < 3; n++) {
+        rect(tx + 26 + n * 8, y + 12, 6, 6, '#10131c')
+        rect(tx + 27 + n * 8, y + 13, 4, 4, n < info.hp ? '#9cf27a' : '#3a4260')
+      }
     }
-    rect(tx, y + 25, 64, 7, K.ink)
-    rect(tx + 1, y + 26, 62, 5, K.slateD)
-    rect(tx + 1, y + 26, Math.round(62 * (1 - k)), 5, k > 0 ? K.amber : K.green)
-    rect(tx + 1, y + 26, Math.round(62 * (1 - k)), 1, k > 0 ? K.yellow : K.white)
-    if (app.firstRun && t < 9 && fx.sends < 4) F.drawTextLO(ctx, '← RECHARGE APRÈS CHAQUE ENVOI', tx + 72, y + 22, K.yellow)
+    rect(tx, y + 24, 60, 6, '#10131c')
+    rect(tx + 1, y + 25, Math.round(58 * (1 - k)), 4, k > 0 ? '#ffd23f' : '#9cf27a')
+    if (app.firstRun && t < 9 && fx.sends < 4) F.drawTextO(ctx, '← LE STOCK RECHARGE APRÈS CHAQUE ENVOI', tx + 72, y + 24, '#ffd23f')
   }
 
   /* ---------- HUD ---------- */
   function drawHud(s) {
     const t = s.t
-    rect(0, 0, W, 24, UI.bar)
-    rect(0, 0, W, 1, K.slate)
-    rect(0, 23, W, 1, K.ink)
+    rect(0, 0, W, 24, '#151a28')
+    rect(0, 23, W, 1, '#2c3346')
     const alive = Sim.survivors(s)
     const blink = t - fx.lostBlink < 0.6 && Math.floor((t - fx.lostBlink) * 10) % 2 === 0
-    F.drawText(ctx, 'SURVIVANTS', 8, 8, UI.dim)
-    F.drawTextLO(ctx, `${alive}/${s.people.length}`, 52, -1, blink ? K.red : K.white, 2)
+    F.drawText(ctx, 'SURVIVANTS', 8, 8, '#a8b0c4')
+    F.drawText(ctx, `${alive}/${s.people.length}`, 52, 3, blink ? '#ff5a4a' : '#ffffff', 2)
     const remain = Math.max(0, Math.ceil(C.RUN_DURATION - t - 1e-9))
     const urgent = remain <= 10 && Math.floor(t * 4) % 2 === 0
-    F.drawTextLOC(ctx, String(remain), 320, -1, urgent ? K.amber : K.white, 2)
-    F.drawText(ctx, 'S', 320 + F.textWidthL(String(remain), 2) / 2 + 5, 10, UI.dim)
+    F.drawTextC(ctx, String(remain), 320, -3, urgent ? '#ffd23f' : '#ffffff', 3)
+    F.drawText(ctx, 'S', 342, 13, '#a8b0c4')
     const eb = t - fx.evacBlink < 0.3
-    F.drawText(ctx, 'RENVOYÉES', 430, 8, UI.dim)
-    F.drawTextLO(ctx, String(s.stats.evacuated), 472, -1, eb ? K.green : K.grey1, 2)
+    F.drawText(ctx, 'RENVOYÉES', 430, 8, '#a8b0c4')
+    F.drawText(ctx, String(s.stats.evacuated), 470, 3, eb ? '#9cf27a' : '#c8d0e0', 2)
   }
   function drawButtons() {
     for (const b of buttons()) {
       const hot = app.pointer.x >= b.x && app.pointer.x < b.x + b.w && app.pointer.y >= b.y && app.pointer.y < b.y + b.h
       if (b.icon) {
-        panel(b.x, b.y, b.w, b.h, hot ? K.slate : K.slateD, K.grey3, K.ink)
+        rect(b.x, b.y, b.w, b.h, '#10131c')
+        rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2, hot ? '#3a4260' : '#262c40')
         const cx = b.x + 12
         const cy = b.y + 11
-        const c = K.cream
         if (b.icon === 'pause') {
-          if (app.mode === 'PAUSED') for (let k = 0; k < 7; k++) rect(cx - 3 + k, cy - 6 + k * 0.85, 1, 12 - k * 1.7, c)
+          if (app.mode === 'PAUSED') for (let k = 0; k < 7; k++) rect(cx - 3 + k, cy - 6 + k * 0.85, 1, 12 - k * 1.7, '#f4ead2')
           else {
-            rect(cx - 5, cy - 6, 3, 12, c)
-            rect(cx + 2, cy - 6, 3, 12, c)
+            rect(cx - 5, cy - 6, 3, 12, '#f4ead2')
+            rect(cx + 2, cy - 6, 3, 12, '#f4ead2')
           }
         } else {
-          rect(cx - 7, cy - 2, 3, 5, c)
-          for (let k = 0; k < 4; k++) rect(cx - 4 + k, cy - 2 - k, 1, 5 + 2 * k, c)
-          if (app.muted)
+          rect(cx - 7, cy - 2, 3, 5, '#f4ead2')
+          for (let k = 0; k < 4; k++) rect(cx - 4 + k, cy - 2 - k, 1, 5 + 2 * k, '#f4ead2')
+          if (app.muted) {
             for (let k = 0; k < 6; k++) {
-              rect(cx + 2 + k, cy - 3 + k, 1, 1, K.red)
-              rect(cx + 2 + k, cy + 2 - k, 1, 1, K.red)
+              rect(cx + 2 + k, cy - 3 + k, 1, 1, '#ff5a4a')
+              rect(cx + 2 + k, cy + 2 - k, 1, 1, '#ff5a4a')
             }
-          else {
-            rect(cx + 2, cy - 1, 1, 3, c)
-            rect(cx + 5, cy - 4, 1, 9, c)
+          } else {
+            rect(cx + 2, cy - 1, 1, 3, '#f4ead2')
+            rect(cx + 5, cy - 4, 1, 9, '#f4ead2')
           }
         }
         continue
       }
-      if (b.big) {
-        const press = hot ? 1 : 0
-        rect(b.x, b.y, b.w, b.h, K.ink)
-        rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2, K.redD)
-        rect(b.x + 1, b.y + 1 + press, b.w - 2, b.h - 5, hot ? K.orange : K.red)
-        rect(b.x + 1, b.y + 1 + press, b.w - 2, 1, hot ? K.amber : K.pink)
-        F.drawTextLOC(ctx, b.label, b.x + b.w / 2, b.y + Math.round((b.h - 3 - 20) / 2) - 1 + press, K.white, 2, K.brownD)
-      } else {
-        panel(b.x, b.y, b.w, b.h, hot ? K.slate : K.slateD, K.grey3, K.ink)
-        F.drawTextLC(ctx, b.label, b.x + b.w / 2, b.y + Math.round((b.h - 11) / 2) - 1, K.cream)
-      }
+      rect(b.x, b.y, b.w, b.h, '#10131c')
+      rect(b.x + 2, b.y + 2, b.w - 4, b.h - 4, b.big ? (hot ? '#ff7a4a' : '#e8573f') : hot ? '#3a4260' : '#262c40')
+      if (b.big) rect(b.x + 2, b.y + b.h - 5, b.w - 4, 3, hot ? '#e8573f' : '#b8402c')
+      const sc = b.big ? 2 : 1
+      F.drawTextC(ctx, b.label, b.x + b.w / 2, b.y + Math.round((b.h - 9 * sc) / 2) - (b.big ? 1 : 0), '#ffffff', sc)
     }
   }
   /** Event banner, on the sidewalk the stock is not using. */
@@ -1164,18 +1120,18 @@
     const t = s.t
     let text = null
     let sub = ''
-    let color = K.amber
+    let color = '#ffd23f'
     if (t < C.FIRST_SHOT - C.ANNOUNCE) {
       text = 'CONSTRUIS !'
-      sub = `PREMIERS TIRS DANS ${Math.ceil(C.FIRST_SHOT - C.ANNOUNCE - t)} S · CLIQUE OÙ TU VEUX DANS LA RUE`
-      color = K.green
+      sub = `PREMIERS TIRS DANS ${Math.ceil(C.FIRST_SHOT - C.ANNOUNCE - t)} S · CLIQUE N’IMPORTE OÙ DANS LA RUE`
+      color = '#9cf27a'
     }
     for (const ev of C.EVENTS) {
       const st = s.events[ev.id]
       if (st === 'announce') {
         text = EVENT_TEXT[ev.id][0]
         sub = 'ÇA ARRIVE…'
-        color = Math.floor(t * 6) % 2 ? K.amber : K.white
+        color = Math.floor(t * 6) % 2 ? '#ffd23f' : '#ffffff'
       } else if (st === 'active') {
         text = EVENT_TEXT[ev.id][0]
         sub = EVENT_TEXT[ev.id][1]
@@ -1186,27 +1142,20 @@
     if (t >= C.LAST_SHOT_BEFORE && !s.over) {
       text = 'DERNIERS SAUVETAGES'
       sub = 'PLUS DE TIRS'
-      color = K.green
+      color = '#9cf27a'
     }
     if (!text) return
     const top = s.stock.side === 'main'
-    const y = top ? 25 : 318
-    const w = Math.max(F.textWidthL(text, 2), F.textWidthL(sub)) + 24
-    panel(Math.round(320 - w / 2), y, Math.round(w), sub ? 33 : 23, K.slateD, K.slate, K.ink)
-    F.drawTextLOC(ctx, text, 320, y + 1, color, 2)
-    if (sub) F.drawTextLC(ctx, sub, 320, y + 20, K.cream)
+    const y = top ? 28 : 322
+    F.drawTextOC(ctx, text, 320, y, color, 2)
+    if (sub) F.drawTextOC(ctx, sub, 320, y + 18, '#e8ecf4')
   }
 
   /* ---------- overlays ---------- */
-  function veil() {
-    ctx.globalAlpha = 0.82
-    rect(0, 24, W, H - 24, K.ink)
-    ctx.globalAlpha = 1
-  }
   function drawPause() {
-    veil()
-    F.drawTextLOC(ctx, 'PAUSE', 320, 64, K.white, 5)
-    F.drawTextLC(ctx, 'LE TEMPS EST SUSPENDU. LES CRS AUSSI.', 320, 126, K.grey1)
+    rect(0, 24, W, H - 24, 'rgba(12,14,22,0.78)')
+    F.drawTextOC(ctx, 'PAUSE', 320, 70, '#ffffff', 5)
+    F.drawTextC(ctx, 'LE TEMPS EST SUSPENDU. LES CRS AUSSI.', 320, 124, '#a8b0c4')
   }
   function resultTitle(r) {
     if (r.survivors === 0) return 'CORTÈGE DISPERSÉ. LE FRIGO VA BIEN.'
@@ -1218,14 +1167,12 @@
   }
   function drawResults() {
     const r = app.result
-    veil()
-    F.drawTextLOC(ctx, resultTitle(r), 320, 32, K.amber, 2)
-    if (r.reason === 'wiped') F.drawTextLC(ctx, `PLUS PERSONNE APRÈS ${r.time.toFixed(1).replace('.', ',')} S`, 320, 56, K.pink)
+    rect(0, 24, W, H - 24, 'rgba(12,14,22,0.88)')
+    F.drawTextOC(ctx, resultTitle(r), 320, 34, '#ffd23f', 2)
+    if (r.reason === 'wiped') F.drawTextC(ctx, `PLUS PERSONNE APRÈS ${r.time.toFixed(1).replace('.', ',')} S`, 320, 56, '#ff8a7a')
     // Left: the big number. Right: the details.
-    panel(40, 74, 240, 150, K.slateD, K.slate, K.ink)
-    F.drawTextLOC(ctx, `${r.survivors}/${r.total}`, 160, 92, r.survivors ? K.white : K.red, 6)
-    F.drawTextLOC(ctx, 'SURVIVANTS', 160, 166, K.grey1, 2)
-    panel(300, 74, 300, 150, K.slateD, K.slate, K.ink)
+    F.drawTextOC(ctx, `${r.survivors}/${r.total}`, 168, 82, r.survivors ? '#ffffff' : '#ff6a5a', 8)
+    F.drawTextC(ctx, 'SURVIVANTS', 168, 160, '#a8b0c4', 2)
     const lines = [
       ['TEMPS TENU', `${Math.floor(r.time)} S`],
       ['BALLES RENVOYÉES', String(r.evacuated)],
@@ -1233,20 +1180,16 @@
       ['LE PLUS UTILISÉ', r.mostUsed ? Sim.ITEMS[r.mostUsed].name.toUpperCase() : 'AUCUN'],
     ]
     lines.forEach(([k, v], i) => {
-      const y = 84 + i * 20
-      F.drawTextL(ctx, k, 312, y, K.grey2)
-      F.drawTextL(ctx, v, 588 - F.textWidthL(v), y, K.white)
-      rect(312, y + 15, 276, 1, K.slate)
+      const y = 82 + i * 24
+      F.drawText(ctx, k, 330, y, '#a8b0c4')
+      F.drawText(ctx, v, 612 - F.textWidth(v), y + 9, '#ffffff')
+      rect(330, y + 20, 282, 1, '#2c3346')
     })
-    if (r.mostUsed) {
-      const img = S.items[r.mostUsed]
-      const ic = img.height > 52 ? SP.icon(img, 52) : img
-      ctx.drawImage(ic, Math.round(450 - ic.width / 2), Math.round(196 - ic.height / 2))
-    }
+    if (r.mostUsed) ctx.drawImage(S.items[r.mostUsed], 330, 182, 48, 48)
     const rec = app.record
-    if (app.newRecord) F.drawTextLOC(ctx, 'NOUVEAU RECORD !', 320, 240, Math.floor(app.real * 4) % 2 ? K.green : K.white, 2)
-    else if (rec) F.drawTextLC(ctx, `RECORD : ${rec.survivors}/${rec.total} · ${Math.floor(rec.time)} S · ${rec.evacuated} RENVOYÉES`, 320, 246, K.grey1)
-    F.drawTextC(ctx, `PARTIE ${String(r.seed).toUpperCase()}`, 320, 294, K.grey3)
+    if (app.newRecord) F.drawTextOC(ctx, 'NOUVEAU RECORD !', 320, 250, Math.floor(app.real * 4) % 2 ? '#9cf27a' : '#ffffff', 2)
+    else if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} · ${Math.floor(rec.time)} S · ${rec.evacuated} RENVOYÉES`, 320, 254, '#a8b0c4')
+    F.drawTextC(ctx, `PARTIE ${String(r.seed).toUpperCase()}`, 320, 290, '#5d6578')
   }
 
   /* ---------- menu ---------- */
@@ -1254,7 +1197,7 @@
   function drawMenuScene() {
     if (!menuScene) {
       menuScene = Sim.create('menu', { NO_SHOTS: true })
-      for (const [item, x, y] of [['armoire', 200, 110], ['canape', 300, 270], ['poisson', 430, 110], ['voiture', 440, 272], ['piano', 175, 262], ['ballon', 360, 190], ['reverbere', 495, 190]]) Sim.placeNow(menuScene, item, x, y)
+      for (const [item, x, y] of [['canape', 200, 110], ['frigo', 300, 270], ['poisson', 420, 120], ['voiture', 440, 270], ['armoire', 160, 260], ['ballon', 360, 190]]) Sim.placeNow(menuScene, item, x, y)
     }
     const s = menuScene
     s.t = app.real
@@ -1264,28 +1207,17 @@
   }
   function drawMenu() {
     const t = app.real
-    ctx.globalAlpha = 0.86
-    rect(118, 30, 404, 304, K.ink)
-    ctx.globalAlpha = 1
-    panel(118, 30, 404, 304, 'rgba(0,0,0,0)', K.slate, K.ink)
+    rect(110, 34, 420, 296, 'rgba(12,14,22,0.8)')
     const bounce = app.reduced ? 0 : Math.round(Math.sin(t * 3) * 2)
-    drawLogo(320, 38 + bounce, 5)
-    F.drawTextLC(ctx, '« TOUT FAIT BARRICADE. MÊME LE POISSON. »', 320, 104, K.white)
-    F.drawTextLC(ctx, SLOGANS[Math.floor(t / 2.2) % SLOGANS.length], 320, 120, K.pink)
+    F.drawTextOC(ctx, 'BARRICASSE', 320, 44 + bounce, '#ffd23f', 6, '#1d1726')
+    F.drawTextC(ctx, '« TOUT FAIT BARRICADE. MÊME LE POISSON. »', 320, 104, '#ffffff', 2)
+    F.drawTextC(ctx, SLOGANS[Math.floor(t / 2.2) % SLOGANS.length], 320, 124, '#ff9a7a')
     const tuto = ['CLIQUE DANS LA RUE POUR LIVRER UNE BARRICADE.', 'ELLE DOIT ARRIVER AVANT LA BALLE.', 'SAUVE LE PLUS DE MANIFESTANTS POSSIBLE.']
-    tuto.forEach((l, i) => F.drawTextLC(ctx, l, 320, 146 + i * 16, K.cream))
-    F.drawTextC(ctx, 'LE STOCK RECHARGE APRÈS CHAQUE ENVOI. UN CANAPÉ ENCAISSE, UN BALLON NON.', 320, 202, K.grey2)
-    // A few pieces of the catalogue, as a teaser.
-    const show = ['frigo', 'poisson', 'nain', 'baignoire', 'trophee', 'caddie']
-    let x = 160
-    for (const id of show) {
-      const ic = SP.icon(S.items[id], 26)
-      ctx.drawImage(ic, x, 214 + (26 - ic.height))
-      x += 56
-    }
+    tuto.forEach((l, i) => F.drawTextC(ctx, l, 320, 146 + i * 20, '#e8ecf4', 2))
+    F.drawTextC(ctx, 'LE STOCK RECHARGE APRÈS CHAQUE ENVOI. UN CANAPÉ ENCAISSE, UN BALLON NON.', 320, 212, '#a8b0c4')
     const rec = app.record
-    if (rec) F.drawTextLC(ctx, `RECORD : ${rec.survivors}/${rec.total} SURVIVANTS · ${Math.floor(rec.time)} S`, 320, 312, K.white)
-    F.drawTextLOC(ctx, 'ÉCHAP : PAUSE · M : SON', 320, 342, K.grey1)
+    if (rec) F.drawTextC(ctx, `RECORD : ${rec.survivors}/${rec.total} SURVIVANTS · ${Math.floor(rec.time)} S`, 320, 312, '#ffffff')
+    F.drawTextOC(ctx, 'ÉCHAP : PAUSE · M : SON', 320, 340, '#a8b0c4')
   }
 
   /* ---------- debug ---------- */
@@ -1294,7 +1226,7 @@
     ctx.globalAlpha = 0.85
     frameRect(C.ZONE_L, C.STREET_T, C.ZONE_R - C.ZONE_L, C.STREET_B - C.STREET_T, 'rgba(255,255,255,0.3)')
     for (const o of s.objects) frameRect(o.box.x, o.box.y, o.box.w, o.box.h, '#40ff60')
-    for (const d of s.deliveries) frameRect(d.box.x, d.box.y, d.box.w, d.box.h, K.yellow)
+    for (const d of s.deliveries) frameRect(d.box.x, d.box.y, d.box.w, d.box.h, '#ffe066')
     for (const p of s.people) if (p.alive) frameRect(p.x - 7, Math.round(p.y - 9), 14, 18, '#40e0ff')
     ctx.strokeStyle = '#ff40ff'
     for (const b of s.balls) {

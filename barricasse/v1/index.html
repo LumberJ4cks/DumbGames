@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#151a28">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>BARRICASSE (v1)</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0d1018; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="c" width="640" height="360"></canvas>
+<!-- Classic scripts: opens straight from the file system, no server, no network. -->
+<script src="font.js"></script>
+<script src="sim.js"></script>
+<script src="sprites.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
