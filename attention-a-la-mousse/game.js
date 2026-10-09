@@ -2,7 +2,7 @@ import { createAudio } from './audio.js?v=4'
 import { drawText, drawTextC, textWidth } from './font.js?v=4'
 import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js?v=4'
 import { Pix, PAL, RAMPS, bayer, toCanvas } from './pixel.js?v=4'
-import { buildSprites, backgroundSprite, skaterSprite, spectatorSprite, panelSprite, drawMatInto, lookKey, HELMET_RAMPS, JERSEY_RAMPS, SHORTS_RAMPS, SKIN_RAMPS, HAIR_RAMPS } from './sprites.js?v=4'
+import { buildSprites, backgroundSprite, skaterSprite, skaterFallSprite, spectatorSprite, panelSprite, drawMatInto, lookKey, HELMET_RAMPS, JERSEY_RAMPS, SHORTS_RAMPS, SKIN_RAMPS, HAIR_RAMPS } from './sprites.js?v=4'
 
 /*
  * ATTENTION À LA MOUSSE ! — « 10 kilomètres d'effort. 20 centimètres de catastrophe. »
@@ -25,7 +25,7 @@ export const manifest = {
   releasedAt: '2026-11-10',
   status: 'draft',
   // Shown on the title screen, so the loaded build can be told from a cached one.
-  version: '3.0',
+  version: '3.1',
   orientation: 'landscape',
   size: { width: 320, height: 180 },
   controls: [
@@ -241,6 +241,19 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   let cheer = 0
   let attractAt = 0
   let nextId = 1
+  /*
+   * The sideshow: fallen skaters that stay on the asphalt, the stretcher team and the
+   * helicopter that evacuate them, and the mamie on the front lawn. Pure decoration, driven by
+   * its own random generator so the run itself (and the balance test) is untouched.
+   */
+  const crandom = mulberry32(seedValue !== null ? Number(seedValue) + 101 : (Math.random() * 2 ** 32) >>> 0)
+  const cpick = (list) => list[Math.floor(crandom() * list.length)]
+  let bodies = [] // { x, y, look, pose, since, taken }
+  let team = null // { state: in | load | out, x, y, body, t, frame }
+  let heli = null // { state: in | hover | lift | out, x, y, tx, ty, cable, body, t }
+  let mamie = null // { x, dir, t, next, line }
+  let evacuations = 0
+  let mamieLineAt = -99
 
   function setState(next) {
     state = next
@@ -559,6 +572,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function startRun() {
     audio.resume()
     G = newGame()
+    bodies = []
+    team = null
+    heli = null
+    evacuations = 0
+    mamie = { x: 40 + crandom() * 240, dir: crandom() < 0.5 ? -1 : 1, t: 0, next: 6 + crandom() * 6, pause: 0 }
     G.nextGroup = planGroup(C.FIRST_ARRIVAL)
     skaters = []
     particles = []
@@ -591,6 +609,12 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       particles.push({ x: s.x, y: s.y - 4, vx: (random() - 0.3) * 60, vy: -30 - random() * 50, life: 0.6, born: now, colour: i % 2 ? P.yellow : P.white, g: 160 })
     shake = Math.min(3, shake + 1.2)
     if (!G || G.over) return
+    // Some of them stay down on the asphalt, waiting for the stretcher team (decoration only:
+    // the skater itself slides on, invisible, so the rules see exactly the same run).
+    if (bodies.length < 3 && G.t > 12 && crandom() < 0.3 && s.x > matX(s.y) - 4) {
+      s.hidden = true
+      bodies.push({ x: Math.min(W - 30, s.x + 24 + crandom() * 50), y: s.y, look: s.look, pose: cpick(['slideBack', 'slideFace', 'slideHead', 'slideBack']), since: now, taken: false, land: 0.75 })
+    }
     G.victims++
     G.combo = 0
     if (G.level > 0) {
@@ -692,6 +716,105 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
   }
 
+  /* ---------- the sideshow ---------- */
+  function updateSideshow(dt) {
+    // Stretcher team: when a body has been lying there a moment, two medics come from the
+    // right, kneel, load it and carry it off. Every third evacuation is by helicopter.
+    const waiting = bodies.find((b) => !b.taken && now - b.since > 2.5)
+    if (waiting && !team && !heli) {
+      waiting.taken = true
+      if (evacuations % 3 === 2) {
+        heli = { state: 'in', x: W + 40, y: -20, tx: waiting.x, ty: waiting.y - 62, cable: 0, body: waiting, t: 0 }
+        notify('ÉVACUATION HÉLIPORTÉE : DISPOSITIF PROPORTIONNÉ', P.ink)
+        mamieSay('UN HÉLICO. POUR ÇA.')
+        audio.heli(true)
+      } else {
+        team = { state: 'in', x: W + 30, y: waiting.y + 7, body: waiting, t: 0, frame: 0 }
+        notify(evacuations === 0 ? 'LES BRANCARDIERS SONT LÀ' : 'ÉVACUATION N°' + (evacuations + 1) + ' : EN COURS', P.ink)
+      }
+      evacuations++
+    }
+    if (team) {
+      team.t += dt
+      team.frame += dt * 6
+      if (team.state === 'in') {
+        team.x -= 34 * dt
+        if (team.x <= team.body.x + 2) {
+          team.state = 'load'
+          team.t = 0
+        }
+      } else if (team.state === 'load') {
+        if (team.t > 1.3) {
+          team.state = 'out'
+          bodies = bodies.filter((b) => b !== team.body)
+          popup(team.x, team.y - 30, 'HOP', P.white, 0.6)
+        }
+      } else {
+        team.x += 30 * dt
+        if (team.x - 20 > W + 10) team = null
+      }
+    }
+    if (heli) {
+      heli.t += dt
+      const h = heli
+      if (h.state === 'in') {
+        h.x += (h.tx - h.x) * Math.min(1, dt * 1.6)
+        h.y += (h.ty - h.y) * Math.min(1, dt * 1.6)
+        if (Math.abs(h.x - h.tx) < 2 && Math.abs(h.y - h.ty) < 2) {
+          h.state = 'hover'
+          h.t = 0
+        }
+      } else if (h.state === 'hover') {
+        // The cable comes down to the body; dust from the rotor wash.
+        h.cable = Math.min(h.ty < h.body.y ? h.body.y - h.ty - 6 : 0, h.cable + 40 * dt)
+        if (h.t > 1.6) {
+          h.state = 'lift'
+          h.t = 0
+          bodies = bodies.filter((b) => b !== h.body)
+        }
+      } else if (h.state === 'lift') {
+        h.cable = Math.max(8, h.cable - 30 * dt)
+        if (h.t > 1.4) {
+          h.state = 'out'
+          h.t = 0
+        }
+      } else {
+        h.x += 120 * dt
+        h.y -= 45 * dt
+        if (h.x > W + 60 || h.y < -40) {
+          heli = null
+          audio.heli(false)
+        }
+      }
+      if (h.state === 'hover' || h.state === 'lift') {
+        h.x = h.tx + Math.sin(now * 3) * 1.5
+        if (crandom() < dt * 12) particles.push({ x: h.body.x - 10 + crandom() * 20, y: h.body.y, vx: (crandom() - 0.5) * 60, vy: -20 - crandom() * 20, life: 0.4, born: now, colour: P.grey2, g: 0 })
+      }
+    }
+    // La mamie: strolls along the front lawn, stops, comments.
+    if (mamie) {
+      const m = mamie
+      m.t += dt
+      if (m.pause > 0) m.pause -= dt
+      else {
+        m.x += m.dir * 9 * dt
+        if (m.x < 12) m.dir = 1
+        if (m.x > W - 12) m.dir = -1
+        if (crandom() < dt * 0.15) m.pause = 1.5 + crandom() * 2
+      }
+      if (m.t >= m.next) {
+        m.next = m.t + 10 + crandom() * 8
+        mamieSay(cpick(['MAIS C’EST DE LA CONNERIE LÀ', 'MAIS C’EST DE LA CONNERIE LÀ', 'ET LE MAIRE, IL DIT RIEN ?', 'DE MON TEMPS ON TOMBAIT MIEUX']))
+      }
+    }
+  }
+  function mamieSay(text) {
+    if (!mamie || now - mamieLineAt < 3) return
+    mamieLineAt = now
+    mamie.pause = Math.max(mamie.pause, 2.4)
+    bubble(mamie.x, 148, text, 2.4)
+  }
+
   function finishRun() {
     if (G.score > best) {
       best = G.score
@@ -701,6 +824,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     setState('RESULTS')
     audio.music(false)
     audio.hush()
+    audio.heli(false)
+    heli = null
     audio.results()
     onEnd?.({
       score: G.score,
@@ -750,6 +875,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       if (!G.over) {
         spawnDue()
         updateEvents(dt)
+        updateSideshow(dt)
       }
       if (!G.over && G.t >= C.RUN_DURATION) {
         G.over = true
@@ -966,21 +1092,16 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   /* ---------- skaters: one canvas per look, pose and rotation, built on first use ---------- */
   const skaterCache = new Map()
-  function skaterCanvas(look, pose, rot) {
-    const key = lookKey(look) + '|' + pose.head + pose.arms + pose.legs + pose.lean + pose.kind + rot
+  function skaterCanvas(look, pose) {
+    const key = lookKey(look) + '|' + (pose.fall || pose.head + pose.arms + pose.legs + pose.lean + pose.kind)
     let c = skaterCache.get(key)
     if (!c) {
-      let p = skaterSprite(look, pose)
-      if (rot) {
-        // Fallen skaters turn around a pivot 9 px above the feet, like the old sprite.
-        p.ay -= 9
-        p = p.rotate(rot)
-      }
-      c = toCanvas(p)
+      c = toCanvas(pose.fall ? skaterFallSprite(look, pose.fall) : skaterSprite(look, pose))
       skaterCache.set(key, c)
     }
     return c
   }
+  const SLIDE_POSE = { 1: 'slideFace', 2: 'slideHead', 3: 'slideBack', 0: 'slideBack' }
 
   /* ---------- crowd and volunteers ---------- */
   const crowd = []
@@ -1089,12 +1210,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (s.state === 'roll' && s.kind === 'slow' && !panic) return { head: 'plain', arms: 'star', legs: f % 2 ? 'stride' : 'together', lean: 0, kind }
     if (s.state === 'jump') return { head: 'plain', arms: 'stiff', legs: 'together', lean: 0, kind }
     if (s.state === 'land') return { head: 'plain', arms: f % 2 ? 'upA' : 'upB', legs: 'together', lean: 0, kind }
-    if (s.state === 'fall') return { head: 'panic', arms: 'star', legs: 'star', lean: 0, kind }
+    // The roulé-boulé: four tumble frames while bouncing, then a resting slide.
+    if (s.state === 'fall') return { fall: s.t < 0.75 ? 'tumble' + s.rot : SLIDE_POSE[s.slideRot] }
     // Panic in the jump zone: arms up, eyes wide. That is the tell.
     if (panic) return { head: 'panic', arms: Math.floor(now * 12 + s.id) % 2 ? 'upA' : 'upB', legs: f % 2 ? 'stride' : 'together', lean: 1, kind }
     return { head: 'plain', arms: f % 2 ? 'swingA' : 'swingB', legs: f % 2 ? 'stride' : 'together', lean: 1, kind }
   }
-  const REST = [0, 4, -2, 4]
+  const REST = [0, 4, -2, 4] // intruders thrown by the truck still spin around a pivot
   function drawIntruder(s) {
     const f = Math.floor(s.anim) % 2
     const up = s.state === 'jump' || s.state === 'fall'
@@ -1126,19 +1248,80 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
   function drawSkater(s) {
     if (isIntruder(s)) return drawIntruder(s)
-    put(s.z > 6 ? SHADOW.small : SHADOW.skater, s.x, s.y)
+    if (s.hidden) return
+    put(s.z > 6 ? SHADOW.small : s.state === 'fall' ? SHADOW.wide : SHADOW.skater, s.x, s.y)
     const pose = poseFor(s)
-    const c = skaterCanvas(s.look, pose, s.rot)
+    const c = skaterCanvas(s.look, pose)
     const ox = Math.round(s.x)
-    const oy = Math.round(s.y - s.z + (s.state === 'fall' && s.t >= 0.75 ? REST[s.rot] : 0))
+    const oy = Math.round(s.y - s.z)
     if (s.kind === 'fast' && s.state === 'roll') {
       // FUSÉE: speed lines behind.
       rect(ox - 10 - (Math.floor(now * 20) % 3), oy - 14, 4, 1, P.white)
       rect(ox - 12 - (Math.floor(now * 20 + 1) % 3), oy - 9, 5, 1, P.white)
     }
-    if (s.rot) put(c, ox, oy - 9)
-    else put(c, ox, oy)
+    put(c, ox, oy)
     if (s.kind === 'hesitant' && s.state === 'roll' && s.braking > 0) text5('?', ox - 2, oy - 32, P.yellow)
+  }
+
+  /* ---------- the sideshow: bodies, stretcher team, helicopter, mamie ---------- */
+  function drawBody(b) {
+    put(SHADOW.wide, b.x, b.y)
+    put(skaterCanvas(b.look, { fall: b.pose }), b.x, b.y)
+    // Little stars circling the head.
+    if (Math.floor(now * 4 + b.x) % 2) {
+      rect(Math.round(b.x) - 9, Math.round(b.y) - 13, 1, 1, P.yellow)
+      rect(Math.round(b.x) - 5, Math.round(b.y) - 15, 1, 1, P.yellow)
+    }
+  }
+  function drawTeam() {
+    if (!team) return
+    const t = team
+    const f = Math.floor(t.frame) % 2
+    const x = Math.round(t.x)
+    const y = Math.round(t.y)
+    if (t.state === 'load') {
+      put(S.medic[2], x - 12, y)
+      put(S.stretcher, x, y - 1)
+      put(S.medic[2], x + 12, y)
+      return
+    }
+    put(SHADOW.skater, x - 14, y)
+    put(SHADOW.skater, x + 14, y)
+    put(S.medic[f], x - 14, y)
+    put(S.stretcher, x, y - 8 - (f ? 1 : 0))
+    if (t.state === 'out') put(skaterCanvas(t.body.look, { fall: t.body.pose }), x, y - 11 - (f ? 1 : 0))
+    put(S.medic[1 - f], x + 14, y)
+  }
+  function drawHeli() {
+    if (!heli) return
+    const h = heli
+    const x = Math.round(h.x)
+    const y = Math.round(h.y)
+    if (h.state !== 'out' && h.body) put(SHADOW.wide, h.body.x, h.body.y)
+    // Cable and the stretcher hanging from it.
+    if (h.cable > 0) {
+      rect(x, y, 1, Math.round(h.cable), P.slateD)
+      const by = y + Math.round(h.cable)
+      if (h.state !== 'hover') {
+        put(S.stretcher, x, by + 3)
+        put(skaterCanvas(h.body.look, { fall: h.body.pose }), x, by)
+      } else put(S.stretcher, x, by + 3)
+    }
+    put(S.heli[Math.floor(now * 30) % 2], x, y)
+  }
+  function drawMamie() {
+    if (!mamie) return
+    const m = mamie
+    const x = Math.round(m.x)
+    put(SHADOW.lawn, x, 178)
+    const c = S.mamie[m.pause > 0 ? 0 : Math.floor(m.t * 3) % 2]
+    if (m.dir < 0) {
+      ctx.save()
+      ctx.translate(x, 178)
+      ctx.scale(-1, 1)
+      ctx.drawImage(c, -c.ax, -c.ay)
+      ctx.restore()
+    } else put(c, x, 178)
   }
 
   /* ---------- pigeons, photographer, fire engine ---------- */
@@ -1251,13 +1434,17 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     drawVolunteers()
     drawZone()
     drawMat()
-    const sorted = [...skaters].sort((a, b) => a.y - b.y)
-    for (const s of sorted) drawSkater(s)
+    const sorted = [...skaters, ...bodies.map((b) => ({ body: b, y: b.y }))].sort((a, b) => a.y - b.y)
+    for (const s of sorted) if (s.body) drawBody(s.body)
+      else drawSkater(s)
+    drawTeam()
     drawPigeons()
     drawTruck()
     for (const p of particles) rect(p.x, p.y, 2, 2, p.colour)
     drawArchFront()
     drawPhotographer()
+    drawMamie()
+    drawHeli()
     ctx.restore()
     drawFlash()
     drawPopups()
@@ -1410,6 +1597,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function stop() {
     G = null
     skaters = []
+    bodies = []
+    team = null
+    heli = null
+    audio.heli(false)
     audio.music(false)
     audio.hush()
     setState('TITLE')
@@ -1440,7 +1631,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       return paused ? 'paused' : state === 'TITLE' ? 'idle' : state === 'RESULTS' ? 'over' : 'playing'
     },
     get debug() {
-      return debug ? { state, G, skaters, matX, C, audio } : null
+      return debug ? { state, G, skaters, matX, C, audio, sideshow: { bodies, team, heli, mamie } } : null
     },
   }
 }

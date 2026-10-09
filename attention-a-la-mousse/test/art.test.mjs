@@ -32,6 +32,7 @@ for (const look of looks)
         for (const kind of ['normal', 'fast', 'slow', 'hesitant'])
           for (const lean of [-1, 0, 1, 2]) allSprites.push([`skater ${head} ${arms} ${legs} ${kind} ${lean}`, Sp.skaterSprite(look, { head, arms, legs, lean, kind })])
 for (let v = 0; v < 7; v++) for (const frame of [0, 1]) allSprites.push([`spectator ${v} ${frame}`, Sp.spectatorSprite({ skin: 'skinTan', hair: 'hairBlond', shirt: 'green', v }, frame)])
+for (const pose of Sp.FALL_POSES) for (const look of looks) allSprites.push(['fall ' + pose, Sp.skaterFallSprite(look, pose)])
 allSprites.push(['logo', logoLine('À LA MOUSSE !')])
 allSprites.push(['panel', Sp.panelSprite(40, 20, RAMPS.navy)])
 

@@ -159,6 +159,242 @@ export function skaterSprite(look, pose) {
     if (pose.kind === 'slow') a.px(-2 + lean, -17, P.grey1) // the promeneur's goggles
   })
 }
+/* ---------- fall poses: the roulé-boulé, drawn for real ---------- */
+/*
+ * Four tumble frames (dive, head down, on the back, sitting) then three resting slides (on the
+ * back, face down, head planted). Same legend as the skater; anchor on the ground under the
+ * body's centre. Width 18, so a lying skater is about as long as a standing one is tall.
+ */
+const FALL_ROWS = {
+  // Dive: head forward and down, arms out front, legs trailing up behind.
+  tumble0: [
+    '..........kK......',
+    '.........kK.......',
+    '........ss........',
+    '.......ssjj.......',
+    '.....JjjjjjJ......',
+    '....Jjjjjjjjhhh...',
+    '...zjjjjjjjhhhhh..',
+    '.sSs..ddxxsSSEhg..',
+    '.......xx.zssz.z..',
+  ],
+  // Head down: helmet on the asphalt, legs straight up, arms out.
+  tumble1: [
+    '......kK.kK.......',
+    '......kk.kk.......',
+    '......ss.ss.......',
+    '......ss.ss.......',
+    '......ddxxx.......',
+    '....S.jjjji.S.....',
+    '....ssJjjjiss.....',
+    '......Jjjji.......',
+    '.....zssSSz.......',
+    '.....hhhhhg.......',
+    '......hHHg........',
+  ],
+  // On the back, legs up in the air, arms up.
+  tumble2: [
+    '............kK....',
+    '...........kK.....',
+    '..........ss......',
+    '..S......ss.......',
+    '..s.....ss........',
+    '..s....xd.........',
+    '..zjjjjjd.........',
+    'hhhJjjjjxx........',
+    'hHhsSsjjii........',
+    'hhhzEz............',
+  ],
+  // Sitting, back to the right, legs forward, arms flailing.
+  tumble3: [
+    '...........S......',
+    '...........s......',
+    '........hhhs......',
+    '.......hHhhhg.....',
+    '.......zESShs.....',
+    '.S.....zssz.s.....',
+    '..s....Jjjji......',
+    '...s..Jjjjjii.....',
+    '....ssjjjjjii.....',
+    '.ss.sddxxjjii.....',
+    'kkKkK.ddx.ii......',
+  ],
+  // Resting on the back, head left, arms spread, skates in the air.
+  slideBack: [
+    '..............kK..',
+    '..............kK..',
+    '..............ss..',
+    '..............ss..',
+    '.........ddxxss...',
+    'hhh...Jjjjjjix....',
+    'hHhsSsJjjjjjii....',
+    'hhhzEz.Jjjjjii....',
+    '....S..s......s...',
+    '....ss.s......s...',
+  ],
+  // Face down, arms forward, skates behind, helmet still on.
+  slideFace: [
+    '..................',
+    '..................',
+    '..............kK..',
+    '.........ddx.kk...',
+    '.ss.Jjjjjjddxss...',
+    '..ssJjjjjjjdd.....',
+    'hhhhJjjjjjii......',
+    'hHhhhzsjjii.......',
+    '.hhhhzzz..........',
+  ],
+  // Head planted in the ground, legs in a V, arms spread: the municipal classic.
+  slideHead: [
+    '....kK....kK......',
+    '....kk....kk......',
+    '.....ss..ss.......',
+    '......ssss........',
+    '......ddxx........',
+    '.S....jjji....S...',
+    '..ss.Jjjjii.ss....',
+    '....sJjjjii.s.....',
+    '.....zsSSz........',
+    '.....hhhhhg.......',
+    '......hHHg........',
+  ],
+}
+export const FALL_POSES = Object.keys(FALL_ROWS)
+export function skaterFallSprite(look, pose) {
+  const H = R[look.H]
+  const J = R[look.J]
+  const D = R[look.D]
+  const S = R[look.S]
+  const lg = legend({
+    H: [H, 3], h: [H, 2], g: [H, 1],
+    s: [S, 2], S: [S, 3], z: [S, 1],
+    J: [J, 3], j: [J, 2], i: [J, 1],
+    D: [D, 3], d: [D, 2], x: [D, 1],
+    k: [P.slate], K: [P.grey1], E: [P.ink], W: [P.white], M: [P.redD],
+  })
+  const rows = FALL_ROWS[pose]
+  return sprite(24, 16, 12, 14, (a) => {
+    a.map(rows, lg, -9, -rows.length)
+    // Stars for the tumbles, a few sweat drops for the slides.
+    if (pose.startsWith('tumble')) {
+      a.px(-8, -13, P.yellow)
+      a.px(8, -12, P.yellow)
+    }
+  })
+}
+
+/* ---------- the stretcher team: two medics in white, a stretcher between them ---------- */
+export function medicSprite(frame, kneel = false) {
+  const lg = legend({ W: [R.white, 3], w: [R.white, 2], u: [R.white, 1], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], r: [P.red], G: [R.hairBlack, 2], g: [R.hairBlack, 1], T: [R.navy, 2], t: [R.navy, 1] })
+  return sprite(12, 24, 6, 22, (a) => {
+    if (kneel) {
+      a.map(
+        ['.GGGg.', 'GsSEzg', '.sSSz.', '.zssz.', 'WwrwuW', 'wwrwuw', 'wwwwu.', 'TTttTt', 'TTttTt'],
+        lg,
+        -3,
+        -10
+      )
+      a.rect(-4, -2, 8, 1, P.slateD)
+      return
+    }
+    a.map(
+      ['.GGGg.', 'GsSEzg', '.sSSz.', '.zssz.', 'WwrwuW', 'wwrwuw', 'wwwwu.', 'wwwwu.', 'uwwwu.', 'uuuuu.', '.TTt..', '.TTt..', '.TTt..', '.TTt..', '.TTt..'],
+      lg,
+      -3,
+      -20
+    )
+    walker(a, frame, R.navy)
+  })
+}
+export function stretcherSprite() {
+  return sprite(26, 8, 13, 6, (a) => {
+    a.rect(-12, -4, 24, 1, R.wood[3])
+    a.rect(-12, -3, 24, 1, R.wood[2])
+    a.rect(-11, -2, 22, 3, R.white[2])
+    a.rect(-11, -2, 22, 1, R.white[3])
+    a.rect(-11, 0, 22, 1, R.white[1])
+    a.rect(-1, -1, 2, 1, P.red)
+    a.rect(-13, -4, 1, 2, R.wood[2])
+    a.rect(12, -4, 1, 2, R.wood[2])
+    a.px(-10, 1, P.slateD)
+    a.px(9, 1, P.slateD)
+  })
+}
+
+/* ---------- the helicopter: a small white and red SAMU bird ---------- */
+export function heliSprite(rotor) {
+  return sprite(44, 20, 22, 18, (a) => {
+    // Rotor: a long thin blur, two frames.
+    if (rotor) a.rect(-20, -18, 40, 1, P.grey2)
+    else {
+      a.rect(-14, -18, 28, 1, P.grey3)
+      a.px(-16, -18, P.grey2)
+      a.px(15, -18, P.grey2)
+    }
+    a.rect(-1, -17, 2, 2, P.slate)
+    // Body: rounded cabin in front (right), tail boom to the left, skids below.
+    a.box(-4, -15, 16, 9, 2, R.white)
+    a.ell(10, -10, 4, 4.5, R.white, 0.1)
+    a.rect(-18, -11, 14, 3, R.white[2])
+    a.rect(-18, -11, 14, 1, R.white[3])
+    a.rect(-18, -9, 14, 1, R.white[1])
+    a.rect(-20, -15, 3, 6, R.red[2])
+    a.rect(-20, -15, 3, 1, R.red[3])
+    a.rect(-21, -13, 1, 3, rotor ? P.grey2 : P.grey3)
+    // Red stripe, cross, windows.
+    a.rect(-4, -9, 16, 1, P.red)
+    a.rect(10, -14, 3, 3, R.glass[2])
+    a.px(10, -14, P.white)
+    a.rect(-1, -13, 3, 2, P.red)
+    a.px(0, -14, P.red)
+    a.px(0, -11, P.red)
+    // Skids.
+    a.rect(-3, -5, 1, 2, P.grey3)
+    a.rect(9, -5, 1, 2, P.grey3)
+    a.rect(-6, -3, 20, 1, P.grey2)
+    a.rect(-6, -3, 1, 1, P.grey1)
+    a.text3('SAMU', -6, -16, P.red)
+  })
+}
+
+/* ---------- la mamie: small, slow, a cane and a shopping bag, unimpressed ---------- */
+export function mamieSprite(frame) {
+  const lg = legend({ G: [R.hairGrey, 3], g: [R.hairGrey, 2], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], V: [R.purple, 3], v: [R.purple, 2], u: [R.purple, 1], L: [P.grey1], l: [P.grey2], B: [R.wood, 2], b: [R.wood, 1], c: [R.orange, 2], C: [R.orange, 3] })
+  return sprite(16, 20, 8, 18, (a) => {
+    a.map(
+      [
+        '.GGGg.',
+        'GGGGgg',
+        'GsSEzg',
+        '.sSSz.',
+        '.LsszL', // glasses frame hint
+        '.VVvu.',
+        'VVvvuu', // cardigan, buttons
+        'VvEvuu',
+        'VvEvuu',
+        'vvvvu.',
+        'uuuuu.',
+        '.llll.', // skirt
+        '.llll.',
+        '..s.s.',
+      ],
+      lg,
+      -3,
+      -17
+    )
+    // Shoes, two frames; the cane on the right, the bag on the left.
+    const shoes = frame ? [[-3, -1, 3], [1, -1, 2]] : [[-2, -1, 2], [1, -1, 3]]
+    for (const [x, y, w] of shoes) a.rect(x, y, w, 1, P.plum)
+    a.rect(4, -9, 1, 9, R.wood[1])
+    a.px(4, -10, R.wood[2])
+    a.rect(3, -10, 1, 1, R.wood[2])
+    a.rect(-7, -6, 4, 5, R.orange[2])
+    a.rect(-7, -6, 4, 1, R.orange[3])
+    a.rect(-6, -8, 2, 2, P.plum)
+    a.rect(-4, -9, 1, 3, R.skinPale[2])
+  })
+}
+
 /** Cache key of a look. */
 export const lookKey = (look) => `${look.H}|${look.J}|${look.D}|${look.S}|${look.bib ? 1 : 0}`
 
@@ -819,6 +1055,10 @@ export function buildSprites(C) {
   ]
   S.sound = [soundButtonSprite(false), soundButtonSprite(true)]
   S.stamp = stampSprite()
+  S.medic = [medicSprite(0), medicSprite(1), medicSprite(0, true)]
+  S.stretcher = stretcherSprite()
+  S.heli = [heliSprite(0), heliSprite(1)]
+  S.mamie = [mamieSprite(0), mamieSprite(1)]
   S.hud = panelSprite(320, 13, R.navy, { inset: true })
   return S
 }

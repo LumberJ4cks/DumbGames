@@ -21,6 +21,7 @@ export function createAudio() {
   let master = null
   let muted = false
   let pumpTimer = null
+  let heliTimer = null
   let nextStep = 0
   let step = 0
   let intensity = 0
@@ -326,6 +327,21 @@ export function createAudio() {
     },
     cheer(amount = 1) {
       noise(0.6, 0.06 + 0.05 * amount, 1800, null, 'bandpass')
+    },
+    /** Helicopter: a low rotor chop while it is on screen. */
+    heli(on) {
+      if (!ac) return
+      if (on && !heliTimer) {
+        const chop = () => {
+          noise(0.05, 0.14, 500)
+          tone(70, 0.08, 'sawtooth', 0.05, 60)
+          heliTimer = setTimeout(chop, 95)
+        }
+        chop()
+      } else if (!on && heliTimer) {
+        clearTimeout(heliTimer)
+        heliTimer = null
+      }
     },
     whistle() {
       tone(2600, 0.25, 'square', 0.05, 2500)
