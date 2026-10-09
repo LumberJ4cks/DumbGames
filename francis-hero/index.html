@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1a1c2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>FRANCIS HERO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+  :root { color-scheme: dark; --bg: #1a1c2c; --ink: #f4f4f4; --muted: #94b0c2; --gold: #ffcd75; --card: #29366f; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: 'Press Start 2P', ui-monospace, monospace; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; touch-action: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; pointer-events: none; }
+  .overlay.hidden { display: none; }
+  .panel { pointer-events: auto; background: rgba(26,28,44,.94); border: 4px solid var(--gold); box-shadow: 0 0 0 4px #000, 0 24px 60px rgba(0,0,0,.7); padding: 24px 20px; max-width: 420px; width: 100%; text-align: center; }
+  h1 { font-size: 20px; margin: 0 0 8px; color: var(--gold); text-shadow: 3px 3px 0 #000; line-height: 1.4; }
+  h2 { font-size: 11px; color: var(--muted); margin: 0 0 18px; line-height: 1.7; }
+  p { font-size: 10px; line-height: 1.9; margin: 0 0 14px; }
+  .keys { display: flex; justify-content: center; gap: 8px; margin: 8px 0 18px; }
+  .keys span { width: 40px; height: 40px; border: 3px solid var(--ink); display: grid; place-items: center; font-size: 16px; background: #141a2e; }
+  button { font: inherit; font-size: 12px; padding: 14px 22px; background: var(--gold); color: #1a1407; border: 0; box-shadow: 4px 4px 0 #000; cursor: pointer; min-height: 44px; }
+  button:disabled { opacity: .5; cursor: wait; }
+  button.alt { background: #141a2e; color: var(--ink); border: 3px solid var(--ink); margin-top: 10px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 10px; text-align: left; margin: 0 auto 16px; max-width: 320px; line-height: 1.8; }
+  .stats b { color: var(--gold); float: right; }
+  .grade { font-size: 40px; color: var(--gold); margin: 6px 0 4px; text-shadow: 4px 4px 0 #000; }
+  .pts { font-size: 18px; color: var(--ink); margin-bottom: 12px; }
+  .small { font-size: 8px; color: var(--muted); line-height: 1.8; margin-top: 12px; }
+  #topbar { position: fixed; top: 0; right: 0; display: flex; gap: 6px; padding: 8px; z-index: 3; }
+  #topbar button { font-size: 9px; padding: 8px 10px; min-height: 32px; background: #141a2e; color: var(--ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 #000; }
+  @media (max-width: 480px) { h1 { font-size: 16px; } button { font-size: 11px; } }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="topbar"><button id="pauseBtn" type="button" hidden>PAUSE</button></div>
+
+<div class="overlay" id="start">
+  <div class="panel">
+    <h1>FRANCIS HERO</h1>
+    <h2>La LAN revient. Le riff aussi.</h2>
+    <p>Appuie sur la bonne flèche quand elle arrive sur la ligne dorée. Joue juste et la foule grossit. Rate, et la salle se vide.</p>
+    <div class="keys" aria-hidden="true"><span>←</span><span>↓</span><span>↑</span><span>→</span></div>
+    <p class="small" id="controlsHint">Flèches ou WASD / ZQSD. Sur téléphone, tape sur le couloir.</p>
+    <button id="playBtn" type="button" disabled>CHARGEMENT…</button>
+    <div class="small" id="best"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="panel">
+    <h1>PAUSE</h1>
+    <button id="resumeBtn" type="button">REPRENDRE</button>
+    <button id="quitBtn" type="button" class="alt">QUITTER</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="end">
+  <div class="panel">
+    <h1>FIN DU SET</h1>
+    <div class="grade" id="grade">S</div>
+    <div class="pts" id="pts">0 pts</div>
+    <div class="stats">
+      <div>Combo max <b id="s-combo">0</b></div>
+      <div>Parfait <b id="s-perf">0</b></div>
+      <div>Bien <b id="s-good">0</b></div>
+      <div>Raté <b id="s-miss">0</b></div>
+      <div>Foule max <b id="s-crowd">0</b></div>
+      <div>Validé <b id="s-valid">—</b></div>
+    </div>
+    <p id="verdict"></p>
+    <button id="againBtn" type="button">REJOUER</button>
+  </div>
+</div>
+
+<script type="module">
+  import { manifest, create, loadSong, validate, grade, CANVAS_WIDTH, MIN_HEIGHT, MAX_HEIGHT } from './game.js'
+
+  const canvas = document.getElementById('c')
+  const stage = document.getElementById('stage')
+  const $ = (id) => document.getElementById(id)
+  let game = null
+  let song = null
+  let outcome = null
+
+  /* Taille : largeur fixe de 480, la hauteur en plus allonge le manche ; échelle par quarts. */
+  function fit() {
+    const raw = Math.min(stage.clientWidth / CANVAS_WIDTH, stage.clientHeight / MIN_HEIGHT)
+    const scale = Math.max(0.25, Math.floor(raw * 4) / 4)
+    const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.floor(stage.clientHeight / scale)))
+    return { scale, height }
+  }
+  function applyScale() {
+    const scale = Math.min(stage.clientWidth / canvas.width, stage.clientHeight / canvas.height)
+    canvas.style.width = canvas.width * scale + 'px'
+    canvas.style.height = canvas.height * scale + 'px'
+  }
+  addEventListener('resize', applyScale)
+
+  function show(id) {
+    for (const o of document.querySelectorAll('.overlay')) o.classList.toggle('hidden', o.id !== id)
+    $('pauseBtn').hidden = id !== null
+  }
+  function showBest() {
+    try {
+      const b = localStorage.getItem('francisHero:best')
+      $('best').textContent = b ? 'Meilleur score : ' + Number(b).toLocaleString('fr-CA') : ''
+    } catch {}
+  }
+  showBest()
+
+  function onEnd(result) {
+    outcome = result
+    const g = grade(result)
+    $('grade').textContent = g
+    $('pts').textContent = result.score.toLocaleString('fr-CA') + ' pts'
+    $('s-combo').textContent = result.maxCombo
+    $('s-perf').textContent = result.perfect
+    $('s-good').textContent = result.good
+    $('s-miss').textContent = result.miss
+    $('s-crowd').textContent = result.maxCrowd
+    $('s-valid').textContent = validate(result) ? 'oui' : 'non'
+    $('verdict').textContent = { S: 'Francis est de retour. La salle est en feu.', A: 'Gros set. On en redemande.', B: 'Solide. Un peu de répèt et c’est bon.', C: 'Le public hésite... mais reste.', D: 'Même ta mère est partie avant la fin.' }[g]
+    try {
+      const b = Number(localStorage.getItem('francisHero:best') || 0)
+      if (result.score > b) localStorage.setItem('francisHero:best', String(result.score))
+    } catch {}
+    showBest()
+    setTimeout(() => show('end'), 400)
+  }
+
+  // Téléchargement du morceau, puis création du moteur à la taille de l'écran.
+  loadSong(manifest.settings.song, (p) => { $('playBtn').textContent = 'CHARGEMENT ' + Math.round(p * 100) + '%' })
+    .then((audio) => {
+      song = audio
+      const { height } = fit()
+      game = create({ canvas, song, height, onState: (s) => { if (s === 'paused') show('pause') }, onEnd })
+      applyScale()
+      $('playBtn').textContent = 'JOUER'
+      $('playBtn').disabled = false
+    })
+    .catch(() => { $('playBtn').textContent = 'MUSIQUE INTROUVABLE' })
+
+  async function start() {
+    if (!game || game.state === 'playing') return
+    show(null)
+    try { await game.start() } catch { show('start'); $('best').textContent = 'Le navigateur a bloqué le son. Appuie encore sur JOUER.' }
+  }
+  $('playBtn').addEventListener('click', start)
+  $('againBtn').addEventListener('click', start)
+  $('resumeBtn').addEventListener('click', () => { show(null); game.resume() })
+  $('quitBtn').addEventListener('click', () => { game.stop(); show('start') })
+  $('pauseBtn').addEventListener('click', () => { if (game && game.state === 'playing') game.pause() })
+
+  // Clavier : touches physiques (flèches, WASD, ZQSD), Échap pause, Entrée démarre.
+  const KEY_LANES = { ArrowLeft: 0, KeyA: 0, ArrowDown: 1, KeyS: 1, ArrowUp: 2, KeyW: 2, ArrowRight: 3, KeyD: 3 }
+  addEventListener('keydown', (e) => {
+    if (e.repeat || !game) return
+    const lane = KEY_LANES[e.code]
+    if (lane !== undefined && game.state === 'playing') { e.preventDefault(); press(lane); return }
+    if (e.code === 'Escape') {
+      if (game.state === 'playing') game.pause()
+      else if (game.state === 'paused') { show(null); game.resume() }
+    }
+    if (e.code === 'Enter' && (game.state === 'idle' || game.state === 'over')) start()
+  })
+  function press(lane) {
+    const j = game.press(lane)
+    if (j === 'miss' && 'vibrate' in navigator) navigator.vibrate(30)
+  }
+  // Tactile : taper sur le couloir (le canvas est découpé en quatre colonnes verticales).
+  stage.addEventListener('pointerdown', (e) => {
+    if (!game || game.state !== 'playing') return
+    e.preventDefault()
+    const r = canvas.getBoundingClientRect()
+    const x = ((e.clientX - r.left) / r.width) * canvas.width
+    const lanes = game.lanes
+    let best = 0
+    for (let l = 1; l < 4; l++) if (Math.abs(x - lanes[l]) < Math.abs(x - lanes[best])) best = l
+    press(best)
+  })
+  stage.addEventListener('pointerdown', () => game?.unlock(), { once: true })
+  // Mode debug : ?seek=190 saute à la fin du morceau une fois la partie lancée.
+  const params = new URLSearchParams(location.search)
+  if (params.has('seek')) addEventListener('keydown', (e) => { if (e.code === 'KeyX' && game) game.seek(Number(params.get('seek'))) })
+  window.__francisHero = { get game() { return game } }
+</script>
+</body>
+</html>
