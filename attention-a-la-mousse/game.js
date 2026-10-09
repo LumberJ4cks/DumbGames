@@ -1,5 +1,5 @@
-import { createAudio } from './audio.js?v=3'
-import { drawText, drawTextC, textWidth } from './font.js?v=3'
+import { createAudio } from './audio.js?v=4'
+import { drawText, drawTextC, textWidth } from './font.js?v=4'
 
 /*
  * ATTENTION À LA MOUSSE ! — « 10 kilomètres d'effort. 20 centimètres de catastrophe. »
@@ -21,6 +21,8 @@ export const manifest = {
   tagline: '10 kilomètres d’effort. 20 centimètres de catastrophe.',
   releasedAt: '2026-11-10',
   status: 'draft',
+  // Shown on the title screen, so the loaded build can be told from a cached one.
+  version: '2.1',
   orientation: 'landscape',
   size: { width: 320, height: 180 },
   controls: [
@@ -1560,7 +1562,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       const left = Math.max(0, Math.ceil(C.RUN_DURATION - G.t))
       const clock = Math.floor(left / 60) + ':' + pad(left % 60, 2)
       drawText(ctx, clock, W - 42, 2, left <= 10 && Math.floor(now * 4) % 2 ? P.red : P.white)
-    } else drawText(ctx, best > 0 ? 'RECORD ' + pad(best, 6) : 'COURSE DES 10 KM · ÉDITION 2026', 4, 2, P.white)
+    } else {
+      drawText(ctx, best > 0 ? 'RECORD ' + pad(best, 6) : 'COURSE DES 10 KM · ÉDITION 2026', 4, 2, P.white)
+      drawText(ctx, 'V' + manifest.version, W - 44, 2, P.grey)
+    }
     drawSoundButton()
   }
 
