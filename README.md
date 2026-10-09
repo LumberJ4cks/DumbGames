@@ -14,4 +14,4 @@ Prototypes gardés hors de l'accueil (dossier présent, non listé) :
 
 - **GRAND THEFT FIFA** — *Vous êtes presque arrivé.* Conduite arcade vue du dessus ; le gag administratif tenait, le moteur de conduite demandait trop de travail pour être agréable.
 
-Chaque jeu est un dossier autonome avec son `index.html`, servi tel quel par GitHub Pages.
+Chaque jeu est un dossier autonome avec son `index.html`, servi tel quel par GitHub Pages. L'accueil (`index.html` à la racine) est une page statique : bannières dans `assets/` (captures recadrées des jeux), records et compteur de visites lus dans le `localStorage` du navigateur, aucun serveur.
