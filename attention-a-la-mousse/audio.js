@@ -13,6 +13,8 @@ export const TRACK_FILE = new URL('./mousse.mp3', import.meta.url).href
 export const SHOUT_CLIPS = []
 // The synthesised arcade loop under the track. Off: the recording carries the music.
 export const SYNTH_MUSIC = false
+// Level of the recording under the master gain (effects sit around 0.05–0.3 each).
+export const TRACK_VOLUME = 1.6
 
 export function createAudio() {
   let ac = null
@@ -153,7 +155,7 @@ export function createAudio() {
     src.buffer = shoutBuffer
     src.loop = true
     trackGain = ac.createGain()
-    trackGain.gain.value = 0.9
+    trackGain.gain.value = TRACK_VOLUME
     src.connect(trackGain)
     trackGain.connect(musicDuck)
     src.start(ac.currentTime + 0.02)
