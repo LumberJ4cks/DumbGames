@@ -337,7 +337,16 @@
       p.ell(cx, 41, 8, 8, [C.ink, C.slateD, C.slate, C.grey3])
       p.ell(cx, 41, 4, 4, R.steel, 1)
       p.px(cx, 41, C.slate)
+      for (const [dx, dy] of [[0, -3], [3, 0], [0, 3], [-3, 0]]) p.px(cx + dx, 41 + dy, C.grey1)
     }
+    // Chrome strip, mirror, plate and a long reflection on the body.
+    p.rect(4, 33, 62, 1, C.grey1)
+    p.box(52, 18, 4, 3, R.red, 0, 2)
+    p.rect(56, 19, 1, 1, C.grey1)
+    p.box(64, 30, 5, 4, R.white, 0, 2)
+    p.rect(65, 31, 3, 1, C.blueD)
+    for (let x = 6; x < 60; x++) if ((x * 7) % 11 < 6) p.px(x, 23, C.pink)
+    p.line(40, 26, 47, 26, C.pink)
   }]
 
   // Ironing board.
@@ -432,6 +441,16 @@
       p.px(x + 2, y + 1, C.greenM)
       p.px(x + 3, y + 1, C.green)
     }
+    // Piping, seams and a soft sheen on the arms and cushions.
+    for (let x = 14; x < 56; x += 2) p.px(x, 29, C.magenta)
+    p.rect(13, 36, 44, 1, C.purple)
+    for (const x0 of [2, 57]) {
+      p.rect(x0, 16, 11, 1, C.skinL)
+      for (let y = 22; y < 42; y += 2) p.px(x0 + 10, y, C.magenta)
+    }
+    p.rect(16, 26, 8, 1, C.skinL)
+    p.rect(38, 26, 8, 1, C.skinL)
+    for (const x of [8, 62]) p.px(x, 48, C.sand)
   }]
 
   // Paris street lamp (dark green cast iron).
@@ -519,6 +538,14 @@
     p.rect(27, 12, 2, 48, C.brownD)
     p.box(24, 34, 2, 4, R.gold, 0, 3)
     p.box(30, 34, 2, 4, R.gold, 0, 3)
+    // Wood grain on the panels, brass hinges, a second moulding.
+    for (const x0 of [10, 33]) for (let k = 0; k < 5; k++) {
+      const gx = x0 + 2 + k * 2
+      for (let y = 29 + (k % 3) * 4; y < 52; y += 7) p.rect(gx, y, 1, 3, C.brownL)
+    }
+    for (const x of [6, 49]) for (const y of [16, 50]) p.rect(x, y, 1, 3, C.amber)
+    p.rect(2, 8, 52, 1, C.brownD)
+    for (let x = 6; x < 50; x += 6) p.px(x, 7, C.cream)
   }]
   FRAMES.armoire = {
     open: (p) => {
@@ -667,6 +694,14 @@
       p.rect(x + 1, 9, 1, 4, C.white)
       p.px(x + 1, 8, C.amber)
     }
+    // Glossy varnish: diagonal streaks, and grain on the lower panel.
+    for (let k = 0; k < 8; k++) {
+      p.px(11 + k, 48 - k, C.brownL)
+      p.px(14 + k, 48 - k, C.brown)
+    }
+    for (let k = 0; k < 4; k++) p.px(52 - k, 22 - k, C.brownL)
+    for (let x = 12; x < 55; x += 5) p.rect(x, 41 + (x % 3), 3, 1, C.brown)
+    p.rect(4, 2, 58, 1, C.brownL)
   }]
 
   // Shopping trolley (own outline: the wire mesh must stay see-through).
@@ -994,6 +1029,8 @@
       hair: HAIRS[(index * 5 + 1) % HAIRS.length],
       style: (index * 13 + 5) % 6,
       hat: [R.red, R.blue, R.yellow, R.green][(index * 3) % 4],
+      // 0 none, 1 hi-vis vest, 2 keffiyeh, 3 backpack, 4 glasses, 5 scarf.
+      extra: (index * 7 + 2) % 6,
     }
   }
   const BODY = [
@@ -1017,6 +1054,7 @@
     stand: ['....PPPPpp......', '....PPP.Ppp.....', '....PPP.Ppp.....', '....PP...pp.....', '...BBB..BBB.....', '................', '................'],
     walkA: ['....PPPPpp......', '...PPP..ppp.....', '..PPP....pp.....', '..PP.....ppp....', '.BBB......BBB...', '................', '................'],
     walkB: ['....PPPPpp......', '.....PPpp.......', '.....PPpp.......', '.....PPpp.......', '....BBBBB.......', '................', '................'],
+    walkC: ['....PPPPpp......', '...ppp..PPP.....', '..ppp....PP.....', '..pp.....PPP....', '.BBB......BBB...', '................', '................'],
   }
   const HAIR = {
     0: [[1, 5, 9], [2, 4, 10], [3, 7, 10], [4, 8, 10], [5, 9, 10]],
@@ -1026,52 +1064,178 @@
     4: [[1, 4, 10], [2, 3, 11], [3, 6, 11], [4, 7, 11], [5, 8, 11], [6, 9, 10]],
     5: [[2, 5, 10], [3, 8, 10], [4, 9, 10]],
   }
-  /** frame: 0 idle, 1 bob, 2 walk A, 3 walk B. */
-  function person(look, frame, raised) {
-    const p = new Pix(16, 22)
-    const [s0, s1, s2] = look.skin
+  /**
+   * Poses: 'idle0', 'idle1' (breathing), 'walk0'…'walk3' (4-step cycle), 'flinch' (a ball went by),
+   * 'cheer' (arms up). `raised` holds a sign up with the front arm.
+   */
+  function person(look, pose, raised) {
+    const p = new Pix(16, 22, 1)
+    const [, s1, s2] = look.skin
     const sh = look.shirt
     const T = sh[sh.length - 2]
     const t = sh[Math.max(0, sh.length - 3)]
-    const u = sh[Math.max(0, sh.length - 4)] || darker(t)
-    const bob = frame === 1 ? 1 : 0
-    const map = { S: s2, s: s1, E: C.ink, T, t, u, P: look.pants[1], p: look.pants[0], B: C.ink }
+    const bob = pose === 'idle1' || pose === 'walk1' || pose === 'walk3' ? 1 : 0
+    const lean = pose === 'flinch' ? 1 : 0
+    const map = { S: s2, s: s1, E: C.ink, T, t, u: sh[Math.max(0, sh.length - 4)] || darker(t), P: look.pants[1], p: look.pants[0], B: C.ink }
     BODY.forEach((row, y) => {
-      for (let x = 0; x < 16; x++) if (row[x] !== '.') p.px(x, y + bob, map[row[x]])
+      for (let x = 0; x < 16; x++) if (row[x] !== '.') p.px(x + lean, y + bob, map[row[x]])
     })
-    p.px(3, 6 + bob, s1)
-    const legs = frame === 2 ? LEGS.walkA : frame === 3 ? LEGS.walkB : LEGS.stand
+    p.px(3 + lean, 6 + bob, s1)
+    const legs = { walk0: LEGS.walkA, walk1: LEGS.walkB, walk2: LEGS.walkC, walk3: LEGS.walkB }[pose] || LEGS.stand
     legs.forEach((row, y) => {
       for (let x = 0; x < 16; x++) if (row[x] !== '.') p.px(x, 15 + y, row[x] === 'B' ? (x % 4 === 0 ? C.slateD : C.ink) : map[row[x]])
     })
-    // Arm in front: hanging, or raised to hold the sign.
-    if (raised) {
-      for (let y = 4; y <= 10; y++) p.px(3, y + bob, y < 7 ? T : t)
-      p.px(4, 9 + bob, t)
-      p.px(3, 3 + bob, s2)
-      p.px(2, 3 + bob, s1)
+    const X = 3 + lean
+    // Outfit extras.
+    const ex = look.extra
+    if (ex === 1) {
+      for (let y = 9; y <= 14; y++) for (let x = X + 1; x <= X + 6; x++) if (p.get(x, y + bob)) p.px(x, y + bob, x > X + 4 ? C.orange : C.amber)
+      p.rect(X + 1, 12 + bob, 6, 1, C.grey1)
+    }
+    if (ex === 2) for (let x = X + 1; x <= X + 6; x++) for (const y of [8, 9]) p.px(x, y + bob, (x + y) & 1 ? C.white : C.redD)
+    if (ex === 3) {
+      p.rect(X + 8, 9 + bob, 3, 6, C.greenD)
+      p.rect(X + 8, 9 + bob, 1, 6, C.greenM)
+      p.px(X + 9, 11 + bob, C.amber)
+    }
+    if (ex === 4) {
+      p.rect(X, 5 + bob, 3, 1, C.ink)
+      p.px(X + 1, 5 + bob, C.cyan)
+    }
+    if (ex === 5) {
+      p.rect(X + 1, 8 + bob, 6, 2, C.blueD)
+      p.rect(X + 1, 8 + bob, 6, 1, C.blue)
+      p.rect(X + 5, 10 + bob, 2, 2, C.blueD)
+    }
+    // Arms.
+    if (pose === 'cheer') {
+      for (let y = 2; y <= 9; y++) p.px(X, y + bob, y < 6 ? T : t)
+      p.px(X, 1 + bob, s2)
+      for (let y = 3; y <= 9; y++) p.px(X + 7, y + bob, t)
+      p.px(X + 7, 2 + bob, s1)
+      p.px(X + 1, 7 + bob, C.redD)
+    } else if (pose === 'flinch') {
+      p.line(X + 1, 10 + bob, X - 2, 5 + bob, T)
+      p.px(X - 2, 4 + bob, s2)
+      p.px(X + 1, 7 + bob, C.redD)
+      p.px(X + 1, 5 + bob, C.white)
+    } else if (raised) {
+      for (let y = 4; y <= 10; y++) p.px(X, y + bob, y < 7 ? T : t)
+      p.px(X + 1, 9 + bob, t)
+      p.px(X, 3 + bob, s2)
+      p.px(X - 1, 3 + bob, s1)
     } else {
-      for (let y = 10; y <= 13; y++) p.px(5, y + bob, t)
-      p.px(5, 14 + bob, s1)
+      const swing = pose === 'walk0' ? -1 : pose === 'walk2' ? 1 : 0
+      for (let y = 10; y <= 13; y++) p.px(X + 2 + (y > 11 ? swing : 0), y + bob, t)
+      p.px(X + 2 + swing, 14 + bob, s1)
     }
     // Hair or headgear.
     const [h0, h1] = look.hair
     const style = HAIR[look.style]
+    const hy = (y) => y + bob
     if (style === 'cap') {
       const [c0, , c2, c3] = look.hat
-      p.rect(4, 1 + bob, 7, 2, c2)
-      p.rect(5, 1 + bob, 4, 1, c3)
-      p.rect(1, 3 + bob, 4, 1, c0)
-      p.rect(7, 3 + bob, 4, 1, h0)
+      p.rect(X + 1, hy(1), 7, 2, c2)
+      p.rect(X + 2, hy(1), 4, 1, c3)
+      p.rect(X - 2, hy(3), 4, 1, c0)
+      p.rect(X + 4, hy(3), 4, 1, h0)
     } else if (style === 'beanie') {
       const [c0, c1, c2] = look.hat
-      p.rect(4, 1 + bob, 7, 2, c2)
-      p.rect(4, 3 + bob, 7, 1, c1)
-      p.px(7, 0 + bob, c0)
-      p.rect(8, 4 + bob, 3, 1, h0)
-    } else
-      for (const [y, x0, x1] of style) for (let x = x0; x <= x1; x++) p.px(x, y + bob, x === x0 && y < 3 ? h1 : h0)
+      p.rect(X + 1, hy(1), 7, 2, c2)
+      p.rect(X + 1, hy(3), 7, 1, c1)
+      p.px(X + 4, hy(0), c0)
+      p.rect(X + 5, hy(4), 3, 1, h0)
+    } else for (const [y, x0, x1] of style) for (let x = x0; x <= x1; x++) p.px(x + lean, hy(y), x === x0 && y < 3 ? h1 : h0)
     return p.toCanvas()
+  }
+  const POSES = ['idle0', 'idle1', 'walk0', 'walk1', 'walk2', 'walk3', 'flinch', 'cheer']
+
+  /* ---------- street life: a dog and a pram (decor, no hitbox) ---------- */
+  function dog(frame) {
+    return sprite(14, 10, (p) => {
+      const D = [C.brownD, C.brown, C.brownL, C.sand]
+      p.box(3, 3, 9, 4, D, 0, 2)
+      p.box(0, 1, 5, 4, D, 0, 2)
+      p.px(0, 3, C.ink)
+      p.px(2, 2, C.ink)
+      p.rect(3, 0, 2, 2, C.brown)
+      const tail = frame ? -1 : 0
+      p.px(12, 2 + tail, C.brownL)
+      p.px(13, 1 + tail, C.brownL)
+      for (const [x, k] of [[4, 0], [6, 1], [9, 0], [11, 1]]) p.rect(x, 7, 1, 2 - ((k + frame) % 2), C.brown)
+      p.rect(3, 4, 2, 1, C.red)
+    })
+  }
+  function pram() {
+    return sprite(16, 14, (p) => {
+      p.ell(7, 5, 6, 4.5, R.blue, 0, (x, y) => y <= 6)
+      p.box(2, 6, 11, 4, R.blue, 0, 2)
+      p.rect(13, 3, 1, 7, C.grey2)
+      p.rect(13, 2, 3, 1, C.grey1)
+      for (const cx of [4, 11]) {
+        p.disc(cx, 11.5, 2, 2, C.ink)
+        p.px(cx, 11, C.grey2)
+      }
+      p.px(6, 6, C.skinL)
+    })
+  }
+
+  /* ---------- UI icons ---------- */
+  const UI_ICONS = {
+    heart: [7, 6, (p) => {
+      p.rect(1, 0, 2, 1, C.red)
+      p.rect(4, 0, 2, 1, C.red)
+      p.rect(0, 1, 7, 2, C.red)
+      p.rect(1, 3, 5, 1, C.red)
+      p.rect(2, 4, 3, 1, C.redD)
+      p.px(3, 5, C.redD)
+      p.px(1, 1, C.pink)
+    }],
+    heartOff: [7, 6, (p) => {
+      p.rect(1, 0, 2, 1, C.slate)
+      p.rect(4, 0, 2, 1, C.slate)
+      p.rect(0, 1, 7, 2, C.slate)
+      p.rect(1, 3, 5, 1, C.slate)
+      p.rect(2, 4, 3, 1, C.slateD)
+      p.px(3, 5, C.slateD)
+    }],
+    truck: [16, 10, (p) => {
+      p.box(0, 1, 10, 6, R.white, 0, 2)
+      p.text('LIV', 1, -1, C.red)
+      p.box(10, 3, 5, 4, R.red, 1, 2)
+      p.rect(12, 4, 2, 1, C.cyan)
+      for (const cx of [3, 12]) {
+        p.disc(cx, 8, 1.6, 1.6, C.ink)
+        p.px(cx, 8, C.grey2)
+      }
+    }],
+    person: [7, 9, (p) => {
+      p.disc(3, 2, 2, 2, C.skinL)
+      p.rect(1, 4, 5, 4, C.red)
+      p.rect(1, 4, 1, 4, C.pink)
+    }],
+    star: [9, 9, (p) => {
+      p.rect(4, 0, 1, 3, C.yellow)
+      p.rect(0, 3, 9, 2, C.yellow)
+      p.rect(2, 5, 5, 1, C.amber)
+      p.rect(1, 6, 2, 2, C.amber)
+      p.rect(6, 6, 2, 2, C.amber)
+      p.rect(3, 2, 3, 3, C.yellow)
+      p.px(4, 3, C.white)
+    }],
+    clock: [9, 9, (p) => {
+      p.disc(4.5, 4.5, 4.2, 4.2, C.white)
+      p.rect(4, 1, 1, 4, C.ink)
+      p.rect(4, 4, 3, 1, C.ink)
+      p.px(1, 4, C.grey2)
+      p.px(7, 4, C.grey2)
+    }],
+    fire: [8, 10, (p) => {
+      p.ell(4, 6, 3.5, 3.5, [C.red, C.orange, C.amber, C.yellow], 0.4)
+      p.rect(3, 1, 2, 3, C.orange)
+      p.px(5, 2, C.amber)
+      p.px(4, 6, C.white)
+    }],
   }
 
   /* ---------- signs (decorative, outside every hitbox) ---------- */
@@ -1146,7 +1310,7 @@
     K: C.slateD, k: C.slate, h: C.grey2, V: C.cyan, v: C.blue, S: C.skinL, s: C.skin,
     N: C.slate, n: C.slateD, P: C.grey3, W: C.grey1, B: C.ink, G: C.amber, L: C.slateD, l: C.slate, O: C.ink,
   }
-  function crs(frame, eating) {
+  function crs(frame, eating, reload) {
     return sprite(20, 23, (p) => {
       const bob = frame % 2
       CRS_LEGS.forEach((row, y) => {
@@ -1155,6 +1319,13 @@
       CRS_UPPER.forEach((row, y) => {
         for (let x = 0; x < 20; x++) if (row[x] !== '.') p.px(x, y + bob, CRS_COL[row[x]])
       })
+      if (reload) {
+        // Operator feeding the cannon: arm forward and down into the hopper.
+        p.line(11, 10 + bob, 16, 13 + frame, C.slate)
+        p.rect(16, 13 + frame, 2, 2, C.orange)
+        p.px(16, 13 + frame, C.amber)
+        return
+      }
       if (eating) {
         // Truce: shield down, a merguez up to the visor.
         p.rect(12, 9 + bob, 2, 3, C.slate)
@@ -1216,6 +1387,17 @@
         x += rand() < 0.5 ? 1 : 0
         y += rand() < 0.6 ? 1 : -1
       }
+    }
+    // Puddles from the last shower, reflecting a warm sky.
+    for (const [cx, cy, rx, ry] of [[210, 300, 16, 5], [430, 76, 12, 4], [330, 230, 9, 3], [490, 300, 11, 4], [175, 120, 8, 3]]) {
+      for (let y = -ry; y <= ry; y++)
+        for (let x = -rx; x <= rx; x++) {
+          const d = (x / rx) ** 2 + (y / ry) ** 2
+          if (d > 1) continue
+          px(cx + x, cy + y, 1, 1, d > 0.7 ? C.slateD : y < 0 && (x + y) % 3 === 0 ? C.grey3 : C.blueD)
+        }
+      px(cx - rx + 3, cy - 1, Math.round(rx * 0.8), 1, C.grey2)
+      px(cx - 2, cy + 1, 3, 1, C.sand)
     }
     // Shops along the top, under the HUD: sign band, striped awning, window and door.
     const shops = [
@@ -1354,10 +1536,21 @@
     for (const [k, [w, h, fn, outline]] of Object.entries(PROPS)) S.props[k] = sprite(w, h, fn, outline !== false)
     for (let i = 0; i < 24; i++) {
       const look = lookFor(i)
-      S.people.push({ look: { shirt: look.shirt[2] || look.shirt[1], skin: look.skin[2] }, frames: [0, 1, 2, 3].map((f) => person(look, f, false)), raised: [0, 1, 2, 3].map((f) => person(look, f, true)) })
+      const pose = {}
+      const raised = {}
+      for (const ps of POSES) {
+        pose[ps] = person(look, ps, false)
+        raised[ps] = person(look, ps, true)
+      }
+      S.people.push({ look: { shirt: look.shirt[2] || look.shirt[1], skin: look.skin[2] }, pose, raised })
     }
     for (const k of Object.keys(SIGNS)) S.signs[k] = sign(k)
     S.crs = [crs(0, false), crs(1, false), crs(0, true), crs(1, true)]
+    S.crsReload = [crs(0, false, true), crs(1, false, true)]
+    S.dog = [dog(0), dog(1)]
+    S.pram = pram()
+    S.ui = {}
+    for (const [k, [w, h, fn]] of Object.entries(UI_ICONS)) S.ui[k] = sprite(w, h, fn)
     S.launcher = launcher()
     return S
   }
