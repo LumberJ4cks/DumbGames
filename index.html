@@ -89,6 +89,8 @@
   .card .t { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); z-index: 1; max-width: 70%; }
   .card h3 { margin: 0; font-size: clamp(24px, 4vw, 40px); color: var(--c, #fff); text-shadow: 3px 3px 0 #000; }
   .card .l { display: inline-block; background: #000; font-weight: 700; font-size: 13px; padding: 2px 8px; margin-top: 6px; }
+  .card.art::after { display: none; }
+  .card.art .t { display: none; }
   .card .go { position: absolute; right: 14px; bottom: 14px; z-index: 1; width: 34px; height: 34px; background: var(--yellow); display: grid; place-items: center; color: #111; font-size: 14px; box-shadow: 2px 2px 0 #000; }
   .card:hover .go { background: #fff; }
   .champ { border: 2px solid var(--line); box-shadow: 4px 4px 0 #000; background: var(--panel); padding: 12px 14px; font-family: var(--mono); display: flex; flex-direction: column; }
@@ -180,8 +182,8 @@
   <div class="hd"><h2 class="big">Des jeux. Voilà.</h2><p>Petites parties. Grandes pertes de temps.</p></div>
 
   <div class="row">
-    <a class="card" href="francis-hero/" style="--c:#ffd24a">
-      <img src="assets/francis-hero.png" alt="" loading="lazy">
+    <a class="card art" href="francis-hero/">
+      <img src="assets/francis-hero.webp" alt="" width="1600" height="450" loading="lazy">
       <div class="t"><h3 class="big">Francis Hero</h3><span class="l">Grattez la légende.</span></div>
       <span class="go">▶</span>
     </a>
@@ -189,8 +191,8 @@
   </div>
 
   <div class="row">
-    <a class="card" href="attention-a-la-mousse/" style="--c:#ffffff">
-      <img src="assets/attention-a-la-mousse.png" alt="" loading="lazy">
+    <a class="card art" href="attention-a-la-mousse/">
+      <img src="assets/attention-a-la-mousse.webp" alt="" width="1600" height="450" loading="lazy">
       <div class="t"><h3 class="big">Attention<br>à la mousse</h3><span class="l">Ça passe. Ou ça mousse.</span></div>
       <span class="go">▶</span>
     </a>
@@ -198,8 +200,8 @@
   </div>
 
   <div class="row">
-    <a class="card" href="la-verite-si-je-vends/" style="--c:#ff4a4a">
-      <img src="assets/la-verite-si-je-vends.png" alt="" loading="lazy">
+    <a class="card art" href="la-verite-si-je-vends/">
+      <img src="assets/la-verite-si-je-vends.webp" alt="" width="1600" height="450" loading="lazy">
       <div class="t"><h3 class="big">La vérité<br>si je vends</h3><span class="l">Une affaire de réflexes.</span></div>
       <span class="go">▶</span>
     </a>
@@ -207,8 +209,8 @@
   </div>
 
   <div class="row">
-    <a class="card" href="only-feet/" style="--c:#19b5ff">
-      <img src="assets/only-feet.png" alt="" loading="lazy">
+    <a class="card art" href="only-feet/">
+      <img src="assets/only-feet.webp" alt="" width="1600" height="450" loading="lazy">
       <div class="t"><h3 class="big">Only Feet</h3><span class="l">Deux minutes pour payer ton loyer.</span></div>
       <span class="go">▶</span>
     </a>
@@ -225,8 +227,8 @@
   </div>
 
   <div class="row">
-    <a class="card" href="ctrl-rn/" style="--c:#ffffff">
-      <img src="assets/ctrl-rn.png" alt="" loading="lazy">
+    <a class="card art" href="ctrl-rn/">
+      <img src="assets/ctrl-rn.webp" alt="" width="1600" height="450" loading="lazy">
       <div class="t"><h3 class="big">Ctrl + RN</h3><span class="l">Fermez tout. Vite.</span></div>
       <span class="go">▶</span>
     </a>
