@@ -850,74 +850,82 @@
     })
   }
 
-  /* ---------- street ---------- */
+  /* ---------- street (landscape 640 × 360: sidewalks top and bottom) ---------- */
   function street(rand) {
-    const c = makeCanvas(480, 640)
+    const c = makeCanvas(640, 360)
     const g = c.getContext('2d')
     const px = (x, y, w, h, col) => {
       g.fillStyle = col
       g.fillRect(x, y, w, h)
     }
     // Asphalt with a little grain.
-    px(0, 0, 480, 640, '#4d5466')
-    for (let i = 0; i < 2600; i++) px((rand() * 480) | 0, (rand() * 640) | 0, 1, 1, rand() < 0.5 ? '#474e60' : '#555c6e')
-    for (let i = 0; i < 40; i++) px((rand() * 480) | 0, (rand() * 640) | 0, 2, 1, '#3f4556')
+    px(0, 0, 640, 360, '#4d5466')
+    for (let i = 0; i < 2600; i++) px((rand() * 640) | 0, (rand() * 360) | 0, 1, 1, rand() < 0.5 ? '#474e60' : '#555c6e')
+    for (let i = 0; i < 40; i++) px((rand() * 640) | 0, (rand() * 360) | 0, 2, 1, '#3f4556')
     // Sidewalks.
-    for (const x0 of [0, 410]) {
-      px(x0, 48, 70, 592, '#bfae8e')
-      for (let y = 48; y < 640; y += 16) px(x0, y, 70, 1, '#ad9c7d')
-      for (let y = 48; y < 640; y += 16) for (let x = x0 + ((y / 16) % 2 ? 0 : 11); x < x0 + 70; x += 22) px(x, y, 1, 16, '#ad9c7d')
-      for (let i = 0; i < 300; i++) px(x0 + ((rand() * 70) | 0), 48 + ((rand() * 592) | 0), 1, 1, rand() < 0.5 ? '#b5a484' : '#c8b898')
+    for (const [y0, h] of [[0, 58], [318, 42]]) {
+      px(0, y0, 640, h, '#bfae8e')
+      for (let x = 0; x < 640; x += 16) px(x, y0, 1, h, '#ad9c7d')
+      for (let x = 0; x < 640; x += 16) for (let y = y0 + ((x / 16) % 2 ? 0 : 11); y < y0 + h; y += 22) px(x, y, 16, 1, '#ad9c7d')
+      for (let i = 0; i < 300; i++) px((rand() * 640) | 0, y0 + ((rand() * h) | 0), 1, 1, rand() < 0.5 ? '#b5a484' : '#c8b898')
     }
     // Curbs.
-    px(70, 48, 2, 592, '#d9cfb8')
-    px(68, 48, 2, 592, '#8e7f64')
-    px(408, 48, 2, 592, '#d9cfb8')
-    px(410, 48, 2, 592, '#8e7f64')
+    px(0, 58, 640, 2, '#d9cfb8')
+    px(0, 56, 640, 2, '#8e7f64')
+    px(0, 316, 640, 2, '#d9cfb8')
+    px(0, 318, 640, 2, '#8e7f64')
     // Faded road markings, quieter than the game.
-    for (let y = 182; y < 470; y += 36) px(239, y, 2, 18, '#636a7a')
-    px(72, 168, 336, 2, '#5d6474')
-    px(72, 478, 336, 2, '#5d6474')
-    // Crossing at the top, under the crowd.
-    for (let x = 84; x < 400; x += 20) px(x, 150, 10, 12, '#5a6172')
+    for (let x = 152; x < 516; x += 36) px(x, 187, 18, 2, '#636a7a')
+    px(138, 60, 2, 256, '#5d6474')
+    px(520, 60, 2, 256, '#5d6474')
+    // Crossing behind the crowd.
+    for (let y = 66; y < 310; y += 20) px(528, y, 12, 10, '#5a6172')
     // Manhole and drains.
     g.fillStyle = '#3c4252'
     g.beginPath()
-    g.arc(130, 500, 9, 0, Math.PI * 2)
+    g.arc(100, 290, 9, 0, Math.PI * 2)
     g.fill()
-    for (let k = -6; k <= 6; k += 3) px(124, 500 + k, 13, 1, '#474e60')
-    px(74, 470, 10, 4, '#2d3240')
-    px(396, 230, 10, 4, '#2d3240')
+    for (let k = -6; k <= 6; k += 3) px(94, 290 + k, 13, 1, '#474e60')
+    px(160, 60, 10, 4, '#2d3240')
+    px(400, 312, 10, 4, '#2d3240')
     // Sidewalk props (decor, low contrast).
     const tree = (x, y) => {
       px(x - 7, y - 7, 14, 14, '#9a8a6c')
       g.fillStyle = '#3e6b45'
       g.beginPath()
-      g.arc(x, y - 4, 13, 0, Math.PI * 2)
+      g.arc(x, y - 3, 11, 0, Math.PI * 2)
       g.fill()
       g.fillStyle = '#4f8155'
       g.beginPath()
-      g.arc(x - 3, y - 7, 8, 0, Math.PI * 2)
+      g.arc(x - 3, y - 6, 6, 0, Math.PI * 2)
       g.fill()
     }
-    tree(446, 110)
-    tree(446, 520)
-    tree(34, 520)
-    tree(34, 120)
+    tree(70, 42)
+    tree(470, 42)
+    tree(600, 42)
+    tree(40, 342)
+    tree(560, 342)
     const bench = (x, y) => {
-      px(x, y, 8, 30, '#7a5a3a')
-      px(x + 1, y, 1, 30, '#8e6c48')
-      px(x + 9, y + 2, 2, 26, '#5a4a3a')
+      px(x, y, 30, 8, '#7a5a3a')
+      px(x, y + 1, 30, 1, '#8e6c48')
+      px(x + 2, y + 9, 26, 2, '#5a4a3a')
     }
-    bench(450, 210)
-    bench(22, 220)
-    px(452, 440, 10, 12, '#4a6a4a')
-    px(452, 438, 10, 2, '#3a5a3a')
-    px(24, 430, 10, 12, '#4a6a4a')
-    px(24, 428, 10, 2, '#3a5a3a')
-    // Bottom: the road keeps going under the police; message strip below the exit line.
-    px(0, 600, 480, 40, '#1b2030')
-    px(0, 600, 480, 1, '#2c3346')
+    bench(150, 36)
+    bench(150, 336)
+    px(206, 34, 10, 12, '#4a6a4a')
+    px(206, 32, 10, 2, '#3a5a3a')
+    px(440, 336, 10, 12, '#4a6a4a')
+    px(440, 334, 10, 2, '#3a5a3a')
+    return c
+  }
+  /** Exact quarter turn (pixels preserved). dir 1 = clockwise, -1 = anticlockwise. */
+  function rot90(src, dir) {
+    const c = makeCanvas(src.height, src.width)
+    const g = c.getContext('2d')
+    g.imageSmoothingEnabled = false
+    g.translate(c.width / 2, c.height / 2)
+    g.rotate((dir * Math.PI) / 2)
+    g.drawImage(src, -src.width / 2, -src.height / 2)
     return c
   }
 
@@ -937,8 +945,9 @@
       S.people.push({ look, frames: [0, 1, 2, 3].map((f) => person(look, f, false)), raised: [0, 1, 2, 3].map((f) => person(look, f, true)) })
     }
     for (const k of Object.keys(SIGNS)) S.signs[k] = sign(k)
-    S.crs = [crs(0, false), crs(1, false), crs(0, true), crs(1, true)]
-    S.launcher = launcher()
+    // The police face right, towards the crowd.
+    S.crs = [crs(0, false), crs(1, false), crs(0, true), crs(1, true)].map((c) => rot90(c, 1))
+    S.launcher = rot90(launcher(), 1)
     return S
   }
   /** A few representative colours of a sprite, for debris. */
