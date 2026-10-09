@@ -160,6 +160,15 @@ export function createAudio() {
         return false
       }
     },
+    /** iOS only lets speech start from a user gesture: say nothing once inside the tap. */
+    primeVoice() {
+      if (muted || typeof speechSynthesis === 'undefined') return
+      try {
+        const u = new SpeechSynthesisUtterance(' ')
+        u.volume = 0
+        speechSynthesis.speak(u)
+      } catch {}
+    },
     hush() {
       try { speechSynthesis.cancel() } catch {}
     },

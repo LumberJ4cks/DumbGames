@@ -277,7 +277,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   let lastFrame = performance.now()
   let raf = 0
   let destroyed = false
-  let pointerTouch = false
+  // Phones see « TAPOTE » from the start, before the first touch.
+  let pointerTouch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   let G = null
   let skaters = []
   let particles = []
@@ -493,6 +494,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function startRun() {
     audio.resume()
+    audio.primeVoice()
     G = newGame()
     G.nextGroup = planGroup(C.FIRST_ARRIVAL)
     skaters = []
@@ -1055,6 +1057,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       rect(0, 56, W, 22, P.ink)
       big('FIN DE L’ÉPREUVE', 160, 60, P.white)
     }
+    if (G.t < 7 && !G.over && Math.floor(now * 2) % 2)
+      drawTextC(ctx, pointerTouch ? 'TAPOTE QUAND ILS PANIQUENT !' : 'ESPACE QUAND ILS PANIQUENT !', 160, 150, P.yellow)
     drawNote()
     drawHud()
     if (paused) {
@@ -1123,6 +1127,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
           toggleMute()
           return
         }
+        // Every new finger is a new press: two thumbs can alternate in the crowd. A finger held
+        // down never fires again, so holding still does nothing.
+        if (payload.touch) needRelease = false
         press()
       } else if (payload.type === 'up') release()
       return

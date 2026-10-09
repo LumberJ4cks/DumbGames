@@ -67,7 +67,8 @@
     const availW = rotated ? sh : sw
     const availH = rotated ? sw : sh
     let scale = Math.min(availW / GW, availH / GH)
-    scale = scale >= 2 ? Math.floor(scale) : Math.max(1, scale)
+    // Phones: fill the screen (high-density displays hide uneven pixels); desktop: whole pixels.
+    if (!matchMedia('(pointer: coarse)').matches) scale = scale >= 2 ? Math.floor(scale) : Math.max(1, scale)
     canvas.style.width = GW * scale + 'px'
     canvas.style.height = GH * scale + 'px'
   }
