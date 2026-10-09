@@ -195,33 +195,6 @@ export function createAudio() {
       tone(1900, 0.16, 'square', 0.06, 1500, later(0.12))
       noise(0.06, 0.08, 600)
     },
-    /** SCANDALE: crowd gasp and a sour brass chord. */
-    scandal() {
-      noise(0.5, 0.18, 900, null, 'bandpass')
-      ;[233, 220, 208].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.06, null, later(i * 0.15)))
-    },
-    ola() {
-      ;[523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, 0.12, 'square', 0.07, null, later(i * 0.08)))
-      noise(1.4, 0.16, 1800, later(0.1), 'bandpass')
-    },
-    coo() {
-      tone(420, 0.18, 'sine', 0.05, 360)
-      tone(400, 0.22, 'sine', 0.05, 330, later(0.25))
-    },
-    flap() {
-      for (let i = 0; i < 6; i++) noise(0.03, 0.1, 2500, later(i * 0.05))
-    },
-    shutter() {
-      noise(0.04, 0.3, 6000, null, 'highpass')
-      tone(3000, 0.25, 'sine', 0.05, 5000, later(0.02))
-    },
-    /** PIN-PON, French fire engine two-tone. */
-    siren() {
-      for (let i = 0; i < 4; i++) {
-        tone(435, 0.22, 'square', 0.06, null, later(i * 0.5))
-        tone(488, 0.22, 'square', 0.06, null, later(i * 0.5 + 0.25))
-      }
-    },
     whiff() {
       noise(0.06, 0.08, 600)
       tone(180, 0.06, 'sine', 0.05, 120)

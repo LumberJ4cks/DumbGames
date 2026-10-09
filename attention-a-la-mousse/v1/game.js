@@ -8,9 +8,6 @@ import { drawText, drawTextC, textWidth } from './font.js'
  * press of Space makes every skater inside the short zone just before the mat jump; too
  * early nobody jumps, too late it is a roulé-boulé. Two minutes, from three Sunday athletes
  * to a migration of rollers. No elimination.
- * Version 2 (version 1 is kept in ./v1/): intruders that must NOT jump (the mayor, a pram,
- * a dog, the first-aid volunteer), hesitant beginners, a longer mat, the official
- * photographer's flash, pigeons, a one-off fire engine and the ola.
  * Follows the games-site module contract: `manifest`, `create(options)`, `validate(result)`,
  * `grade(result)`. Internal resolution 320 × 180, pixel art drawn in code.
  */
@@ -48,10 +45,7 @@ export const CONFIG = {
   ZONE: 24,
   PERFECT: 7,
   LAND_AFTER: 9,
-  // The jump has a fixed length: it clears the mat only from the last JUMP_REACH px before
-  // it. Jump earlier in the zone and the skater lands on the mat (TROP TÔT).
-  JUMP_REACH: 15,
-  JUMP_HEIGHT: 12,
+  JUMP_HEIGHT: 15,
   JUMP_MIN: 0.4,
   // Mashing guard: after a jump the next press needs RECOVERY s. A press too soon, or with
   // nobody in the zone, is a FAUX DÉPART: no jump at all for LOCKOUT s (and pressing during
@@ -69,43 +63,13 @@ export const CONFIG = {
   // between rows of a group, `abreast` skaters per row, `vary` the individual speed spread.
   // `fast` and `slow` are the share of FUSÉES and PROMENEURS in a group: they ride at
   // FAST_SPEED / SLOW_SPEED times the group speed, break the group up and arrive off-beat.
-  // `hesitant` is the share of beginners who brake just before the zone; `intruder` the chance
-  // that a group carries someone who must not jump.
   WAVES: [
-    { until: 20, size: [1, 1], gap: [1.7, 2.5], spacing: [0, 0], speed: [36, 62], abreast: 1, vary: 0, fast: 0, slow: 0, hesitant: 0, intruder: 0 },
-    { until: 45, size: [2, 4], gap: [1.6, 2.4], spacing: [6, 12], speed: [40, 60], abreast: 1, vary: 3, fast: 0.15, slow: 0.15, hesitant: 0.2, intruder: 0 },
-    { until: 75, size: [4, 8], gap: [1.3, 2.0], spacing: [4, 10], speed: [40, 64], abreast: 2, vary: 5, fast: 0.2, slow: 0.2, hesitant: 0.12, intruder: 0.45 },
-    { until: 105, size: [8, 16], gap: [1.0, 1.6], spacing: [3, 8], speed: [44, 66], abreast: 3, vary: 6, fast: 0.25, slow: 0.2, hesitant: 0.1, intruder: 0.4 },
-    { until: Infinity, size: [22, 38], gap: [0.6, 1.1], spacing: [3, 5], speed: [50, 70], abreast: 4, vary: 6, fast: 0.3, slow: 0.15, hesitant: 0.06, intruder: 0.35 },
+    { until: 20, size: [1, 1], gap: [1.7, 2.5], spacing: [0, 0], speed: [36, 62], abreast: 1, vary: 0, fast: 0, slow: 0 },
+    { until: 45, size: [2, 4], gap: [1.6, 2.4], spacing: [6, 12], speed: [40, 60], abreast: 1, vary: 3, fast: 0.15, slow: 0.15 },
+    { until: 75, size: [4, 8], gap: [1.3, 2.0], spacing: [4, 10], speed: [40, 64], abreast: 2, vary: 5, fast: 0.2, slow: 0.2 },
+    { until: 105, size: [8, 16], gap: [1.0, 1.6], spacing: [3, 8], speed: [44, 66], abreast: 3, vary: 6, fast: 0.25, slow: 0.2 },
+    { until: Infinity, size: [22, 38], gap: [0.6, 1.1], spacing: [3, 5], speed: [50, 70], abreast: 4, vary: 6, fast: 0.3, slow: 0.15 },
   ],
-  // Intruders: walking speed range per kind. Making one jump is a SCANDALE (multiplier to ×1).
-  INTRUDERS: {
-    maire: [24, 30],
-    poussette: [28, 34],
-    chien: [50, 62],
-    secouriste: [32, 36],
-  },
-  MEDIC_EVERY: 10, // a first-aid volunteer walks the track every N victims
-  // Mat extension (the mat grows towards the skaters, so the zone moves earlier) from phase 3,
-  // removed for the peloton.
-  MAT_EXTENSION: 16,
-  MAT_GROW_SPEED: 24,
-  // Pigeons land around the mat from PIGEONS_AT; any press makes them fly.
-  PIGEONS_AT: 26,
-  PIGEONS_EVERY: [11, 16],
-  // The official photographer: comes in, aims (the tell), flashes the whole screen white.
-  PHOTO_AT: 50,
-  PHOTO_EVERY: [9, 14],
-  PHOTO_AIM: 1.1,
-  PHOTO_FLASH: 0.65,
-  // The fire engine: once, from the left, sweeping everybody in its path.
-  TRUCK_AT: 92,
-  TRUCK_WARN: 1.8,
-  TRUCK_SPEED: 115,
-  TRUCK_LEN: 58,
-  // Ola: OLA_EVERY consecutive presses with a PARFAIT start an ola, points ×2 for a while.
-  OLA_EVERY: 8,
-  OLA_DURATION: 6,
   FAST_SPEED: 1.5,
   SLOW_SPEED: 0.65,
   BREATHER_EVERY: [4, 6],
@@ -117,18 +81,11 @@ export const CONFIG = {
 
 const PHASE_NOTES = [
   null,
-  'DÉBUTANTS AUTORISÉS SUR LE PARCOURS',
-  'ACCÈS PUBLIC AUTORISÉ : NE PAS LES FAIRE SAUTER',
-  'EXTENSION DU TAPIS HOMOLOGUÉE',
+  'ARRIVÉES GROUPÉES SIGNALÉES',
+  'AFFLUENCE CONSTATÉE',
+  'FOULE NON DÉCLARÉE EN PRÉFECTURE',
   'LE PELOTON DU DIMANCHE',
 ]
-const INTRUDER_KINDS = new Set(['maire', 'poussette', 'chien', 'secouriste'])
-const SCANDAL_NOTES = {
-  maire: 'LE MAIRE A SAUTÉ. CONSEIL MUNICIPAL CONVOQUÉ',
-  poussette: 'POUSSETTE EN VOL : ENQUÊTE OUVERTE',
-  chien: 'CHIEN EN VOL : LA SPA EST PRÉVENUE',
-  secouriste: 'SECOURISTE EN VOL : ARRÊT DE TRAVAIL',
-}
 const LEVEL_NOTES = [
   null,
   'DISPOSITIF HOMOLOGUÉ',
@@ -286,65 +243,6 @@ const ARMS_STAR = [
   [5, -17, 1, 1, 'S'],
 ]
 
-/* Intruders, same convention. Extra colour keys: U suit, G grey hair, b/w/r the tricolour
- * sash, C/c dog, P pram, O orange vest, A adult shirt. */
-const MAIRE = [
-  [-2, -20, 4, 1, 'S'],
-  [-2, -19, 5, 4, 'S'],
-  [-3, -19, 1, 3, 'G'],
-  [1, -18, 1, 1, 'E'],
-  [1, -16, 2, 1, 'G'],
-  [-3, -15, 5, 8, 'U'],
-  [0, -15, 1, 3, 'W'],
-  [-3, -14, 1, 1, 'b'],
-  [-2, -13, 1, 1, 'w'],
-  [-1, -12, 1, 1, 'r'],
-  [0, -11, 1, 1, 'b'],
-  [1, -10, 1, 1, 'w'],
-  [1, -9, 1, 1, 'r'],
-]
-const MAIRE_ARMS = [[-4, -14, 1, 5, 'U'], [-4, -9, 1, 1, 'S']]
-const MAIRE_ARMS_UP = [[-4, -20, 1, 6, 'U'], [2, -20, 1, 6, 'U']]
-const WALK_A = [[-2, -7, 2, 6, 'U'], [0, -7, 2, 6, 'U'], [-3, -1, 3, 1, 'K'], [0, -1, 3, 1, 'K']]
-const WALK_B = [[-3, -7, 2, 6, 'U'], [1, -7, 2, 6, 'U'], [-4, -1, 3, 1, 'K'], [1, -1, 3, 1, 'K']]
-const CHIEN = [
-  [-4, -6, 8, 3, 'C'],
-  [3, -8, 3, 3, 'C'],
-  [3, -9, 1, 1, 'c'],
-  [6, -7, 1, 1, 'E'],
-  [4, -8, 1, 1, 'E'],
-  [2, -6, 1, 3, 'r'],
-]
-const CHIEN_A = [[-3, -3, 1, 3, 'c'], [2, -3, 1, 3, 'c'], [-5, -8, 1, 2, 'C']]
-const CHIEN_B = [[-4, -3, 1, 3, 'c'], [3, -3, 1, 3, 'c'], [-6, -7, 1, 1, 'C']]
-const POUSSETTE = [
-  // The pram (front at x = 0)...
-  [-8, -12, 4, 4, 'P'],
-  [-8, -8, 8, 4, 'P'],
-  [-4, -10, 2, 2, 'S'],
-  [-7, -3, 2, 2, 'E'],
-  [-2, -3, 2, 2, 'E'],
-  [-10, -11, 2, 1, 'E'],
-  // ...pushed by a parent in jeans.
-  [-14, -20, 4, 2, 'G'],
-  [-14, -18, 4, 4, 'S'],
-  [-11, -17, 1, 1, 'E'],
-  [-15, -14, 5, 7, 'A'],
-  [-11, -12, 2, 1, 'S'],
-]
-const POUSSETTE_A = [[-14, -7, 1, 6, 'D'], [-12, -7, 1, 6, 'D'], [-15, -1, 2, 1, 'K'], [-12, -1, 2, 1, 'K']]
-const POUSSETTE_B = [[-15, -7, 1, 6, 'D'], [-11, -7, 1, 6, 'D'], [-16, -1, 2, 1, 'K'], [-11, -1, 2, 1, 'K']]
-const SECOURISTE = [
-  [-3, -21, 5, 2, 'r'],
-  [-2, -19, 5, 4, 'S'],
-  [1, -18, 1, 1, 'E'],
-  [-3, -15, 6, 8, 'O'],
-  [-1, -14, 2, 4, 'W'],
-  [-2, -13, 4, 2, 'W'],
-  [3, -11, 3, 4, 'r'],
-  [4, -12, 1, 1, 'W'],
-]
-
 export function create({ canvas, settings = {}, onState, onEnd }) {
   canvas.width = W
   canvas.height = H
@@ -359,16 +257,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   const rand = ([a, b]) => a + random() * (b - a)
   const randInt = ([a, b]) => a + Math.floor(random() * (b - a + 1))
   const pick = (list) => list[Math.floor(random() * list.length)]
-  const matExt = () => (G ? G.matExt : 0)
-  const matW = () => C.MAT_W + matExt()
-  const matX = (y) => C.MAT_X - matExt() + (y - C.TRACK_TOP) * C.SLANT
-  const isIntruder = (s) => INTRUDER_KINDS.has(s.kind)
+  const matX = (y) => C.MAT_X + (y - C.TRACK_TOP) * C.SLANT
   const finishX = (y) => C.FINISH_X + (y - C.TRACK_TOP) * C.SLANT
 
   /* ---------- persistence ---------- */
   function load(key, fallback) {
     try {
-      const v = localStorage.getItem('attentionALaMousse2:' + key)
+      const v = localStorage.getItem('attentionALaMousse:' + key)
       return v === null ? fallback : JSON.parse(v)
     } catch {
       return fallback
@@ -376,7 +271,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
   function save(key, value) {
     try {
-      localStorage.setItem('attentionALaMousse2:' + key, JSON.stringify(value))
+      localStorage.setItem('attentionALaMousse:' + key, JSON.stringify(value))
     } catch {}
   }
   let best = Number(load('best', 0)) || 0
@@ -398,7 +293,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   let particles = []
   let popups = []
   let bubbles = []
-  let pigeons = []
   let shake = 0
   let cheer = 0
   let attractAt = 0
@@ -443,20 +337,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       lastFallNoteAt: -99,
       banner: null,
       newRecord: false,
-      scandals: 0,
-      evacuated: 0,
-      olas: 0,
-      olaAt: -99,
-      olaUntil: 0,
-      matExt: 0,
-      matExtTarget: 0,
-      mayorDone: false,
-      nextMedicAt: C.MEDIC_EVERY,
-      nextPigeons: C.PIGEONS_AT,
-      photo: null,
-      nextPhoto: C.PHOTO_AT,
-      flashAt: -99,
-      truck: null,
     }
   }
 
@@ -480,19 +360,12 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
           ? C.LANE_TOP + (n === 1 ? lane : (lane * 0.6 + random() * 0.4)) * depth
           : C.LANE_TOP + ((col + 0.15 + random() * 0.7) / w.abreast) * depth
       const roll = random()
-      const kind =
-        roll < w.fast ? 'fast' : roll < w.fast + w.slow ? 'slow' : roll < w.fast + w.slow + w.hesitant ? 'hesitant' : 'normal'
+      const kind = roll < w.fast ? 'fast' : roll < w.fast + w.slow ? 'slow' : 'normal'
       const factor = kind === 'fast' ? C.FAST_SPEED : kind === 'slow' ? C.SLOW_SPEED : 1
       const v = (speed + (random() * 2 - 1) * w.vary) * factor
       members.push({ behind: row * spacing + (w.abreast > 1 ? random() * 3 : 0), y, v, kind })
     }
     const span = (Math.ceil(n / w.abreast) - 1) * spacing
-    if (G && random() < w.intruder) {
-      // The first intruder is always the mayor.
-      const kind = G.mayorDone ? pick(['maire', 'poussette', 'poussette', 'chien', 'chien']) : 'maire'
-      G.mayorDone = true
-      members.push({ behind: random() * (span + 6), y: C.LANE_TOP + random() * depth, v: rand(C.INTRUDERS[kind]), kind })
-    }
     return { arrival, speed, members, span, gap: rand(w.gap) }
   }
 
@@ -512,18 +385,12 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
 
   function makeSkater(x, y, v, kind = 'normal') {
-    if (kind === 'maire' && G) notify('M. LE MAIRE SUR LE PARCOURS', P.ink)
     return {
       id: nextId++,
-      kind, // normal | fast (FUSÉE) | slow (PROMENEUR) | hesitant (DÉBUTANT) | an intruder kind
+      kind, // normal | fast (FUSÉE) | slow (PROMENEUR)
       x,
       y,
       vx: v,
-      base: v,
-      // A beginner brakes once or twice just before the zone, then sets off again.
-      brakes: kind === 'hesitant' ? (random() < 0.5 ? [rand([22, 34]), rand([3, 10])] : [rand([4, 14])]) : [],
-      braking: 0,
-      crossed: false,
       z: 0,
       t: 0,
       anim: random() * 4,
@@ -531,7 +398,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       rot: 0,
       slideRot: 1,
       jumpT: 1,
-      announced: INTRUDER_KINDS.has(kind),
+      announced: false,
       look: {
         H: pick(HELMETS),
         J: pick(JERSEYS),
@@ -586,13 +453,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     if (state !== 'PLAYING' || G.over) return
     G.presses++
-    scarePigeons()
-    const inZone = skaters.filter((s) => s.state === 'roll' && !s.crossed && s.x >= matX(s.y) - C.ZONE && s.x < matX(s.y))
-    let jumpers = inZone.filter((s) => !isIntruder(s))
-    const intruders = inZone.filter(isIntruder)
+    const jumpers = skaters.filter((s) => s.state === 'roll' && s.x >= matX(s.y) - C.ZONE)
     const locked = G.t < G.lockedUntil
     const tooSoon = G.t < G.readyAt
-    if (!inZone.length || locked || tooSoon) {
+    if (!jumpers.length || locked || tooSoon) {
       // FAUX DÉPART: nobody jumps, the precision streak breaks, and the zone is closed for a
       // moment. No points are taken, but whoever reaches the mat meanwhile meets it.
       if (!jumpers.length) G.emptyPresses++
@@ -610,23 +474,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const anyPerfect = jumpers.some((s) => s.x >= matX(s.y) - C.PERFECT)
     G.precision = anyPerfect ? G.precision + 1 : 0
     G.bestPrecision = Math.max(G.bestPrecision, G.precision)
-    if (anyPerfect && G.precision % C.OLA_EVERY === 0) startOla()
-    const ola = G.t < G.olaUntil ? 2 : 1
-    // Only those within JUMP_REACH of the mat can clear it. If someone can, the ones further
-    // back keep rolling and wait for the next press. If nobody can, the press was too early:
-    // they all take off and land on the foam.
-    const early = jumpers.filter((s) => s.x < matX(s.y) - C.JUMP_REACH)
-    if (early.length === jumpers.length) {
-      for (const s of early) {
-        launch(s)
-        s.short = true
-      }
-      if (early.length) popup(matX(C.LANE_TOP) - C.ZONE / 2, C.LANE_TOP - 26, 'TROP TÔT !', P.orange, 0.7)
-    }
-    jumpers = jumpers.filter((s) => !early.includes(s))
     for (const s of jumpers) {
       const perfect = s.x >= matX(s.y) - C.PERFECT
-      const mult = C.MULTS[G.level] * ola
+      const mult = C.MULTS[G.level]
       // PARFAIT pays 50, times the precision streak (capped), times the multiplier.
       const bonus = perfect ? C.PERFECT_BONUS * Math.min(C.PRECISION_CAP, G.precision) : 0
       const points = (C.SAVE_POINTS + bonus) * mult
@@ -636,8 +486,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       G.bestCombo = Math.max(G.bestCombo, G.combo)
       G.chain++
       if (perfect) G.perfects++
-      launch(s)
+      s.state = 'jump'
+      s.t = 0
       s.perfect = perfect
+      const landX = matX(s.y) + C.MAT_W + C.LAND_AFTER
+      s.jumpT = Math.max(C.JUMP_MIN, (landX - s.x) / s.vx)
       if (jumpers.length <= 4) popup(s.x, s.y - 26, perfect ? 'PARFAIT' : '+' + points, perfect ? P.yellow : P.white)
       while (G.level < C.LEVELS.length - 1 && G.chain >= C.LEVELS[G.level + 1]) {
         G.level++
@@ -655,65 +508,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       audio.cheer(Math.min(1, total / 10))
     }
     G.biggestJump = Math.max(G.biggestJump, jumpers.length)
-    for (const s of intruders) {
-      launch(s)
-      scandal(s)
-    }
     while (G.milestone < SAVE_MILESTONES.length && G.saved >= SAVE_MILESTONES[G.milestone]) {
       notify(SAVE_MILESTONES[G.milestone] + ' FRACTURES ÉVITÉES', P.ink)
       G.milestone++
     }
-    audio.jump(inZone.length, anyPerfect)
-  }
-  function launch(s) {
-    s.state = 'jump'
-    s.t = 0
-    s.braking = 0
-    s.vx = Math.max(s.vx, isIntruder(s) ? s.vx : 40)
-    // Fixed length: from the last JUMP_REACH px it lands just past the mat.
-    const length = matW() + C.JUMP_REACH + 3
-    s.jumpT = Math.max(C.JUMP_MIN, length / s.vx)
-    if (s.x + s.vx * s.jumpT < matX(s.y) + matW() + 2 && isIntruder(s)) s.jumpT = (matX(s.y) + matW() + 4 - s.x) / s.vx
-  }
-  function scandal(s) {
-    G.scandals++
-    G.level = 0
-    G.chain = 0
-    G.combo = 0
-    G.precision = 0
-    notify(SCANDAL_NOTES[s.kind], P.stamp)
-    popup(s.x, s.y - 30, 'SCANDALE !', P.red, 1.2)
-    for (let i = 0; i < 3; i++) bubble(30 + random() * 230, 58 + random() * 8, pick(['OH !!', 'SCANDALE !', 'DÉMISSION !', 'LA HONTE !']), 1.2)
-    shake = Math.min(4, shake + 2)
-    audio.scandal()
-  }
-  function startOla() {
-    G.olas++
-    G.olaAt = now
-    G.olaUntil = G.t + C.OLA_DURATION
-    notify('OLA RÉGLEMENTAIRE : POINTS ×2', P.ink)
-    popup(160, 50, 'OLA !', P.yellow, 1.4)
-    cheer = 1
-    audio.ola()
-  }
-  function pigeonSpot(p) {
-    p.ty = C.LANE_TOP - 4 + random() * (C.LANE_BOTTOM - C.LANE_TOP + 8)
-    p.tx = matX(p.ty) - C.ZONE - 14 + random() * (C.ZONE + 34)
-  }
-  function scarePigeons(x = null, y = null) {
-    // Pigeons flutter up and land again a little further, in the zone, until they get bored.
-    let any = false
-    for (const p of pigeons) {
-      if (p.state !== 'ground') continue
-      if (x !== null && (Math.abs(p.x - x) > 9 || Math.abs(p.y - y) > 6)) continue
-      p.state = 'hop'
-      p.t = 0
-      p.fx = p.x
-      p.fy = p.y
-      pigeonSpot(p)
-      any = true
-    }
-    if (x === null && any) audio.flap()
+    audio.jump(jumpers.length, anyPerfect)
   }
   function release() {
     needRelease = false
@@ -728,7 +527,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     particles = []
     popups = []
     bubbles = []
-    pigeons = []
     shake = 0
     cheer = 0
     audio.setIntensity(0)
@@ -737,20 +535,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     setState('PLAYING')
   }
 
-  function fall(s, thrown = false) {
-    const unscored = s.state === 'roll' && !isIntruder(s)
+  function fall(s) {
     s.state = 'fall'
     s.t = 0
     s.slideRot = pick([1, 1, 3, 3, 2])
     s.vx = Math.max(s.vx, 40) * (1.05 + random() * 0.25)
-    s.bounce = 7
-    if (thrown) {
-      // Swept by the fire engine: big cartoon arc, not counted as a victim, just a lost save.
-      s.vx = C.TRUCK_SPEED + 30 + random() * 60
-      s.bounce = 18 + random() * 12
-      if (G && unscored) G.evacuated++
-      return
-    }
     for (let i = 0; i < 6; i++)
       particles.push({ x: s.x, y: s.y - 4, vx: (random() - 0.3) * 60, vy: -30 - random() * 50, life: 0.6, born: now, colour: i % 2 ? P.yellow : P.white, g: 160 })
     shake = Math.min(3, shake + 1.2)
@@ -768,92 +557,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     if (random() < 0.5) bubble(40 + random() * 160, 60, pick(['OH !', 'AÏE !', 'OUILLE', 'OH NON !']), 0.8)
     audio.fall()
-  }
-
-  function updateEvents(dt) {
-    // Mat extension.
-    G.matExtTarget = G.phase === 3 ? C.MAT_EXTENSION : 0
-    if (G.matExt !== G.matExtTarget) {
-      const d = C.MAT_GROW_SPEED * dt
-      G.matExt = G.matExt < G.matExtTarget ? Math.min(G.matExtTarget, G.matExt + d) : Math.max(G.matExtTarget, G.matExt - d)
-    }
-    // First-aid volunteer after every MEDIC_EVERY victims.
-    if (G.victims >= G.nextMedicAt) {
-      G.nextMedicAt += C.MEDIC_EVERY
-      if (!skaters.some((s) => s.kind === 'secouriste' && s.state === 'roll')) {
-        skaters.push(makeSkater(-14, C.LANE_TOP + random() * (C.LANE_BOTTOM - C.LANE_TOP), rand(C.INTRUDERS.secouriste), 'secouriste'))
-        notify('SECOURS EN ROUTE : NE PAS LE FAIRE SAUTER', P.ink)
-      }
-    }
-    // Pigeons.
-    if (G.t >= G.nextPigeons) {
-      G.nextPigeons = G.t + rand(C.PIGEONS_EVERY)
-      const n = randInt([4, 7])
-      for (let i = 0; i < n; i++) {
-        const p = { x: W + 20, y: 10, t: -i * 0.12, state: 'in', vx: 0, vy: 0, leaveAt: G.t + 8 + random() * 5 }
-        pigeonSpot(p)
-        pigeons.push(p)
-      }
-      audio.coo()
-    }
-    // Photographer.
-    const ph = G.photo
-    if (!ph && G.t >= G.nextPhoto) {
-      G.photo = { phase: 'in', t: 0 }
-    } else if (ph) {
-      ph.t += dt
-      if (ph.phase === 'in' && ph.t >= 0.5) {
-        ph.phase = 'aim'
-        ph.t = 0
-        bubble(208, 150, 'SOURIEZ !', C.PHOTO_AIM)
-      } else if (ph.phase === 'aim' && ph.t >= C.PHOTO_AIM) {
-        ph.phase = 'flash'
-        ph.t = 0
-        G.flashAt = now
-        audio.shutter()
-      } else if (ph.phase === 'flash' && ph.t >= 0.5) {
-        ph.phase = 'out'
-        ph.t = 0
-      } else if (ph.phase === 'out' && ph.t >= 0.5) {
-        G.photo = null
-        G.nextPhoto = G.t + rand(C.PHOTO_EVERY)
-      }
-    }
-    // Fire engine, once.
-    if (!G.truck && G.t >= C.TRUCK_AT) {
-      G.truck = { state: 'warn', t: 0, x: -10, z: 0, bumped: false }
-      notify('INTERVENTION DES POMPIERS', P.stamp)
-      audio.siren()
-    }
-    const tr = G.truck
-    if (tr && tr.state !== 'done') {
-      tr.t += dt
-      if (tr.state === 'warn' && tr.t >= C.TRUCK_WARN) {
-        tr.state = 'drive'
-        tr.t = 0
-        audio.siren()
-      } else if (tr.state === 'drive') {
-        tr.x += C.TRUCK_SPEED * dt
-        // The mat does not move. The truck does.
-        if (!tr.bumped && tr.x >= matX(C.LANE_BOTTOM)) {
-          tr.bumped = true
-          tr.bumpAt = now
-          shake = 4
-          audio.fall()
-          notify('LE TAPIS N’A PAS BOUGÉ', P.ink)
-        }
-        tr.z = tr.bumpAt && now - tr.bumpAt < 0.35 ? Math.sin(((now - tr.bumpAt) / 0.35) * Math.PI) * 6 : 0
-        for (const s of skaters) {
-          if (s.state === 'fall') continue
-          if (s.x <= tr.x + 3 && s.x >= tr.x - C.TRUCK_LEN) fall(s, true)
-        }
-        scarePigeons()
-        if (tr.x - C.TRUCK_LEN > W + 10) {
-          tr.state = 'done'
-          if (G.evacuated) notify(G.evacuated + ' PERSONNES ÉVACUÉES. BILAN POSITIF', P.ink)
-        }
-      }
-    }
   }
 
   function finishRun() {
@@ -876,9 +579,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         bestPrecision: G.bestPrecision,
         biggestJump: G.biggestJump,
         falseStarts: G.falseStarts,
-        scandals: G.scandals,
-        evacuated: G.evacuated,
-        olas: G.olas,
       },
       durationMs: Math.round(C.RUN_DURATION * 1000),
     })
@@ -911,10 +611,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
           G.lastVoice = G.t
         } else if (PHASE_NOTES[phase]) notify(PHASE_NOTES[phase], P.ink)
       }
-      if (!G.over) {
-        spawnDue()
-        updateEvents(dt)
-      }
+      if (!G.over) spawnDue()
       if (!G.over && G.t >= C.RUN_DURATION) {
         G.over = true
         G.overAt = now
@@ -932,59 +629,22 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
     for (const s of skaters) {
       if (s.state === 'roll') {
-        if (s.brakes.length || s.braking > 0) {
-          // DÉBUTANT: a T-stop just before the zone, then off again.
-          const toZone = matX(s.y) - C.ZONE - s.x
-          if (s.braking <= 0 && s.brakes.length && toZone <= s.brakes[0]) {
-            s.brakes.shift()
-            s.braking = 0.35 + random() * 0.4
-          }
-          if (s.braking > 0) {
-            s.braking -= dt
-            s.vx = Math.max(2, s.vx - 260 * dt)
-          } else s.vx = Math.min(s.base, s.vx + 110 * dt)
-        } else if (s.kind === 'hesitant') s.vx = Math.min(s.base, s.vx + 110 * dt)
         s.x += s.vx * dt
-        s.anim += (s.vx * dt) / (isIntruder(s) ? 4 : 7)
+        s.anim += (s.vx * dt) / 7
         // The announcer: on the first arrival, then whenever a group passes the arch.
         if (!s.announced && s.x >= finishX(s.y) + 10) {
           s.announced = true
           if (G && !G.over) announce(!G.voiced)
           if (G) G.voiced = true
         }
-        if (!s.crossed && s.x >= matX(s.y) - 1) {
-          // Walkers simply step over the mat; skaters meet it.
-          if (isIntruder(s)) {
-            s.state = 'step'
-            s.t = 0
-            s.jumpT = (matW() + 4) / s.vx
-          } else fall(s)
-        }
-        if (pigeons.length) scarePigeons(s.x, s.y)
-      } else if (s.state === 'step') {
-        s.t += dt
-        s.x += s.vx * dt
-        s.anim += (s.vx * dt) / 4
-        s.z = Math.sin(Math.min(1, s.t / s.jumpT) * Math.PI) * 3
-        if (s.t >= s.jumpT) {
-          s.state = 'roll'
-          s.crossed = true
-          s.z = 0
-        }
+        if (s.x >= matX(s.y) - 1) fall(s)
       } else if (s.state === 'jump') {
         s.t += dt
         s.x += s.vx * dt
         const u = Math.min(1, s.t / s.jumpT)
-        s.z = (C.JUMP_HEIGHT + matExt() * 0.5) * 4 * u * (1 - u)
-        if (u >= 1 && s.short && !isIntruder(s)) {
-          // Landed on the mat.
-          s.short = false
-          s.z = 0
-          popup(s.x, s.y - 24, 'SUR LA MOUSSE', P.orange, 0.8)
-          fall(s)
-        } else if (u >= 1) {
-          s.state = isIntruder(s) ? 'roll' : 'land'
-          s.crossed = true
+        s.z = C.JUMP_HEIGHT * 4 * u * (1 - u)
+        if (u >= 1) {
+          s.state = 'land'
           s.t = 0
           s.z = 0
           audio.land()
@@ -1001,7 +661,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         if (s.t < 0.75) {
           // Roulé-boulé: a few quarter turns while bouncing.
           s.rot = Math.floor(s.t * 14) % 4
-          s.z = Math.abs(Math.sin(s.t * 9)) * s.bounce * (1 - s.t / 0.75)
+          s.z = Math.abs(Math.sin(s.t * 9)) * 7 * (1 - s.t / 0.75)
         } else {
           s.rot = s.slideRot
           s.z = 0
@@ -1011,32 +671,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
     }
     skaters = skaters.filter((s) => s.x < W + 26)
-
-    for (const p of pigeons) {
-      p.t += dt
-      if (G && p.state !== 'flee' && G.t >= p.leaveAt) {
-        p.state = 'flee'
-        p.vx = (random() < 0.5 ? -1 : 1) * (30 + random() * 50)
-        p.vy = -60 - random() * 40
-      }
-      if (p.state === 'in') {
-        const k = Math.max(0, Math.min(1, p.t / 1.1))
-        p.x = p.tx + (1 - k) * 70
-        p.y = p.ty - (1 - k) * (p.ty - 10)
-        if (k >= 1) p.state = 'ground'
-      } else if (p.state === 'hop') {
-        const k = Math.min(1, p.t / 0.9)
-        p.x = p.fx + (p.tx - p.fx) * k
-        p.y = p.fy + (p.ty - p.fy) * k - Math.sin(k * Math.PI) * 22
-        if (k >= 1) p.state = 'ground'
-      } else if (p.state === 'flee') {
-        p.x += p.vx * dt
-        p.y += p.vy * dt
-        p.vy -= 20 * dt
-      }
-    }
-    pigeons = pigeons.filter((p) => p.state !== 'flee' || (p.y > -12 && p.x > -12 && p.x < W + 30))
-    if (!G) pigeons = []
 
     for (const p of particles) {
       p.x += p.vx * dt
@@ -1186,25 +820,12 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const k = intensity()
     for (const c of crowd) {
       const amp = 0.4 + k * 2 + cheer * 3
-      let bob = Math.round(Math.max(0, Math.sin(now * (4 + k * 6) + c.phase)) * amp)
-      // Ola: a wave of people standing up, arms high, running left to right.
-      let wave = false
-      if (G && G.t < G.olaUntil + 0.6) {
-        const front = (((now - G.olaAt) * 0.8) % 1.3) - 0.15
-        const d = Math.abs(c.x / W - front)
-        if (d < 0.09) {
-          wave = true
-          bob = Math.round(8 * (1 - d / 0.09))
-        }
-      }
+      const bob = Math.round(Math.max(0, Math.sin(now * (4 + k * 6) + c.phase)) * amp)
       const y = c.y - bob
       rect(c.x, y + 6, 6, 10, c.shirt)
       rect(c.x + 1, y, 4, 5, c.skin)
       rect(c.x + 1, y - 1, 4, 2, c.hair)
-      if (wave) {
-        rect(c.x, y - 6, 1, 6, c.skin)
-        rect(c.x + 5, y - 6, 1, 6, c.skin)
-      } else if ((c.shouter && k > 0.4) || cheer > 0.3) {
+      if ((c.shouter && k > 0.4) || cheer > 0.3) {
         rect(c.x + 2, y + 3, 2, 1, P.ink)
         rect(c.x - 1, y + 2 - bob, 1, 3, c.skin)
         rect(c.x + 6, y + 2 - bob, 1, 3, c.skin)
@@ -1275,19 +896,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
   }
   function drawMat() {
-    // The extension is a yellow municipal foam slab added in front of the blue mat.
-    const ext = Math.round(matExt())
     for (let y = C.TRACK_TOP + 6; y < C.TRACK_BOTTOM - 3; y++) {
       const x = matX(y)
-      if (ext > 0) {
-        rect(x, y, ext, 1, (y & 3) === 0 ? '#d9a92a' : P.yellow)
-        rect(x + ext - 1, y, 1, 1, '#b8861e')
-      }
-      rect(x + ext, y, C.MAT_W, 1, (y & 3) === 0 ? P.mat : P.matTop)
-      rect(x - 1, y, 1, 1, ext > 0 ? '#b8861e' : P.matSide)
+      rect(x, y, C.MAT_W, 1, (y & 3) === 0 ? P.mat : P.matTop)
+      rect(x - 1, y, 1, 1, P.matSide)
     }
     const yb = C.TRACK_BOTTOM - 3
-    rect(matX(yb) - 1, yb, matW() + 1, 2, ext > 0 ? '#b8861e' : P.matSide)
+    rect(matX(yb) - 1, yb, C.MAT_W + 1, 2, P.matSide)
   }
 
   /* ---------- arch ---------- */
@@ -1337,8 +952,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
   function poseFor(s) {
     const f = Math.floor(s.anim) % 4
-    // DÉBUTANT braking: windmilling arms, legs locked in a T-stop.
-    if (s.state === 'roll' && s.braking > 0) return [Math.floor(now * 10) % 2 ? ARMS_UP : ARMS_STAR, LEGS_STRIDE, HEAD_PANIC, -1]
     const panic = s.x >= matX(s.y) - C.ZONE - 14
     if (s.state === 'roll' && s.kind === 'fast' && !panic) return [ARMS_STIFF, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 2]
     if (s.state === 'roll' && s.kind === 'slow' && !panic) return [ARMS_STAR, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 0]
@@ -1350,45 +963,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     return [f % 2 ? ARMS_SWING : ARMS_SWING_B, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 1]
   }
   const REST = [0, 4, -2, 4]
-  const INTRUDER_COLOURS = {
-    U: '#2b2f4a',
-    G: '#c9c9c9',
-    b: '#2a62c9',
-    w: P.white,
-    r: P.red,
-    C: '#9a6a3a',
-    c: '#6a4424',
-    P: '#7f5ae0',
-    O: P.orange,
-    A: '#5a9a8a',
-    D: '#3a4f7a',
-  }
-  function drawIntruder(s) {
-    const f = Math.floor(s.anim) % 2
-    const shadowW = s.kind === 'poussette' ? 18 : s.kind === 'chien' ? 9 : 8
-    rect(s.x - (s.kind === 'poussette' ? 16 : 4), s.y - 1, shadowW, 2, 'rgba(20,24,34,0.35)')
-    const ox = Math.round(s.x)
-    const oy = Math.round(s.y - s.z + (s.state === 'fall' && s.t >= 0.75 ? REST[s.rot] : 0))
-    const up = s.state === 'jump' || s.state === 'fall'
-    let lists
-    if (s.kind === 'maire') lists = [f ? WALK_A : WALK_B, MAIRE, up ? MAIRE_ARMS_UP : MAIRE_ARMS]
-    else if (s.kind === 'chien') lists = [up ? CHIEN_B : f ? CHIEN_A : CHIEN_B, CHIEN]
-    else if (s.kind === 'poussette') lists = [f ? POUSSETTE_A : POUSSETTE_B, POUSSETTE]
-    else lists = [f ? WALK_A : WALK_B, SECOURISTE, up ? MAIRE_ARMS_UP : []]
-    const colour = (k) => INTRUDER_COLOURS[k] || (k === 'K' ? SKATE : k === 'E' ? P.ink : k === 'W' ? P.white : k === 'S' ? s.look.S : s.look[k])
-    for (const list of lists) for (const [x, y, w, h, k] of list) part(ox, oy, s.rot, x, y, w, h, colour(k))
-    // A little warning triangle above intruders while they walk towards the mat.
-    if (s.state === 'roll' && !s.crossed && s.x > finishX(s.y) - 20 && Math.floor(now * 4) % 2) {
-      const tx = ox - (s.kind === 'poussette' ? 8 : 0)
-      const ty = oy - (s.kind === 'chien' ? 14 : 27)
-      rect(tx, ty, 1, 1, P.red)
-      rect(tx - 1, ty + 1, 3, 1, P.red)
-      rect(tx - 2, ty + 2, 5, 1, P.red)
-      rect(tx, ty + 1, 1, 1, P.yellow)
-    }
-  }
   function drawSkater(s) {
-    if (isIntruder(s)) return drawIntruder(s)
     const shadowW = s.z > 6 ? 5 : 8
     rect(s.x - shadowW / 2, s.y - 1, shadowW, 2, 'rgba(20,24,34,0.35)')
     const ox = Math.round(s.x)
@@ -1412,85 +987,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     draw(head, lean)
     if (s.kind === 'fast' && s.state === 'roll') part(ox, oy, rot, lean - 5, -19, 2, 1, s.look.H)
     if (s.kind === 'slow' && s.state === 'roll') part(ox, oy, rot, lean - 2, -17, 1, 2, '#d8d8d8')
-    if (s.kind === 'hesitant' && s.state !== 'fall') {
-      // DÉBUTANT: white knee and elbow pads; a question mark while braking.
-      part(ox, oy, rot, -2, -5, 1, 1, P.white)
-      part(ox, oy, rot, 1, -5, 1, 1, P.white)
-      if (s.braking > 0) drawText(ctx, '?', ox - 1, oy - 30, P.yellow)
-    }
-  }
-
-  /* ---------- pigeons, photographer, fire engine ---------- */
-  function drawPigeons() {
-    for (const p of pigeons) {
-      const x = Math.round(p.x)
-      const y = Math.round(p.y)
-      if (p.state === 'ground') {
-        const peck = Math.floor(now * 3 + p.tx) % 3 === 0
-        rect(x - 2, y - 3, 5, 3, '#8a8f99')
-        rect(x - 3, y - 3, 1, 1, '#6b707a')
-        rect(x + 2, y - (peck ? 2 : 5), 2, 2, '#5b6b7a')
-        rect(x + 4, y - (peck ? 1 : 4), 1, 1, P.orange)
-        rect(x, y, 1, 1, P.orange)
-      } else {
-        const flap = Math.floor(now * 14 + p.tx) % 2
-        rect(x - 2, y - 2, 5, 2, '#8a8f99')
-        rect(x - 1, y - (flap ? 5 : 0), 3, flap ? 3 : 2, '#6b707a')
-        rect(x + 3, y - 3, 1, 1, '#5b6b7a')
-      }
-    }
-  }
-  function drawPhotographer() {
-    const ph = G && G.photo
-    if (!ph) return
-    const base = 208
-    const x =
-      ph.phase === 'in' ? Math.round(W + 10 - (W + 10 - base) * Math.min(1, ph.t / 0.5)) : ph.phase === 'out' ? Math.round(base + (W + 10 - base) * (ph.t / 0.5)) : base
-    const y = 178
-    rect(x - 2, y - 8, 2, 8, '#3a3a44')
-    rect(x + 1, y - 8, 2, 8, '#3a3a44')
-    rect(x - 3, y - 18, 7, 10, '#c9b48a')
-    drawText(ctx, 'PRESSE', x - 11, y - 30, P.white)
-    rect(x - 2, y - 24, 5, 6, SKINS[1])
-    rect(x - 3, y - 25, 6, 2, '#3a2a1e')
-    // Camera held up towards the track, with the red light blinking while aiming.
-    rect(x - 7, y - 23, 6, 4, P.ink)
-    rect(x - 8, y - 22, 2, 2, '#4a5a6e')
-    rect(x - 6, y - 25, 3, 2, P.white)
-    if (ph.phase === 'aim' && Math.floor(now * 8) % 2) rect(x - 3, y - 23, 1, 1, P.red)
-  }
-  function drawFlash() {
-    if (!G) return
-    const t = now - G.flashAt
-    if (t < 0 || t > C.PHOTO_FLASH) return
-    const a = t < 0.3 ? 1 : 1 - (t - 0.3) / (C.PHOTO_FLASH - 0.3)
-    rect(0, 13, W, H - 13, `rgba(255,255,255,${a.toFixed(2)})`)
-  }
-  function drawTruck() {
-    const tr = G && G.truck
-    if (!tr || tr.state === 'done') return
-    if (tr.state === 'warn') {
-      // Blue lights and PIN-PON at the left edge before it comes in.
-      if (Math.floor(now * 6) % 2) rect(0, 120, 4, 14, '#3a7bff')
-      drawText(ctx, 'PIN-PON !', 6, 116, Math.floor(now * 6) % 2 ? P.red : P.white)
-      return
-    }
-    const front = Math.round(tr.x)
-    const base = Math.round(C.LANE_BOTTOM + 6 - tr.z)
-    const back = front - C.TRUCK_LEN
-    rect(back + 2, C.LANE_BOTTOM + 5, C.TRUCK_LEN, 3, 'rgba(20,24,34,0.35)')
-    rect(back, base - 28, C.TRUCK_LEN, 24, P.red)
-    rect(back, base - 16, C.TRUCK_LEN, 2, P.white)
-    rect(front - 14, base - 34, 14, 8, P.red)
-    rect(front - 11, base - 32, 9, 5, '#9fd3ee')
-    rect(back + 2, base - 32, 38, 2, P.grey)
-    for (let i = 0; i < 38; i += 4) rect(back + 2 + i, base - 34, 1, 4, P.grey)
-    rect(front - 10, base - 37, 4, 3, Math.floor(now * 8) % 2 ? '#3a7bff' : '#1a3f88')
-    drawText(ctx, 'POMPIERS', back + 6, base - 27, P.white)
-    for (const wx of [back + 8, front - 12]) {
-      rect(wx - 3, base - 5, 7, 6, P.ink)
-      rect(wx - 1, base - 3, 3, 2, P.grey)
-    }
   }
 
   /* ---------- overlays ---------- */
@@ -1556,9 +1052,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         rect(84, 5, Math.round(30 * k), 3, P.yellow)
       } else drawText(ctx, 'MAX', 84, 2, P.yellow)
       drawText(ctx, 'SÉRIE ' + G.combo, 122, 2, P.white)
-      if (G.t < G.olaUntil) {
-        if (Math.floor(now * 4) % 2) drawText(ctx, 'OLA : POINTS ×2', 166, 2, P.yellow)
-      } else if (G.precision > 1) drawText(ctx, 'PRÉCISION ×' + Math.min(C.PRECISION_CAP, G.precision) + ' (OLA ' + (G.precision % C.OLA_EVERY) + '/' + C.OLA_EVERY + ')', 166, 2, P.yellow)
+      if (G.precision > 1) drawText(ctx, 'PRÉCISION ×' + Math.min(C.PRECISION_CAP, G.precision), 166, 2, P.yellow)
       const left = Math.max(0, Math.ceil(C.RUN_DURATION - G.t))
       const clock = Math.floor(left / 60) + ':' + pad(left % 60, 2)
       drawText(ctx, clock, W - 42, 2, left <= 10 && Math.floor(now * 4) % 2 ? P.red : P.white)
@@ -1578,13 +1072,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     drawMat()
     const sorted = [...skaters].sort((a, b) => a.y - b.y)
     for (const s of sorted) drawSkater(s)
-    drawPigeons()
-    drawTruck()
     for (const p of particles) rect(p.x, p.y, 2, 2, p.colour)
     drawArchFront()
-    drawPhotographer()
     ctx.restore()
-    drawFlash()
     drawPopups()
     drawBubbles()
   }
@@ -1636,14 +1126,12 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       ['SAUVÉS', String(G.saved), P.white],
       ['VICTIMES DE LA MOUSSE', String(G.victims), P.red],
       ['SAUTS PARFAITS', String(G.perfects), P.white],
-      ['OLAS', String(G.olas), P.white],
-      ['SCANDALES', String(G.scandals), G.scandals ? P.red : P.white],
+      ['PLUS GRAND SAUT COLLECTIF', String(G.biggestJump), P.white],
       ['FAUX DÉPARTS', String(G.falseStarts), P.white],
-      ['ÉVACUÉS PAR LES POMPIERS', String(G.evacuated), P.white],
     ]
     lines.forEach(([label, value, colour], i) => {
       if (since < 0.2 + i * 0.15) return
-      const y = 58 + i * 8
+      const y = 60 + i * 10
       drawText(ctx, label, 56, y, P.grey)
       drawText(ctx, value, 264 - textWidth(value), y, colour)
       for (let x = 56 + textWidth(label) + 4; x < 260 - textWidth(value); x += 3) rect(x, y + 6, 1, 1, '#4a5a6e')
@@ -1764,8 +1252,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
 /* A two-minute run brings a few hundred skaters at most (see WAVES). */
 const MAX_SKATERS = 1500
-// ×2 during an ola.
-const MAX_PER_SAVE = (CONFIG.SAVE_POINTS + CONFIG.PERFECT_BONUS * CONFIG.PRECISION_CAP) * CONFIG.MULTS[CONFIG.MULTS.length - 1] * 2
+const MAX_PER_SAVE = (CONFIG.SAVE_POINTS + CONFIG.PERFECT_BONUS * CONFIG.PRECISION_CAP) * CONFIG.MULTS[CONFIG.MULTS.length - 1]
 
 export function validate(result) {
   if (!result || typeof result !== 'object') return false
@@ -1782,5 +1269,5 @@ export function validate(result) {
 
 export function grade(result) {
   const s = result.score
-  return s >= 500000 ? 'S' : s >= 250000 ? 'A' : s >= 120000 ? 'B' : s >= 50000 ? 'C' : 'D'
+  return s >= 600000 ? 'S' : s >= 300000 ? 'A' : s >= 160000 ? 'B' : s >= 60000 ? 'C' : 'D'
 }
