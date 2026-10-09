@@ -48,7 +48,10 @@ export const CONFIG = {
   ZONE: 24,
   PERFECT: 7,
   LAND_AFTER: 9,
-  JUMP_HEIGHT: 15,
+  // The jump has a fixed length: it clears the mat only from the last JUMP_REACH px before
+  // it. Jump earlier in the zone and the skater lands on the mat (TROP TÔT).
+  JUMP_REACH: 15,
+  JUMP_HEIGHT: 12,
   JUMP_MIN: 0.4,
   // Mashing guard: after a jump the next press needs RECOVERY s. A press too soon, or with
   // nobody in the zone, is a FAUX DÉPART: no jump at all for LOCKOUT s (and pressing during
@@ -585,7 +588,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     G.presses++
     scarePigeons()
     const inZone = skaters.filter((s) => s.state === 'roll' && !s.crossed && s.x >= matX(s.y) - C.ZONE && s.x < matX(s.y))
-    const jumpers = inZone.filter((s) => !isIntruder(s))
+    let jumpers = inZone.filter((s) => !isIntruder(s))
     const intruders = inZone.filter(isIntruder)
     const locked = G.t < G.lockedUntil
     const tooSoon = G.t < G.readyAt
@@ -609,6 +612,18 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     G.bestPrecision = Math.max(G.bestPrecision, G.precision)
     if (anyPerfect && G.precision % C.OLA_EVERY === 0) startOla()
     const ola = G.t < G.olaUntil ? 2 : 1
+    // Only those within JUMP_REACH of the mat can clear it. If someone can, the ones further
+    // back keep rolling and wait for the next press. If nobody can, the press was too early:
+    // they all take off and land on the foam.
+    const early = jumpers.filter((s) => s.x < matX(s.y) - C.JUMP_REACH)
+    if (early.length === jumpers.length) {
+      for (const s of early) {
+        launch(s)
+        s.short = true
+      }
+      if (early.length) popup(matX(C.LANE_TOP) - C.ZONE / 2, C.LANE_TOP - 26, 'TROP TÔT !', P.orange, 0.7)
+    }
+    jumpers = jumpers.filter((s) => !early.includes(s))
     for (const s of jumpers) {
       const perfect = s.x >= matX(s.y) - C.PERFECT
       const mult = C.MULTS[G.level] * ola
@@ -655,8 +670,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     s.t = 0
     s.braking = 0
     s.vx = Math.max(s.vx, isIntruder(s) ? s.vx : 40)
-    const landX = matX(s.y) + matW() + C.LAND_AFTER
-    s.jumpT = Math.max(C.JUMP_MIN, (landX - s.x) / s.vx)
+    // Fixed length: from the last JUMP_REACH px it lands just past the mat.
+    const length = matW() + C.JUMP_REACH + 3
+    s.jumpT = Math.max(C.JUMP_MIN, length / s.vx)
+    if (s.x + s.vx * s.jumpT < matX(s.y) + matW() + 2 && isIntruder(s)) s.jumpT = (matX(s.y) + matW() + 4 - s.x) / s.vx
   }
   function scandal(s) {
     G.scandals++
@@ -959,7 +976,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         s.x += s.vx * dt
         const u = Math.min(1, s.t / s.jumpT)
         s.z = (C.JUMP_HEIGHT + matExt() * 0.5) * 4 * u * (1 - u)
-        if (u >= 1) {
+        if (u >= 1 && s.short && !isIntruder(s)) {
+          // Landed on the mat.
+          s.short = false
+          s.z = 0
+          popup(s.x, s.y - 24, 'SUR LA MOUSSE', P.orange, 0.8)
+          fall(s)
+        } else if (u >= 1) {
           s.state = isIntruder(s) ? 'roll' : 'land'
           s.crossed = true
           s.t = 0
@@ -1759,5 +1782,5 @@ export function validate(result) {
 
 export function grade(result) {
   const s = result.score
-  return s >= 600000 ? 'S' : s >= 300000 ? 'A' : s >= 160000 ? 'B' : s >= 60000 ? 'C' : 'D'
+  return s >= 500000 ? 'S' : s >= 250000 ? 'A' : s >= 120000 ? 'B' : s >= 50000 ? 'C' : 'D'
 }
