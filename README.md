@@ -7,11 +7,11 @@ Des jeux à la con, un à la fois. Sites statiques, pixel art dessiné au code, 
 - **FRANCIS HERO** — *La LAN revient. Le riff aussi.* Jeu de rythme à quatre flèches sur « Francis la LAN » : manche en perspective, réceptacles qui brillent, foule, projecteurs, combos dorés.
 - **ONLY FEET** — *Deux minutes pour payer ton loyer.* Des abonnés commandent des photos d'un pied atroce ; tu peins les ongles au pinceau, poses poils, points, bijoux et finitions à la souris ou au doigt, et tu publies. Trois critères, 120 secondes. Un seul `index.html`, s'ouvre sans serveur.
 - **LA VÉRITÉ SI JE VENDS !** — *Une seule touche. Aucune dignité.* Un grossiste, une veste léopard violette invendable, des clients dont l'offre monte puis qui se barrent. Soixante secondes.
-- **OÙ EST LA VOITURE ?** — *Elle était là il y a deux secondes.* Un bonneteau avec une berline FIFA : tu la trouves toujours, une main la déplace toujours.
 - **CTRL + RN** — *Impossible de vider l'historique.* Un clicker absurde de soixante secondes.
 
 Prototypes gardés hors de l'accueil (dossier présent, non listé) :
 
+- **OÙ EST LA VOITURE ?** — *Elle était là il y a deux secondes.* Un bonneteau avec une berline FIFA : tu la trouves toujours, une main la déplace toujours.
 - **GRAND THEFT FIFA** — *Vous êtes presque arrivé.* Conduite arcade vue du dessus ; le gag administratif tenait, le moteur de conduite demandait trop de travail pour être agréable.
 
 Chaque jeu est un dossier autonome avec son `index.html`, servi tel quel par GitHub Pages. L'accueil (`index.html` à la racine) est une page statique : bannières dans `assets/` (captures recadrées des jeux), records et compteur de visites lus dans le `localStorage` du navigateur, aucun serveur.
