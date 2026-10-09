@@ -49,6 +49,8 @@
       config: params.has('run') ? { RUN_DURATION: Number(params.get('run')) } : null,
       // Debug only: ?manual=1 stops the real-time clock; the page calls game.step(dt).
       manual: params.get('manual') === '1',
+      // Debug only: ?guests=0 removes the one-off guests (the balance test compares with v2).
+      guests: !(params.get('debug') === '1' && params.get('guests') === '0'),
     },
     onState: (state) => { $('state').textContent = state },
     onEnd: (result) => {

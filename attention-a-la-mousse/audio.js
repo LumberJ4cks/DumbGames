@@ -15,6 +15,8 @@ export const SHOUT_CLIPS = []
 export const SYNTH_MUSIC = false
 // Level of the recording under the master gain (effects sit around 0.05–0.3 each).
 export const TRACK_VOLUME = 1.6
+// Level of the sound effects bus (jumps, falls, stamps, whistle…), compressed so it never clips.
+export const SFX_VOLUME = 3.4
 
 export function createAudio() {
   let ac = null
@@ -22,6 +24,7 @@ export function createAudio() {
   let muted = false
   let pumpTimer = null
   let heliTimer = null
+  let sfxBus = null
   let nextStep = 0
   let step = 0
   let intensity = 0
@@ -43,6 +46,17 @@ export function createAudio() {
     master = ac.createGain()
     master.gain.value = muted ? 0 : 0.4
     master.connect(ac.destination)
+    // Effects go through their own bus and a compressor, so they sit above the music.
+    sfxBus = ac.createGain()
+    sfxBus.gain.value = SFX_VOLUME
+    const comp = ac.createDynamicsCompressor()
+    comp.threshold.value = -18
+    comp.knee.value = 12
+    comp.ratio.value = 6
+    comp.attack.value = 0.003
+    comp.release.value = 0.12
+    sfxBus.connect(comp)
+    comp.connect(master)
     // Music goes through a duck gain so the announcer stays intelligible above it.
     musicDuck = ac.createGain()
     musicDuck.connect(master)
@@ -64,7 +78,7 @@ export function createAudio() {
     g.gain.exponentialRampToValueAtTime(vol, t + 0.008)
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
     o.connect(g)
-    g.connect(dest || master)
+    g.connect(dest || sfxBus)
     o.start(t)
     o.stop(t + dur + 0.05)
   }
@@ -83,7 +97,7 @@ export function createAudio() {
     g.gain.value = vol
     src.connect(f)
     f.connect(g)
-    g.connect(dest || master)
+    g.connect(dest || sfxBus)
     src.start(t)
   }
   const later = (d) => (ac ? ac.currentTime + d : 0)

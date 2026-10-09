@@ -25,7 +25,7 @@ export const manifest = {
   releasedAt: '2026-11-10',
   status: 'draft',
   // Shown on the title screen, so the loaded build can be told from a cached one.
-  version: '3.1',
+  version: '3.2',
   orientation: 'landscape',
   size: { width: 320, height: 180 },
   controls: [
@@ -111,6 +111,25 @@ export const CONFIG = {
   // Ola: OLA_EVERY consecutive presses with a PARFAIT start an ola, points ×2 for a while.
   OLA_EVERY: 8,
   OLA_DURATION: 6,
+  // The guests: one appearance each per run, at these times. Rules: cochon, velo and
+  // maireTrott are intruders (SCANDALE if jumped); dino, caddie, mariee, livreur follow the
+  // skaters' rules; the coureur jumps the mat on his own. Debug: ?guests=0 removes them all.
+  GUESTS: [
+    { at: 30, kind: 'mariee' },
+    { at: 40, kind: 'cochon' },
+    { at: 55, kind: 'dino' },
+    { at: 70, kind: 'velo' },
+    { at: 85, kind: 'caddie' },
+    { at: 95, kind: 'livreur' },
+    { at: 110, kind: 'maireTrott' },
+  ],
+  COUREUR_AT: [22, 100],
+  GUEST_SPEEDS: { dino: 48, cochon: 72, velo: 52, caddie: 44, mariee: 40, livreur: 50, coureur: 46, maireTrott: 80 },
+  // The cyclist lifts the mat and puts it back MAT_SHIFT px further.
+  MAT_SHIFT: 10,
+  VELO_LIFT: 2.2,
+  // Hitstop (seconds) on the first PARFAIT and the first fall: the whole world freezes.
+  HITSTOP: 0.22,
   FAST_SPEED: 1.5,
   SLOW_SPEED: 0.65,
   BREATHER_EVERY: [4, 6],
@@ -127,12 +146,26 @@ const PHASE_NOTES = [
   'EXTENSION DU TAPIS HOMOLOGUÉE',
   'LE PELOTON DU DIMANCHE',
 ]
-const INTRUDER_KINDS = new Set(['maire', 'poussette', 'chien', 'secouriste'])
+const INTRUDER_KINDS = new Set(['maire', 'poussette', 'chien', 'secouriste', 'cochon', 'velo', 'maireTrott'])
+const GUEST_KINDS = new Set(['dino', 'cochon', 'velo', 'caddie', 'mariee', 'livreur', 'coureur', 'maireTrott'])
+const GUEST_NOTES = {
+  mariee: 'UNE MARIÉE SUR LE PARCOURS. C’EST SON JOUR',
+  cochon: 'COCHON ÉCHAPPÉ DE LA FERME PÉDAGOGIQUE',
+  dino: 'DOSSARD N°9 : UN DINOSAURE. INSCRIPTION VALIDÉE',
+  velo: 'UN CYCLISTE. MAUVAISE COURSE',
+  caddie: 'CADDIE NON HOMOLOGUÉ EN APPROCHE',
+  livreur: 'LIVRAISON EN COURS SUR LA PISTE',
+  coureur: 'UN COUREUR DU SEMI-MARATHON',
+  maireTrott: 'LE MAIRE REVIENT. EN TROTTINETTE',
+}
 const SCANDAL_NOTES = {
   maire: 'LE MAIRE A SAUTÉ. CONSEIL MUNICIPAL CONVOQUÉ',
   poussette: 'POUSSETTE EN VOL : ENQUÊTE OUVERTE',
   chien: 'CHIEN EN VOL : LA SPA EST PRÉVENUE',
   secouriste: 'SECOURISTE EN VOL : ARRÊT DE TRAVAIL',
+  cochon: 'COCHON EN VOL : LA FERME PÉDAGOGIQUE PORTE PLAINTE',
+  velo: 'CYCLISTE EN VOL : CE N’ÉTAIT MÊME PAS SA COURSE',
+  maireTrott: 'LE MAIRE A SAUTÉ. EN TROTTINETTE. DÉMISSION',
 }
 const LEVEL_NOTES = [
   null,
@@ -199,8 +232,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   const pick = (list) => list[Math.floor(random() * list.length)]
   const matExt = () => (G ? G.matExt : 0)
   const matW = () => C.MAT_W + matExt()
-  const matX = (y) => C.MAT_X - matExt() + (y - C.TRACK_TOP) * C.SLANT
+  const matX = (y) => C.MAT_X - matExt() + (G ? G.matShift : 0) + (y - C.TRACK_TOP) * C.SLANT
   const isIntruder = (s) => INTRUDER_KINDS.has(s.kind)
+  const isGuest = (s) => GUEST_KINDS.has(s.kind)
+  const guestsOn = settings.guests !== false
   const finishX = (y) => C.FINISH_X + (y - C.TRACK_TOP) * C.SLANT
 
   /* ---------- persistence ---------- */
@@ -240,6 +275,14 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   let shake = 0
   let cheer = 0
   let attractAt = 0
+  let freeze = 0 // hitstop, seconds left
+  let litter = [] // debris lying on the track { x, y, kind, until }
+  let matSquash = 0
+  let burst = null // { x, y, at }
+  let flagUntil = 0
+  let displayScore = 0
+  let multBumpAt = -99
+  let shownLevel = 0
   let nextId = 1
   /*
    * The sideshow: fallen skaters that stay on the asphalt, the stretcher team and the
@@ -300,6 +343,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       olaAt: -99,
       olaUntil: 0,
       matExt: 0,
+      matShift: 0,
+      guestsDone: {},
+      coureurAt: 0,
+      firstPerfectAt: -1,
+      firstFallAt: -1,
       matExtTarget: 0,
       mayorDone: false,
       nextMedicAt: C.MEDIC_EVERY,
@@ -406,6 +454,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     bubbles.push({ x, y, text, until: now + dur })
   }
   function announce(force = false) {
+    flagUntil = now + 1.3
     const intensity = G ? G.phase / 4 : 0
     const k = G ? Math.min(1, G.t / C.RUN_DURATION) : 0
     const interval = C.VOICE_INTERVAL[0] + (C.VOICE_INTERVAL[1] - C.VOICE_INTERVAL[0]) * k
@@ -486,6 +535,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       G.bestCombo = Math.max(G.bestCombo, G.combo)
       G.chain++
       if (perfect) G.perfects++
+      if (perfect && G.firstPerfectAt < 0) {
+        G.firstPerfectAt = G.t
+        freeze = C.HITSTOP
+      }
+      if (isGuest(s)) guestJumped(s)
       launch(s)
       s.perfect = perfect
       if (jumpers.length <= 4) popup(s.x, s.y - 26, perfect ? 'PARFAIT' : '+' + points, perfect ? P.yellow : P.white)
@@ -514,6 +568,22 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       G.milestone++
     }
     audio.jump(inZone.length, anyPerfect)
+  }
+  function guestJumped(s) {
+    if (s.kind === 'dino') {
+      matSquash = 0.5
+      burst = { x: matX(s.y) + 3, y: s.y - 2, at: now }
+      notify('TAPIS ÉCRASÉ PAR UN DINOSAURE : HOMOLOGATION MAINTENUE', P.stamp)
+      shake = Math.min(4, shake + 3)
+      audio.fall()
+    } else if (s.kind === 'caddie') {
+      popup(s.x, s.y - 34, 'PÉPÉ APPLAUDIT', P.yellow, 1.2)
+      for (let i = 0; i < 10; i++) particles.push({ x: s.x, y: s.y - 20, vx: (crandom() - 0.5) * 80, vy: -40 - crandom() * 40, life: 0.9, born: now, colour: P.yellow, g: 120, kind: 'confetti', ramp: cpick(['red', 'yellow', 'blue', 'green', 'pink']) })
+    } else if (s.kind === 'livreur') notify('LIVRAISON MAINTENUE. LE CLIENT EST PRÉVENU', P.ink)
+    else if (s.kind === 'mariee') {
+      popup(s.x, s.y - 34, 'VIVE LA MARIÉE', P.pink, 1.2)
+      for (let i = 0; i < 8; i++) particles.push({ x: s.x, y: s.y - 22, vx: (crandom() - 0.5) * 60, vy: -30 - crandom() * 30, life: 0.9, born: now, colour: P.white, g: 100, kind: 'confetti', ramp: 'pink' })
+    }
   }
   function launch(s) {
     s.state = 'jump'
@@ -577,6 +647,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     heli = null
     evacuations = 0
     mamie = { x: 40 + crandom() * 240, dir: crandom() < 0.5 ? -1 : 1, t: 0, next: 6 + crandom() * 6, pause: 0 }
+    G.coureurAt = C.COUREUR_AT[0] + crandom() * (C.COUREUR_AT[1] - C.COUREUR_AT[0])
+    litter = []
+    matSquash = 0
+    burst = null
+    freeze = 0
+    displayScore = 0
+    shownLevel = 0
     G.nextGroup = planGroup(C.FIRST_ARRIVAL)
     skaters = []
     particles = []
@@ -605,9 +682,33 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       if (G && unscored) G.evacuated++
       return
     }
+    // Debris: a wheel, the helmet, a glove, and a couple of sparks (drawn, not squares).
+    const DEBRIS = ['wheel', 'helmet', 'glove', 'wheel', null, null]
     for (let i = 0; i < 6; i++)
-      particles.push({ x: s.x, y: s.y - 4, vx: (random() - 0.3) * 60, vy: -30 - random() * 50, life: 0.6, born: now, colour: i % 2 ? P.yellow : P.white, g: 160 })
+      particles.push({ x: s.x, y: s.y - 4, vx: (random() - 0.3) * 60, vy: -30 - random() * 50, life: 0.6, born: now, colour: i % 2 ? P.yellow : P.white, g: 160, kind: isGuest(s) ? null : DEBRIS[i], ramp: s.look && s.look.H })
     shake = Math.min(3, shake + 1.2)
+    for (const c of crowd) if (Math.abs(c.x - s.x) < 26 && crandom() < 0.6) c.hideUntil = now + 0.8 + crandom() * 0.6
+    // On the foam: the mat squashes and a burst flashes.
+    if (s.x >= matX(s.y) - 4) {
+      matSquash = Math.max(matSquash, 0.3)
+      burst = { x: s.x, y: s.y - 4, at: now }
+    }
+    if (G && !G.over && G.firstFallAt < 0) {
+      G.firstFallAt = G.t
+      freeze = C.HITSTOP
+    }
+    if (G && !G.over && isGuest(s)) {
+      if (s.kind === 'caddie') {
+        for (let i = 0; i < 7; i++) litter.push({ x: s.x + 6 + crandom() * 60, y: C.LANE_TOP + crandom() * (C.LANE_BOTTOM - C.LANE_TOP), kind: cpick(['poireau', 'bouteille', 'poireau']), until: now + 10 })
+        notify('COURSES RÉPANDUES : LA VOIRIE EST PRÉVENUE', P.stamp)
+      } else if (s.kind === 'livreur') {
+        for (let i = 0; i < 4; i++) litter.push({ x: s.x + 6 + crandom() * 40, y: C.LANE_TOP + crandom() * (C.LANE_BOTTOM - C.LANE_TOP), kind: 'pizza', until: now + 10 })
+        notify('LIVRAISON COMPROMISE', P.stamp)
+      } else if (s.kind === 'dino') {
+        popup(s.x, s.y - 36, 'BOING', P.green, 1)
+        shake = Math.min(4, shake + 3)
+      } else if (s.kind === 'mariee') notify('LA MARIÉE EST TOMBÉE. LE MARIAGE EST MAINTENU', P.stamp)
+    }
     if (!G || G.over) return
     // Some of them stay down on the asphalt, waiting for the stretcher team (decoration only:
     // the skater itself slides on, invisible, so the rules see exactly the same run).
@@ -680,6 +781,18 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
     }
     // Fire engine, once.
+    // The guests, one appearance each.
+    if (guestsOn) {
+      for (const g of C.GUESTS) {
+        if (G.guestsDone[g.kind] || G.t < g.at) continue
+        G.guestsDone[g.kind] = true
+        spawnGuest(g.kind)
+      }
+      if (!G.guestsDone.coureur && G.t >= G.coureurAt) {
+        G.guestsDone.coureur = true
+        spawnGuest('coureur')
+      }
+    }
     if (!G.truck && G.t >= C.TRUCK_AT) {
       G.truck = { state: 'warn', t: 0, x: -10, z: 0, bumped: false }
       notify('INTERVENTION DES POMPIERS', P.stamp)
@@ -815,6 +928,27 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     bubble(mamie.x, 148, text, 2.4)
   }
 
+  function spawnGuest(kind) {
+    const depth = C.LANE_BOTTOM - C.LANE_TOP
+    const y = C.LANE_TOP + 0.2 * depth + crandom() * 0.6 * depth
+    const g = makeSkater(C.SPAWN_X - 10, y, C.GUEST_SPEEDS[kind], kind)
+    g.guestT = 0
+    g.baseY = y
+    skaters.push(g)
+    if (kind === 'mariee') {
+      // Two skaters hide behind the dress: one press saves all three, if you guess they are there.
+      for (const dy of [-5, -8]) {
+        const h = makeSkater(C.SPAWN_X - 10 + (dy === -5 ? -2 : 1), y + dy, C.GUEST_SPEEDS.mariee, 'normal')
+        h.anim = g.anim
+        skaters.push(h)
+      }
+    }
+    notify(GUEST_NOTES[kind], P.ink)
+    if (kind === 'dino') mamieSay('C’EST QUOI CE DINOSAURE ?')
+    if (kind === 'velo') mamieSay('IL VA FAIRE QUOI AVEC ÇA ?')
+    audio.stamp()
+  }
+
   function finishRun() {
     if (G.score > best) {
       best = G.score
@@ -848,7 +982,19 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   /* ---------- update ---------- */
   function update(dt) {
     if (paused) return
+    if (freeze > 0) {
+      // Hitstop: the whole world holds its breath for a few frames.
+      freeze -= dt
+      return
+    }
     now += dt
+    matSquash = Math.max(0, matSquash - dt)
+    if (displayScore < (G ? G.score : 0)) displayScore = Math.min(G.score, displayScore + Math.max(20, (G.score - displayScore) * dt * 8))
+    if (G && G.level !== shownLevel) {
+      shownLevel = G.level
+      multBumpAt = now
+    }
+    litter = litter.filter((l) => now < l.until)
     shake = Math.max(0, shake - dt * 8)
     cheer = Math.max(0, cheer - dt * 0.6)
 
@@ -893,7 +1039,35 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
 
     for (const s of skaters) {
+      if (isGuest(s)) s.guestT += dt
+      if (s.state === 'lift') {
+        // The cyclist, off his bike, holds the mat up… then puts it down a little further.
+        s.t += dt
+        if (s.t >= C.VELO_LIFT) {
+          G.matShift += C.MAT_SHIFT
+          s.vx = s.base
+          s.state = 'roll'
+          s.crossed = true
+          notify('TAPIS DÉPLACÉ DE ' + C.MAT_SHIFT + ' CM. PROCÈS-VERBAL EN COURS', P.stamp)
+          audio.stamp()
+        }
+        continue
+      }
       if (s.state === 'roll') {
+        if (s.kind === 'cochon') s.y = s.baseY + Math.sin(s.guestT * 7) * 6
+        if (s.kind === 'caddie' && !s.crossed) s.y = Math.min(C.LANE_BOTTOM, s.baseY + s.guestT * 3)
+        if (s.kind === 'velo' && !s.crossed && s.x >= matX(s.y) - C.ZONE + 6) {
+          s.state = 'lift'
+          s.t = 0
+          s.vx = 0
+          continue
+        }
+        if (s.kind === 'coureur' && !s.crossed && s.x >= matX(s.y) - C.PERFECT + 1) {
+          // He clears it on his own, and nobody scores.
+          launch(s)
+          popup(s.x, s.y - 28, 'IL SE DÉBROUILLE', P.grey1, 1)
+          continue
+        }
         if (s.brakes.length || s.braking > 0) {
           // DÉBUTANT: a T-stop just before the zone, then off again.
           const toZone = matX(s.y) - C.ZONE - s.x
@@ -907,7 +1081,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
           } else s.vx = Math.min(s.base, s.vx + 110 * dt)
         } else if (s.kind === 'hesitant') s.vx = Math.min(s.base, s.vx + 110 * dt)
         s.x += s.vx * dt
+        const before = Math.floor(s.anim)
         s.anim += (s.vx * dt) / (isIntruder(s) ? 4 : 7)
+        // A puff of dust at each push (kept light when the track is crowded).
+        if (!isIntruder(s) && !isGuest(s) && Math.floor(s.anim) !== before && Math.floor(s.anim) % 2 === 0 && skaters.length < 40 && crandom() < 0.6)
+          particles.push({ x: s.x - 6, y: s.y - 1, vx: -14, vy: -6, life: 0.25, born: now, colour: P.grey2, g: 0 })
         // The announcer: on the first arrival, then whenever a group passes the arch.
         if (!s.announced && s.x >= finishX(s.y) + 10) {
           s.announced = true
@@ -1031,28 +1209,29 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
 
   /* ---------- sprite caches (built once, at start-up) ---------- */
-  const S = {}
-  const built = buildSprites(C)
-  for (const [k, v] of Object.entries(built)) {
-    if (Array.isArray(v)) S[k] = v.map(toCanvas)
-    else if (v instanceof Pix) S[k] = toCanvas(v)
-    else S[k] = Object.fromEntries(Object.entries(v).map(([kk, p]) => [kk, toCanvas(p)]))
-  }
-  const bg = toCanvas(backgroundSprite(C, W, H))
+  // Buffers become canvases, through arrays and nested objects alike.
+  const toCanvases = (v) => (v instanceof Pix ? toCanvas(v) : Array.isArray(v) ? v.map(toCanvases) : Object.fromEntries(Object.entries(v).map(([k, p]) => [k, toCanvases(p)])))
+  const S = toCanvases(buildSprites(C))
+  // Three times of day: noon, afternoon, evening (the sky warms, the shadows stretch).
+  const bgs = [0, 1, 2].map((d) => toCanvas(backgroundSprite(C, W, H, d)))
+  const bg = bgs[0]
   const bgCtx = bg.getContext('2d')
-  // Static scenery baked over the background: barriers, the refreshment table and its sign,
+  const daylight = () => (G ? (G.phase >= 4 ? 2 : G.phase >= 2 ? 1 : 0) : 0)
+  // Static scenery baked over each background: barriers, the refreshment table and its sign,
   // the back post of the arch, the sponsor boards.
-  {
-    const putB = (c, x, y) => bgCtx.drawImage(c, Math.round(x) - c.ax, Math.round(y) - c.ay)
+  for (const b of bgs) {
+    const g = b.getContext('2d')
+    const putB = (c, x, y) => g.drawImage(c, Math.round(x) - c.ax, Math.round(y) - c.ay)
     for (let x = 0; x < W; x += 34) putB(S.barrier, x, 100)
     putB(S.table, 33, 95)
     putB(S.archPostBack, C.FINISH_X - 4, C.TRACK_TOP + 2)
     let bx = -6
-    for (const b of S.boards) {
-      putB(b, bx, 163)
-      bx += b.width - 4 + 2
+    for (const bd of S.boards) {
+      putB(bd, bx, 163)
+      bx += bd.width - 4 + 2
     }
   }
+  void bgCtx
   // The arch banner with its lettering, drawn once.
   const banner = document.createElement('canvas')
   banner.width = S.banner.width
@@ -1069,7 +1248,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   const logo = [toCanvas(logoLine('ATTENTION')), toCanvas(logoLine('À LA MOUSSE !'))]
   // Ground shadows: opaque, in the darkened colour of the ground.
   const shadowOf = (w, colour) => toCanvas(new Pix(w + 2, 4).disc(w / 2 + 1, 2, w / 2, 1.4, colour))
-  const SHADOW = { skater: shadowOf(8, P.slateD), small: shadowOf(5, P.slateD), wide: shadowOf(18, P.slateD), lawn: shadowOf(8, P.greenD) }
+  const SHADOWS = [8, 11, 14].map((w) => ({ skater: shadowOf(w, P.slateD), small: shadowOf(w - 3, P.slateD), wide: shadowOf(w + 10, P.slateD), lawn: shadowOf(w, P.greenD) }))
+  let SHADOW = SHADOWS[0]
   // Overlays without translucency: solid, or a clean 50 % checkerboard (the 16-bit way).
   const overlay = (colour, checker) => {
     const p = new Pix(W, H)
@@ -1093,7 +1273,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   /* ---------- skaters: one canvas per look, pose and rotation, built on first use ---------- */
   const skaterCache = new Map()
   function skaterCanvas(look, pose) {
-    const key = lookKey(look) + '|' + (pose.fall || pose.head + pose.arms + pose.legs + pose.lean + pose.kind)
+    const key = lookKey(look) + '|' + (pose.fall || pose.head + pose.arms + pose.legs + pose.lean + pose.kind + (pose.dy || 0) + (pose.flutter ? 'f' : ''))
     let c = skaterCache.get(key)
     if (!c) {
       c = toCanvas(pose.fall ? skaterFallSprite(look, pose.fall) : skaterSprite(look, pose))
@@ -1124,7 +1304,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
           y: 90 + row * 5,
           phase: rng() * 6.28,
           shouter: rng() < 0.12,
-          frames: [toCanvas(spectatorSprite(look, 0)), toCanvas(spectatorSprite(look, 1))],
+          filmer: rng() < 0.1,
+          hideUntil: 0,
+          frames: [0, 1, 2, 3].map((f) => toCanvas(spectatorSprite(look, f))),
         })
       }
   }
@@ -1147,7 +1329,10 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
         }
       }
       const shouting = wave || (c.shouter && k > 0.4) || cheer > 0.3
-      put(c.frames[shouting ? 1 : 0], c.x, c.y - bob)
+      let frame = shouting ? 1 : 0
+      if (!wave && now < c.hideUntil) frame = 2 // saw a fall right in front: hands over the eyes
+      else if (!shouting && c.filmer && k > 0.3) frame = 3 // filming it all with the phone
+      put(c.frames[frame], c.x, c.y - bob)
     }
   }
   const SKIN0 = RAMPS.skinPale[2]
@@ -1161,14 +1346,35 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       rect(72 + reach, 77, 2, 3, P.white)
       rect(72 + reach, 77, 2, 1, P.grey1)
     }
-    // RALENTIR: waved with total conviction, to no effect.
+    // The flag waver at the finish line: a chequered flag for every group that passes.
+    put(S.volunteer[1], 104, 100)
+    if (now < flagUntil) {
+      put(S.flag[Math.floor(now * 8) % 2], 108, 86)
+      rect(106, 84, 2, 2, RAMPS.skinPale[2])
+    } else {
+      rect(107, 84, 1, 10, RAMPS.wood[2])
+      rect(106, 84, 2, 1, RAMPS.skinPale[2])
+    }
+    // RALENTIR: waved with total conviction, to no effect… until the peloton, when he gives up.
     const k = intensity()
-    const wave = Math.round(Math.sin(now * (3 + k * 10)) * (1 + k * 2))
-    put(S.volunteer[1], 180, 100)
-    rect(182, 84, 1, 4, RAMPS.skinTan[2])
-    rect(182 + wave, 70, 1, 15, RAMPS.wood[1])
-    rect(182 + wave, 70, 1, 1, RAMPS.wood[2])
-    put(S.signRalentir, 165 + wave, 62)
+    if (G && G.phase >= 4) {
+      put(S.volunteerSit, 182, 100)
+      put(S.signRalentir, 160, 88) // the sign, dropped against the barrier
+      if (Math.floor(now * 2) % 2) drawText(ctx, 'PFFF', 190, 76, P.white)
+    } else {
+      const wave = Math.round(Math.sin(now * (3 + k * 10)) * (1 + k * 2))
+      put(S.volunteer[1], 180, 100)
+      rect(182, 84, 1, 4, RAMPS.skinTan[2])
+      rect(182 + wave, 70, 1, 15, RAMPS.wood[1])
+      rect(182 + wave, 70, 1, 1, RAMPS.wood[2])
+      put(S.signRalentir, 165 + wave, 62)
+      if (G && G.phase === 3 && Math.floor(now * 1.3) % 4 === 0) drawText(ctx, 'PFF', 188, 72, P.white)
+    }
+    // Between two visits to the track, the pigeons sit on the town hall roof.
+    if (!pigeons.length) {
+      put(S.pigeon[Math.floor(now * 2) % 3 === 0 ? 'peck' : 'idle'], 150, 22)
+      put(S.pigeon[Math.floor(now * 2 + 1) % 3 === 0 ? 'peck' : 'idle'], 194, 22)
+    }
     // The announcer with the megaphone.
     put(S.volunteer[2], 262, 100)
     rect(264, 84, 3, 1, RAMPS.skinDark[2])
@@ -1190,7 +1396,29 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
   }
   function drawMat() {
+    const lifter = skaters.find((s) => s.state === 'lift')
+    if (lifter) {
+      // Held up over the cyclist's head: drawn flat, 26 px above the ground, no shadow on it.
+      drawMatInto((x, y, c) => rect(x, y - 26, 1, 1, c), matX, Math.round(matExt()), C)
+      return
+    }
+    if (matSquash > 0) {
+      // Pressed down: one row shorter, pushed 1 px lower, and spread 1 px wider at the base.
+      const yb = C.TRACK_BOTTOM - 3
+      drawMatInto((x, y, c) => {
+        if (y === C.TRACK_TOP + 6) return
+        rect(x + (y >= yb - 2 ? 1 : 0), y + 1, 1, 1, c)
+      }, matX, Math.round(matExt()), C)
+      return
+    }
     drawMatInto((x, y, c) => rect(x, y, 1, 1, c), matX, Math.round(matExt()), C)
+  }
+  function drawLitter() {
+    for (const l of litter) put(S.debris[l.kind], l.x, l.y)
+  }
+  function drawBurst() {
+    if (!burst || now - burst.at > 0.22) return
+    put(S.burst, burst.x, burst.y)
   }
 
   /* ---------- arch ---------- */
@@ -1208,13 +1436,24 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const panic = s.x >= matX(s.y) - C.ZONE - 14
     if (s.state === 'roll' && s.kind === 'fast' && !panic) return { head: 'plain', arms: 'stiff', legs: f % 2 ? 'stride' : 'together', lean: 2, kind }
     if (s.state === 'roll' && s.kind === 'slow' && !panic) return { head: 'plain', arms: 'star', legs: f % 2 ? 'stride' : 'together', lean: 0, kind }
-    if (s.state === 'jump') return { head: 'plain', arms: 'stiff', legs: 'together', lean: 0, kind }
-    if (s.state === 'land') return { head: 'plain', arms: f % 2 ? 'upA' : 'upB', legs: 'together', lean: 0, kind }
-    // The roulé-boulé: four tumble frames while bouncing, then a resting slide.
-    if (s.state === 'fall') return { fall: s.t < 0.75 ? 'tumble' + s.rot : SLIDE_POSE[s.slideRot] }
+    if (s.state === 'jump') {
+      // Anticipation (crouch), take-off (stiff), stretched at the top with the bib fluttering.
+      const u = s.t / s.jumpT
+      if (s.t < 0.07) return { head: 'plain', arms: 'back', legs: 'crouch', lean: 0, kind, dy: 2 }
+      if (u < 0.3) return { head: 'plain', arms: 'stiff', legs: 'together', lean: 0, kind }
+      if (u < 0.75) return { head: 'plain', arms: 'back', legs: 'together', lean: 1, kind, flutter: true }
+      return { head: 'plain', arms: 'stiff', legs: 'crouch', lean: 0, kind, dy: 1 }
+    }
+    if (s.state === 'land') {
+      if (s.t < 0.14) return { head: 'plain', arms: 'back', legs: 'crouch', lean: 0, kind, dy: 2 }
+      return { head: 'plain', arms: f % 2 ? 'upA' : 'upB', legs: 'together', lean: 0, kind }
+    }
+    // The roulé-boulé: squashed on impact, four tumble frames while bouncing, then a slide.
+    if (s.state === 'fall') return { fall: s.t < 0.07 && s.bounce <= 7 ? 'squash' : s.t < 0.75 ? 'tumble' + s.rot : SLIDE_POSE[s.slideRot] }
     // Panic in the jump zone: arms up, eyes wide. That is the tell.
     if (panic) return { head: 'panic', arms: Math.floor(now * 12 + s.id) % 2 ? 'upA' : 'upB', legs: f % 2 ? 'stride' : 'together', lean: 1, kind }
-    return { head: 'plain', arms: f % 2 ? 'swingA' : 'swingB', legs: f % 2 ? 'stride' : 'together', lean: 1, kind }
+    // The push cycle: push, glide, push with the other leg, glide; arms in opposition.
+    return { head: 'plain', arms: ['swingA', 'swingB', 'swingC', 'swingD'][f], legs: ['pushA', 'together', 'pushB', 'together'][f], lean: 1, kind }
   }
   const REST = [0, 4, -2, 4] // intruders thrown by the truck still spin around a pivot
   function drawIntruder(s) {
@@ -1246,7 +1485,42 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       rect(tx, ty + 1, 1, 2, P.yellow)
     }
   }
+  function drawGuest(s) {
+    const f = Math.floor(s.anim) % 2
+    const up = s.state === 'jump' || s.state === 'fall' || s.state === 'land'
+    const y = s.y - s.z
+    const K = s.kind
+    let c
+    if (K === 'dino') c = S.dino[f]
+    else if (K === 'cochon') c = S.cochon[f]
+    else if (K === 'velo') c = s.state === 'lift' ? S.velo[2] : S.velo[f]
+    else if (K === 'caddie') c = S.caddie[f]
+    else if (K === 'mariee') c = S.mariee[f]
+    else if (K === 'livreur') c = S.livreur[f]
+    else if (K === 'coureur') c = s.state === 'jump' ? S.coureur[2] : S.coureur[Math.floor(s.anim * 2) % 2]
+    else c = S.maireTrott[f]
+    put(K === 'cochon' ? SHADOW.small : K === 'dino' || K === 'coureur' ? SHADOW.skater : SHADOW.wide, s.x, s.y)
+    if (s.state === 'fall') {
+      // Guests tumble as a whole, around the same pivot as the old sprite.
+      ctx.save()
+      ctx.translate(Math.round(s.x), Math.round(y - 9))
+      ctx.rotate((s.rot * Math.PI) / 2)
+      ctx.drawImage(c, -c.ax, -c.ay + 9)
+      ctx.restore()
+    } else put(c, s.x, y)
+    if (isIntruder(s) && s.state === 'roll' && !s.crossed && s.x > finishX(s.y) - 20 && Math.floor(now * 4) % 2) {
+      const tx = Math.round(s.x)
+      const ty = Math.round(y) - (K === 'cochon' ? 16 : 32)
+      rect(tx - 3, ty + 3, 7, 1, P.ink)
+      rect(tx - 2, ty + 2, 5, 1, P.red)
+      rect(tx - 1, ty + 1, 3, 1, P.red)
+      rect(tx, ty, 1, 1, P.red)
+      rect(tx, ty + 1, 1, 2, P.yellow)
+    }
+    void up
+  }
   function drawSkater(s) {
+    if (isGuest(s)) return drawGuest(s)
     if (isIntruder(s)) return drawIntruder(s)
     if (s.hidden) return
     put(s.z > 6 ? SHADOW.small : s.state === 'fall' ? SHADOW.wide : SHADOW.skater, s.x, s.y)
@@ -1255,9 +1529,13 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const ox = Math.round(s.x)
     const oy = Math.round(s.y - s.z)
     if (s.kind === 'fast' && s.state === 'roll') {
-      // FUSÉE: speed lines behind.
-      rect(ox - 10 - (Math.floor(now * 20) % 3), oy - 14, 4, 1, P.white)
-      rect(ox - 12 - (Math.floor(now * 20 + 1) % 3), oy - 9, 5, 1, P.white)
+      // FUSÉE: a three-tone trail behind.
+      const k = Math.floor(now * 20) % 3
+      for (const [dy, len] of [[-14, 4], [-9, 5], [-5, 3]]) {
+        rect(ox - 8 - k - len, oy + dy, len, 1, P.grey3)
+        rect(ox - 8 - k - len + 1, oy + dy, len - 1, 1, P.grey2)
+        rect(ox - 8 - k, oy + dy, 1, 1, P.white)
+      }
     }
     put(c, ox, oy)
     if (s.kind === 'hesitant' && s.state === 'roll' && s.braking > 0) text5('?', ox - 2, oy - 32, P.yellow)
@@ -1392,7 +1670,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const y = 16 + (t < 0.08 ? -3 : 0)
     put(panel(w, 13, RAMPS.paper), x, y)
     text5(G.note.text, x + 23, y + 2, G.note.colour, {})
-    put(S.stamp, x + 4, y + 3)
+    // The stamp drops onto the paper, then a few specks of ink.
+    put(S.stamp, x + 4, y + 3 - (t < 0.1 ? Math.round((0.1 - t) * 60) : 0))
+    if (t >= 0.1 && t < 0.3) for (const [dx, dy] of [[-1, 2], [20, 1], [8, 11], [16, 12]]) rect(x + 4 + dx, y + 3 + dy, 1, 1, P.redD)
   }
   const SOUND_BTN = { x: W - 19, y: 1, w: 18, h: 11 }
   function drawSoundButton() {
@@ -1401,8 +1681,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function drawHud() {
     put(S.hud, 0, 0)
     if (G) {
-      text5('SCORE ' + pad(G.score, 6), 3, 2, P.white, {})
-      text5('×' + C.MULTS[G.level], 80, 2, G.level ? P.yellow : P.white, {})
+      text5('SCORE ' + pad(Math.round(displayScore), 6), 3, 2, displayScore < G.score ? P.yellow : P.white, {})
+      const bump = now - multBumpAt < 0.25
+      text5('×' + C.MULTS[G.level], 80, bump ? 1 : 2, G.level ? P.yellow : P.white, bump ? { outline: P.white } : {})
       // Progress toward the next multiplier.
       if (G.level < C.LEVELS.length - 1) {
         const from = C.LEVELS[G.level]
@@ -1429,18 +1710,26 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function drawScene() {
     ctx.save()
     if (shake > 0) ctx.translate(Math.round((Math.random() - 0.5) * shake * 2), Math.round((Math.random() - 0.5) * shake))
-    ctx.drawImage(bg, 0, 0)
+    SHADOW = SHADOWS[daylight()]
+    ctx.drawImage(bgs[daylight()], 0, 0)
     drawCrowd()
     drawVolunteers()
     drawZone()
     drawMat()
+    drawLitter()
     const sorted = [...skaters, ...bodies.map((b) => ({ body: b, y: b.y }))].sort((a, b) => a.y - b.y)
     for (const s of sorted) if (s.body) drawBody(s.body)
       else drawSkater(s)
+    drawBurst()
     drawTeam()
     drawPigeons()
     drawTruck()
-    for (const p of particles) rect(p.x, p.y, 2, 2, p.colour)
+    for (const p of particles) {
+      if (p.kind === 'confetti') put(S.debris.confetti[p.ramp] || S.debris.confetti.red, p.x, p.y)
+      else if (p.kind === 'helmet') put(S.debris.helmet[p.ramp] || S.debris.helmet.red, p.x, p.y)
+      else if (p.kind) put(S.debris[p.kind], p.x, p.y)
+      else rect(p.x, p.y, 2, 2, p.colour)
+    }
     drawArchFront()
     drawPhotographer()
     drawMamie()
