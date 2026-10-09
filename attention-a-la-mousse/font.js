@@ -116,6 +116,25 @@ export function drawText(ctx, text, x, y, colour) {
   }
 }
 
+/** Bitmap rows (8 rows: 2 accent, 5 letter, 1 cedilla; '#' = ink) of one glyph, for pixel buffers. */
+export function glyph3(ch) {
+  const up = ch.toUpperCase()
+  let glyph = G[up]
+  let accent = null
+  let cedilla = false
+  if (!glyph) {
+    if (ACCENTS[up]) {
+      glyph = G[ACCENTS[up][0]]
+      accent = ACCENTS[up][1]
+    } else if (up === 'Ç') {
+      glyph = G.C
+      cedilla = true
+    } else glyph = G['?']
+  }
+  const rows = [accent ? accent[0] : '...', accent ? accent[1] : '...', ...glyph, cedilla ? '.x.' : '...']
+  return rows.map((r) => r.replace(/x/g, '#'))
+}
+
 /** Centred text. */
 export function drawTextC(ctx, text, cx, y, colour) {
   drawText(ctx, text, Math.round(cx - textWidth(text) / 2), y, colour)

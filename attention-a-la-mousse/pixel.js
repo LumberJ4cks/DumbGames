@@ -83,7 +83,7 @@ export const RAMPS = {
   dog: [P.plum, P.brown, P.clay, P.tan],
   // Scenery (kept softer than the playfield).
   sky: [P.blue, P.cyan, P.grey1],
-  cloud: [P.grey1, P.white],
+  cloud: [P.grey2, P.grey1, P.white],
   wall: [P.clay, P.sand, P.cream],
   roof: [P.brown, P.rust, P.tan],
   grass: [P.teal, P.greenD, P.greenM, P.green],

@@ -1,5 +1,8 @@
-import { createAudio } from './audio.js?v=3'
-import { drawText, drawTextC, textWidth } from './font.js?v=3'
+import { createAudio } from './audio.js?v=4'
+import { drawText, drawTextC, textWidth } from './font.js?v=4'
+import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js?v=4'
+import { Pix, PAL, RAMPS, bayer, toCanvas } from './pixel.js?v=4'
+import { buildSprites, backgroundSprite, skaterSprite, spectatorSprite, panelSprite, drawMatInto, lookKey, HELMET_RAMPS, JERSEY_RAMPS, SHORTS_RAMPS, SKIN_RAMPS, HAIR_RAMPS } from './sprites.js?v=4'
 
 /*
  * ATTENTION À LA MOUSSE ! — « 10 kilomètres d'effort. 20 centimètres de catastrophe. »
@@ -21,6 +24,8 @@ export const manifest = {
   tagline: '10 kilomètres d’effort. 20 centimètres de catastrophe.',
   releasedAt: '2026-11-10',
   status: 'draft',
+  // Shown on the title screen, so the loaded build can be told from a cached one.
+  version: '3.0',
   orientation: 'landscape',
   size: { width: 320, height: 180 },
   controls: [
@@ -148,43 +153,20 @@ const FALL_NOTES = [
 const SAVE_MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400]
 const CROWD_LINES = ['LA MOUSSE !', 'ATTENTION !', 'SAUTEZ !', 'C’EST NORMAL ?', 'ILS SONT COMBIEN ?', 'RALENTISSEZ !', 'PAPA !', 'ALLEZ MONIQUE !']
 
-/* ---------- palette ---------- */
+/* ---------- palette: Endesga 32 (pixel.js), plus the names the rules use ---------- */
 const P = {
-  ink: '#1d2a3a',
-  white: '#f7f4ea',
-  sky: '#9fd3ee',
-  skyLow: '#c9e8f2',
-  grass: '#5fae4f',
-  grassDark: '#3f8a3a',
-  asphalt: '#6f7380',
-  asphaltDark: '#5e626e',
-  asphaltLight: '#878b97',
-  barrier: '#b9c0c8',
-  barrierDark: '#7d858f',
-  mat: '#2a62c9',
-  matTop: '#4f86e6',
-  matSide: '#1a3f88',
-  red: '#e23b3b',
-  redDark: '#a82525',
-  yellow: '#ffd23f',
-  vest: '#d6f23a',
-  vestDark: '#9fb81e',
-  orange: '#f07f2a',
-  green: '#3fbf6a',
-  wood: '#a8743e',
-  woodDark: '#7a5129',
-  wall: '#e9d9b6',
-  roof: '#b4553f',
-  grey: '#8e95a0',
-  paper: '#fbf7ee',
-  stamp: '#c8322f',
+  ...PAL,
+  stamp: PAL.redD,
+  redDark: PAL.redD,
+  grey: PAL.grey2,
+  paper: PAL.cream,
+  asphaltLight: PAL.grey2,
 }
-const HELMETS = ['#e23b3b', '#ffd23f', '#2a62c9', '#3fbf6a', '#f07f2a', '#9b4fc9', '#f7f4ea', '#2b2b33', '#ff7fb0']
-const JERSEYS = ['#e85d75', '#3aa0e8', '#f2d03b', '#5ac46a', '#ff8c3a', '#7f5ae0', '#e8e8e8', '#1d8a8a', '#d13c3c', '#ff7fb0']
-const SHORTS = ['#1b1b2a', '#2a3a6a', '#5a2a2a', '#333a40', '#3f2a5a']
-const SKINS = ['#f3c9a3', '#e0ac7e', '#b9804f', '#8a5a35', '#f7dcc0']
-const SKATE = '#2b2b33'
-const WHEEL = '#d9d9d9'
+// Looks are palette ramps (pixel.js RAMPS); the sprites module draws them.
+const HELMETS = HELMET_RAMPS
+const JERSEYS = JERSEY_RAMPS
+const SHORTS = SHORTS_RAMPS
+const SKINS = SKIN_RAMPS
 
 const W = 320
 const H = 180
@@ -200,150 +182,6 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
-
-/* ---------- skater poses: [x, y, w, h, colour key], feet at (0, 0), facing right ---------- */
-const HEAD = [
-  [-2, -20, 5, 1, 'H'],
-  [-3, -19, 6, 2, 'H'],
-  [-2, -17, 5, 3, 'S'],
-  [1, -16, 1, 1, 'E'],
-]
-const HEAD_PANIC = [
-  [-2, -20, 5, 1, 'H'],
-  [-3, -19, 6, 2, 'H'],
-  [-2, -17, 5, 4, 'S'],
-  [0, -16, 2, 1, 'W'],
-  [1, -16, 1, 1, 'E'],
-  [1, -14, 2, 1, 'M'],
-]
-const TORSO = [
-  [-2, -14, 4, 5, 'J'],
-  [-2, -9, 4, 2, 'D'],
-]
-const BIB = [[-1, -13, 2, 2, 'B']]
-const LEGS_TOGETHER = [
-  [-2, -7, 1, 5, 'S'],
-  [1, -7, 1, 5, 'S'],
-  [-3, -2, 3, 1, 'K'],
-  [1, -2, 3, 1, 'K'],
-  [-3, -1, 1, 1, 'R'],
-  [-1, -1, 1, 1, 'R'],
-  [1, -1, 1, 1, 'R'],
-  [3, -1, 1, 1, 'R'],
-]
-const LEGS_STRIDE = [
-  [-3, -7, 1, 3, 'S'],
-  [-4, -5, 1, 3, 'S'],
-  [-7, -2, 3, 1, 'K'],
-  [-7, -1, 1, 1, 'R'],
-  [-5, -1, 1, 1, 'R'],
-  [1, -7, 1, 5, 'S'],
-  [1, -2, 3, 1, 'K'],
-  [1, -1, 1, 1, 'R'],
-  [3, -1, 1, 1, 'R'],
-]
-const LEGS_STAR = [
-  [-3, -7, 1, 3, 'S'],
-  [-4, -5, 1, 3, 'S'],
-  [-6, -2, 3, 1, 'K'],
-  [2, -7, 1, 3, 'S'],
-  [3, -5, 1, 3, 'S'],
-  [3, -2, 3, 1, 'K'],
-  [-6, -1, 1, 1, 'R'],
-  [5, -1, 1, 1, 'R'],
-]
-const ARMS_SWING = [
-  [-3, -13, 1, 2, 'S'],
-  [-4, -11, 1, 2, 'S'],
-  [2, -13, 1, 1, 'S'],
-  [3, -12, 2, 1, 'S'],
-]
-const ARMS_SWING_B = [
-  [-3, -13, 1, 3, 'S'],
-  [2, -13, 1, 2, 'S'],
-  [3, -11, 1, 1, 'S'],
-]
-const ARMS_UP = [
-  [-4, -19, 1, 5, 'S'],
-  [-3, -14, 1, 1, 'S'],
-  [3, -19, 1, 5, 'S'],
-  [2, -14, 1, 1, 'S'],
-]
-const ARMS_UP_B = [
-  [-5, -18, 1, 4, 'S'],
-  [-4, -14, 1, 1, 'S'],
-  [4, -18, 1, 4, 'S'],
-  [3, -14, 1, 1, 'S'],
-]
-const ARMS_STIFF = [
-  [-3, -14, 1, 6, 'S'],
-  [2, -14, 1, 6, 'S'],
-]
-const ARMS_STAR = [
-  [-5, -16, 3, 1, 'S'],
-  [-6, -17, 1, 1, 'S'],
-  [2, -16, 3, 1, 'S'],
-  [5, -17, 1, 1, 'S'],
-]
-
-/* Intruders, same convention. Extra colour keys: U suit, G grey hair, b/w/r the tricolour
- * sash, C/c dog, P pram, O orange vest, A adult shirt. */
-const MAIRE = [
-  [-2, -20, 4, 1, 'S'],
-  [-2, -19, 5, 4, 'S'],
-  [-3, -19, 1, 3, 'G'],
-  [1, -18, 1, 1, 'E'],
-  [1, -16, 2, 1, 'G'],
-  [-3, -15, 5, 8, 'U'],
-  [0, -15, 1, 3, 'W'],
-  [-3, -14, 1, 1, 'b'],
-  [-2, -13, 1, 1, 'w'],
-  [-1, -12, 1, 1, 'r'],
-  [0, -11, 1, 1, 'b'],
-  [1, -10, 1, 1, 'w'],
-  [1, -9, 1, 1, 'r'],
-]
-const MAIRE_ARMS = [[-4, -14, 1, 5, 'U'], [-4, -9, 1, 1, 'S']]
-const MAIRE_ARMS_UP = [[-4, -20, 1, 6, 'U'], [2, -20, 1, 6, 'U']]
-const WALK_A = [[-2, -7, 2, 6, 'U'], [0, -7, 2, 6, 'U'], [-3, -1, 3, 1, 'K'], [0, -1, 3, 1, 'K']]
-const WALK_B = [[-3, -7, 2, 6, 'U'], [1, -7, 2, 6, 'U'], [-4, -1, 3, 1, 'K'], [1, -1, 3, 1, 'K']]
-const CHIEN = [
-  [-4, -6, 8, 3, 'C'],
-  [3, -8, 3, 3, 'C'],
-  [3, -9, 1, 1, 'c'],
-  [6, -7, 1, 1, 'E'],
-  [4, -8, 1, 1, 'E'],
-  [2, -6, 1, 3, 'r'],
-]
-const CHIEN_A = [[-3, -3, 1, 3, 'c'], [2, -3, 1, 3, 'c'], [-5, -8, 1, 2, 'C']]
-const CHIEN_B = [[-4, -3, 1, 3, 'c'], [3, -3, 1, 3, 'c'], [-6, -7, 1, 1, 'C']]
-const POUSSETTE = [
-  // The pram (front at x = 0)...
-  [-8, -12, 4, 4, 'P'],
-  [-8, -8, 8, 4, 'P'],
-  [-4, -10, 2, 2, 'S'],
-  [-7, -3, 2, 2, 'E'],
-  [-2, -3, 2, 2, 'E'],
-  [-10, -11, 2, 1, 'E'],
-  // ...pushed by a parent in jeans.
-  [-14, -20, 4, 2, 'G'],
-  [-14, -18, 4, 4, 'S'],
-  [-11, -17, 1, 1, 'E'],
-  [-15, -14, 5, 7, 'A'],
-  [-11, -12, 2, 1, 'S'],
-]
-const POUSSETTE_A = [[-14, -7, 1, 6, 'D'], [-12, -7, 1, 6, 'D'], [-15, -1, 2, 1, 'K'], [-12, -1, 2, 1, 'K']]
-const POUSSETTE_B = [[-15, -7, 1, 6, 'D'], [-11, -7, 1, 6, 'D'], [-16, -1, 2, 1, 'K'], [-11, -1, 2, 1, 'K']]
-const SECOURISTE = [
-  [-3, -21, 5, 2, 'r'],
-  [-2, -19, 5, 4, 'S'],
-  [1, -18, 1, 1, 'E'],
-  [-3, -15, 6, 8, 'O'],
-  [-1, -14, 2, 4, 'W'],
-  [-2, -13, 4, 2, 'W'],
-  [3, -11, 3, 4, 'r'],
-  [4, -12, 1, 1, 'W'],
-]
 
 export function create({ canvas, settings = {}, onState, onEnd }) {
   canvas.width = W
@@ -1051,129 +889,121 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     ctx.fillStyle = c
     ctx.fillRect(Math.round(x), Math.round(y), w, h)
   }
-  function outlined(x, y, w, h, fill, line = P.ink) {
-    rect(x - 1, y - 1, w + 2, h + 2, line)
-    rect(x, y, w, h, fill)
-  }
   function pad(n, size) {
     return String(n).padStart(size, '0')
   }
-  function big(text, cx, y, colour, shadow = P.ink) {
-    ctx.save()
-    ctx.translate(Math.round(cx), y)
-    ctx.scale(2, 2)
-    drawTextC(ctx, text, 0.5, 0.5, shadow)
-    drawTextC(ctx, text, 0, 0, colour)
-    ctx.restore()
+  /** Draws a cached sprite canvas with its anchor at (x, y). */
+  function put(c, x, y) {
+    ctx.drawImage(c, Math.round(x) - c.ax, Math.round(y) - c.ay)
+  }
+  /** Headline text: 5 × 7 with a drop shadow; `outline` for text over busy areas. */
+  function text5(text, x, y, colour, style = { shadow: P.ink }) {
+    drawText5(ctx, text, x, y, colour, style)
+  }
+  function text5C(text, cx, y, colour, style = { shadow: P.ink }) {
+    drawText5C(ctx, text, cx, y, colour, style)
   }
 
-  /* ---------- static background (drawn once) ---------- */
-  const bg = document.createElement('canvas')
-  bg.width = W
-  bg.height = H
-  function paintBackground() {
-    const b = bg.getContext('2d')
-    const r = (x, y, w, h, c) => {
-      b.fillStyle = c
-      b.fillRect(Math.round(x), Math.round(y), w, h)
+  /* ---------- sprite caches (built once, at start-up) ---------- */
+  const S = {}
+  const built = buildSprites(C)
+  for (const [k, v] of Object.entries(built)) {
+    if (Array.isArray(v)) S[k] = v.map(toCanvas)
+    else if (v instanceof Pix) S[k] = toCanvas(v)
+    else S[k] = Object.fromEntries(Object.entries(v).map(([kk, p]) => [kk, toCanvas(p)]))
+  }
+  const bg = toCanvas(backgroundSprite(C, W, H))
+  const bgCtx = bg.getContext('2d')
+  // Static scenery baked over the background: barriers, the refreshment table and its sign,
+  // the back post of the arch, the sponsor boards.
+  {
+    const putB = (c, x, y) => bgCtx.drawImage(c, Math.round(x) - c.ax, Math.round(y) - c.ay)
+    for (let x = 0; x < W; x += 34) putB(S.barrier, x, 100)
+    putB(S.table, 33, 95)
+    putB(S.archPostBack, C.FINISH_X - 4, C.TRACK_TOP + 2)
+    let bx = -6
+    for (const b of S.boards) {
+      putB(b, bx, 163)
+      bx += b.width - 4 + 2
     }
-    // Sky, bands of a summer afternoon.
-    r(0, 0, W, 64, P.sky)
-    r(0, 44, W, 20, P.skyLow)
-    // Clouds.
-    for (const [x, y] of [[30, 22], [190, 18], [282, 28]]) {
-      r(x, y, 22, 4, P.white)
-      r(x + 4, y - 3, 12, 3, P.white)
+  }
+  // The arch banner with its lettering, drawn once.
+  const banner = document.createElement('canvas')
+  banner.width = S.banner.width
+  banner.height = S.banner.height
+  {
+    const g = banner.getContext('2d')
+    g.drawImage(S.banner, 0, 0)
+    drawText5C(g, 'ARRIVÉE', S.banner.ax + 35, S.banner.ay + 4, P.white, { shadow: P.redD })
+    drawText(g, 'GARAGE PATRICK', S.banner.ax + 35 - textWidth('GARAGE PATRICK') / 2, S.banner.ay + 18, P.plum)
+  }
+  banner.ax = S.banner.ax
+  banner.ay = S.banner.ay
+  // The title logo, two lines.
+  const logo = [toCanvas(logoLine('ATTENTION')), toCanvas(logoLine('À LA MOUSSE !'))]
+  // Ground shadows: opaque, in the darkened colour of the ground.
+  const shadowOf = (w, colour) => toCanvas(new Pix(w + 2, 4).disc(w / 2 + 1, 2, w / 2, 1.4, colour))
+  const SHADOW = { skater: shadowOf(8, P.slateD), small: shadowOf(5, P.slateD), wide: shadowOf(18, P.slateD), lawn: shadowOf(8, P.greenD) }
+  // Overlays without translucency: solid, or a clean 50 % checkerboard (the 16-bit way).
+  const overlay = (colour, checker) => {
+    const p = new Pix(W, H)
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!checker || (x + y) % 2 === 0) p.px(x, y, colour)
+    return toCanvas(p)
+  }
+  const FLASH = [overlay(P.white, false), overlay(P.white, true)]
+  const DIM = overlay(P.slateD, true)
+  // Panels are cached by size.
+  const panels = new Map()
+  function panel(w, h, ramp = RAMPS.navy, inset = false) {
+    const key = w + 'x' + h + ramp[0] + inset
+    let c = panels.get(key)
+    if (!c) {
+      c = toCanvas(panelSprite(w, h, ramp, { inset }))
+      panels.set(key, c)
     }
-    // The town hall with its flag and clock, a few houses and trees.
-    r(140, 26, 64, 38, P.wall)
-    r(136, 22, 72, 5, P.roof)
-    r(164, 12, 16, 12, P.wall)
-    r(162, 10, 20, 3, P.roof)
-    r(169, 14, 6, 6, P.white)
-    r(171, 16, 1, 3, P.ink)
-    r(171, 16, 3, 1, P.ink)
-    r(172, 0, 1, 10, P.ink)
-    r(173, 1, 4, 2, '#2a62c9')
-    r(173, 3, 4, 2, P.white)
-    r(173, 5, 4, 2, P.red)
-    for (let i = 0; i < 6; i++) r(144 + i * 10, 34, 5, 8, '#6a8fb5')
-    for (let i = 0; i < 6; i++) r(144 + i * 10, 48, 5, 8, '#6a8fb5')
-    drawText(b, 'MAIRIE', 161, 27, P.ink)
-    for (const [x, w, h, roof] of [[4, 34, 26, '#b4553f'], [212, 30, 22, '#8b4a3a'], [276, 40, 28, '#b4553f']]) {
-      r(x, 64 - h, w, h, P.wall)
-      r(x - 2, 64 - h - 4, w + 4, 4, roof)
-      r(x + 5, 64 - h + 6, 5, 6, '#6a8fb5')
-      r(x + w - 10, 64 - h + 6, 5, 6, '#6a8fb5')
+    return c
+  }
+
+  /* ---------- skaters: one canvas per look, pose and rotation, built on first use ---------- */
+  const skaterCache = new Map()
+  function skaterCanvas(look, pose, rot) {
+    const key = lookKey(look) + '|' + pose.head + pose.arms + pose.legs + pose.lean + pose.kind + rot
+    let c = skaterCache.get(key)
+    if (!c) {
+      let p = skaterSprite(look, pose)
+      if (rot) {
+        // Fallen skaters turn around a pivot 9 px above the feet, like the old sprite.
+        p.ay -= 9
+        p = p.rotate(rot)
+      }
+      c = toCanvas(p)
+      skaterCache.set(key, c)
     }
-    for (const x of [46, 120, 252]) {
-      r(x + 3, 46, 3, 18, P.woodDark)
-      r(x - 3, 30, 15, 18, P.grassDark)
-      r(x - 1, 27, 11, 4, P.grassDark)
-    }
-    // Bunting.
-    const flags = [P.red, P.yellow, '#2a62c9', P.green, P.white, P.orange]
-    for (let x = 0, i = 0; x < W; x += 8, i++) {
-      const y = 38 + Math.round(Math.sin(x / 40) * 2)
-      r(x, y, 8, 1, P.ink)
-      b.fillStyle = flags[i % flags.length]
-      for (let k = 0; k < 4; k++) b.fillRect(x + 1 + k, y + 1 + k, 6 - k * 2, 1)
-    }
-    // Lawn behind the barriers.
-    r(0, 64, W, 36, P.grass)
-    // Track: asphalt with a white edge, slightly lighter far side.
-    r(0, C.TRACK_TOP, W, C.TRACK_BOTTOM - C.TRACK_TOP, P.asphalt)
-    r(0, C.TRACK_TOP, W, 4, P.asphaltDark)
-    for (let i = 0; i < 160; i++) {
-      const x = (i * 97) % W
-      const y = C.TRACK_TOP + 5 + ((i * 53) % (C.TRACK_BOTTOM - C.TRACK_TOP - 6))
-      r(x, y, 1, 1, i % 2 ? P.asphaltDark : P.asphaltLight)
-    }
-    r(0, C.TRACK_TOP + 3, W, 1, P.white)
-    r(0, C.TRACK_BOTTOM - 2, W, 1, P.white)
-    // Finish line: chequered, slanted across the track.
-    for (let y = C.TRACK_TOP + 4; y < C.TRACK_BOTTOM - 2; y++) {
-      const x = finishX(y)
-      for (let k = 0; k < 3; k++) r(x + k * 2, y, 2, 1, (Math.floor((y - C.TRACK_TOP) / 2) + k) % 2 ? P.white : P.ink)
-    }
-    // Curb and lawn in front.
-    for (let x = 0; x < W; x += 8) r(x, C.TRACK_BOTTOM, 8, 3, (x / 8) % 2 ? P.red : P.white)
-    r(0, C.TRACK_BOTTOM + 3, W, H - C.TRACK_BOTTOM - 3, P.grass)
-    // Sponsor boards along the front.
-    const boards = [
-      ['BOUCHERIE MOREAU', P.red, P.white],
-      ['COMITÉ DES FÊTES', P.yellow, P.ink],
-      ['GARAGE PATRICK', '#2a62c9', P.white],
-      ['PISCINE MUNICIPALE', P.green, P.white],
-      ['CRÉDIT COMMUNAL', P.white, P.ink],
-    ]
-    let x = -6
-    for (const [text, fill, ink] of boards) {
-      const w = textWidth(text) + 10
-      r(x, 163, w, 15, P.ink)
-      r(x + 1, 164, w - 2, 13, fill)
-      drawText(b, text, x + 5, 166, ink)
-      x += w + 2
-    }
+    return c
   }
 
   /* ---------- crowd and volunteers ---------- */
   const crowd = []
   {
     const rng = mulberry32(7)
+    let n = 0
     for (let row = 0; row < 2; row++)
       for (let x = 2 + row * 3; x < W; x += 7 + Math.floor(rng() * 3)) {
         if (x > 30 && x < 78) continue // the refreshment table
         if (x > 170 && x < 190) continue // RALENTIR
         if (x > 252 && x < 272) continue // announcer
-        crowd.push({
-          x,
-          y: 74 + row * 5,
+        const look = {
           skin: SKINS[Math.floor(rng() * SKINS.length)],
-          hair: ['#3a2a1e', '#d8b25a', '#2a2a2a', '#9a4a2a', '#c9c9c9'][Math.floor(rng() * 5)],
+          hair: HAIR_RAMPS[Math.floor(rng() * HAIR_RAMPS.length)],
           shirt: JERSEYS[Math.floor(rng() * JERSEYS.length)],
+          v: n++,
+        }
+        crowd.push({
+          x: x + 3,
+          y: 90 + row * 5,
           phase: rng() * 6.28,
           shouter: rng() < 0.12,
+          frames: [toCanvas(spectatorSprite(look, 0)), toCanvas(spectatorSprite(look, 1))],
         })
       }
   }
@@ -1195,247 +1025,127 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
           bob = Math.round(8 * (1 - d / 0.09))
         }
       }
-      const y = c.y - bob
-      rect(c.x, y + 6, 6, 10, c.shirt)
-      rect(c.x + 1, y, 4, 5, c.skin)
-      rect(c.x + 1, y - 1, 4, 2, c.hair)
-      if (wave) {
-        rect(c.x, y - 6, 1, 6, c.skin)
-        rect(c.x + 5, y - 6, 1, 6, c.skin)
-      } else if ((c.shouter && k > 0.4) || cheer > 0.3) {
-        rect(c.x + 2, y + 3, 2, 1, P.ink)
-        rect(c.x - 1, y + 2 - bob, 1, 3, c.skin)
-        rect(c.x + 6, y + 2 - bob, 1, 3, c.skin)
-      }
+      const shouting = wave || (c.shouter && k > 0.4) || cheer > 0.3
+      put(c.frames[shouting ? 1 : 0], c.x, c.y - bob)
     }
   }
-  function drawBarriers() {
-    for (let x = 0; x < W; x += 34) {
-      rect(x, 86, 32, 2, P.barrier)
-      rect(x, 98, 32, 1, P.barrier)
-      for (let i = 1; i < 32; i += 3) rect(x + i, 88, 1, 10, P.barrierDark)
-      rect(x, 86, 1, 14, P.barrierDark)
-      rect(x + 31, 86, 1, 14, P.barrierDark)
-      rect(x - 2, 99, 6, 1, P.barrierDark)
-    }
-  }
-  function volunteer(x, y, arms) {
-    // Feet at (x, y). Yellow-green vest, cap.
-    rect(x - 2, y - 6, 2, 6, '#2a3a6a')
-    rect(x + 1, y - 6, 2, 6, '#2a3a6a')
-    rect(x - 3, y - 15, 7, 9, P.vest)
-    rect(x - 3, y - 11, 7, 1, '#c9c9c9')
-    rect(x - 2, y - 20, 5, 5, SKINS[0])
-    rect(x - 3, y - 21, 6, 2, P.red)
-    rect(x + 2, y - 20, 2, 1, P.red)
-    rect(x + 1, y - 18, 1, 1, P.ink)
-    if (arms) arms()
-  }
+  const SKIN0 = RAMPS.skinPale[2]
   function drawVolunteers() {
-    // Refreshment table with cups, a volunteer holding one out to nobody in particular.
-    rect(34, 92, 38, 3, P.white)
-    rect(36, 95, 2, 8, P.woodDark)
-    rect(68, 95, 2, 8, P.woodDark)
-    for (let i = 0; i < 7; i++) rect(37 + i * 5, 89, 2, 3, i % 3 === 0 ? '#2a62c9' : P.white)
-    outlined(36, 79, 26, 8, P.white, P.red)
-    drawText(ctx, 'RAVITO', 38, 79, P.red)
-    volunteer(67, 92, () => {
+    // Refreshment: a volunteer holding a cup out to nobody in particular.
+    put(S.signRavito, 36, 79)
+    put(S.volunteer[0], 67, 92)
+    {
       const reach = Math.round(Math.sin(now * 2) + 1)
-      rect(69, 79, 3 + reach, 1, SKINS[0])
+      rect(69, 79, 3 + reach, 1, SKIN0)
       rect(72 + reach, 77, 2, 3, P.white)
-    })
+      rect(72 + reach, 77, 2, 1, P.grey1)
+    }
     // RALENTIR: waved with total conviction, to no effect.
     const k = intensity()
     const wave = Math.round(Math.sin(now * (3 + k * 10)) * (1 + k * 2))
-    volunteer(180, 100, () => {
-      rect(182, 84, 1, 4, SKINS[0])
-      rect(182 + wave, 70, 1, 15, P.woodDark)
-    })
-    const sx = 165 + wave
-    outlined(sx, 62, 35, 9, P.white, P.red)
-    drawText(ctx, 'RALENTIR', sx + 2, 62, P.red)
+    put(S.volunteer[1], 180, 100)
+    rect(182, 84, 1, 4, RAMPS.skinTan[2])
+    rect(182 + wave, 70, 1, 15, RAMPS.wood[1])
+    rect(182 + wave, 70, 1, 1, RAMPS.wood[2])
+    put(S.signRalentir, 165 + wave, 62)
     // The announcer with the megaphone.
-    volunteer(262, 100, () => {
-      rect(264, 84, 3, 1, SKINS[0])
-      rect(266, 82, 3, 4, P.white)
-      rect(269, 81, 2, 6, P.white)
-      rect(266, 83, 3, 1, P.red)
-    })
+    put(S.volunteer[2], 262, 100)
+    rect(264, 84, 3, 1, RAMPS.skinDark[2])
+    rect(266, 82, 3, 4, P.grey1)
+    rect(269, 81, 2, 6, P.white)
+    rect(269, 81, 2, 1, P.grey1)
+    rect(266, 83, 3, 1, P.red)
   }
 
-  /* ---------- the mat (the boss) ---------- */
+  /* ---------- the mat (the boss) and its zone ---------- */
   function drawZone() {
-    // Painted line where the jump zone begins; red tape across the zone during a FAUX DÉPART.
+    // Painted line where the zone begins; red tape dithered across the zone during a FAUX DÉPART.
     const locked = G && state === 'PLAYING' && G.t < G.lockedUntil
     for (let y = C.TRACK_TOP + 6; y < C.TRACK_BOTTOM - 3; y += 3) {
-      rect(matX(y) - C.ZONE, y, 1, 2, locked ? P.red : 'rgba(255,255,255,0.35)')
-      if (locked && Math.floor(now * 10) % 2) rect(matX(y) - C.ZONE + 1, y, C.ZONE - 1, 1, 'rgba(226,59,59,0.35)')
+      const x = Math.round(matX(y) - C.ZONE)
+      rect(x, y, 1, 2, locked ? P.red : P.grey1)
+      if (locked && Math.floor(now * 10) % 2)
+        for (let i = 1; i < C.ZONE; i++) if (bayer(x + i, y) < 0.35) rect(x + i, y, 1, 1, P.red)
     }
   }
   function drawMat() {
-    // The extension is a yellow municipal foam slab added in front of the blue mat.
-    const ext = Math.round(matExt())
-    for (let y = C.TRACK_TOP + 6; y < C.TRACK_BOTTOM - 3; y++) {
-      const x = matX(y)
-      if (ext > 0) {
-        rect(x, y, ext, 1, (y & 3) === 0 ? '#d9a92a' : P.yellow)
-        rect(x + ext - 1, y, 1, 1, '#b8861e')
-      }
-      rect(x + ext, y, C.MAT_W, 1, (y & 3) === 0 ? P.mat : P.matTop)
-      rect(x - 1, y, 1, 1, ext > 0 ? '#b8861e' : P.matSide)
-    }
-    const yb = C.TRACK_BOTTOM - 3
-    rect(matX(yb) - 1, yb, matW() + 1, 2, ext > 0 ? '#b8861e' : P.matSide)
+    drawMatInto((x, y, c) => rect(x, y, 1, 1, c), matX, Math.round(matExt()), C)
   }
 
   /* ---------- arch ---------- */
-  function drawArchBack() {
-    const x = finishX(C.TRACK_TOP + 2) - 4
-    rect(x, 30, 4, C.TRACK_TOP + 2 - 30, P.red)
-    for (let y = 34; y < C.TRACK_TOP; y += 8) rect(x, y, 4, 3, P.white)
-  }
   function drawArchFront() {
-    const x = finishX(C.TRACK_BOTTOM - 2) + 6
-    rect(x, 30, 5, C.TRACK_BOTTOM - 30, P.red)
-    for (let y = 34; y < C.TRACK_BOTTOM - 4; y += 8) rect(x, y, 5, 3, P.white)
-    // Banner across, face on: ARRIVÉE and the sponsor.
-    const bx = 74
-    rect(bx, 16, 66, 26, P.ink)
-    rect(bx + 1, 17, 64, 24, P.red)
-    rect(bx + 1, 33, 64, 8, P.yellow)
-    big('ARRIVÉE', bx + 33, 18, P.white)
-    drawTextC(ctx, 'GARAGE PATRICK', bx + 33, 33, P.ink)
+    put(S.archPost, finishX(C.TRACK_BOTTOM - 2) + 6, C.TRACK_BOTTOM - 2)
+    put(banner, 74, 16)
   }
 
   /* ---------- skaters ---------- */
-  function part(ox, oy, rot, lx, ly, w, h, c) {
-    // Rotation by quarter turns around a pivot 9 px above the feet, so it stays crisp.
-    const py = -9
-    ly -= py
-    let x, y, ww = w, hh = h
-    if (rot === 1) {
-      x = -(ly + h)
-      y = lx
-      ww = h
-      hh = w
-    } else if (rot === 2) {
-      x = -(lx + w)
-      y = -(ly + h)
-    } else if (rot === 3) {
-      x = ly
-      y = -(lx + w)
-      ww = h
-      hh = w
-    } else {
-      x = lx
-      y = ly
-    }
-    ctx.fillStyle = c
-    ctx.fillRect(ox + x, oy + py + y, ww, hh)
-  }
   function poseFor(s) {
     const f = Math.floor(s.anim) % 4
+    const kind = s.kind === 'fast' || s.kind === 'slow' || s.kind === 'hesitant' ? s.kind : 'normal'
     // DÉBUTANT braking: windmilling arms, legs locked in a T-stop.
-    if (s.state === 'roll' && s.braking > 0) return [Math.floor(now * 10) % 2 ? ARMS_UP : ARMS_STAR, LEGS_STRIDE, HEAD_PANIC, -1]
+    if (s.state === 'roll' && s.braking > 0) return { head: 'panic', arms: Math.floor(now * 10) % 2 ? 'upA' : 'star', legs: 'stride', lean: -1, kind }
     const panic = s.x >= matX(s.y) - C.ZONE - 14
-    if (s.state === 'roll' && s.kind === 'fast' && !panic) return [ARMS_STIFF, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 2]
-    if (s.state === 'roll' && s.kind === 'slow' && !panic) return [ARMS_STAR, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 0]
-    if (s.state === 'jump') return [ARMS_STIFF, LEGS_TOGETHER, HEAD, 0]
-    if (s.state === 'land') return [f % 2 ? ARMS_UP : ARMS_UP_B, LEGS_TOGETHER, HEAD, 0]
-    if (s.state === 'fall') return [ARMS_STAR, LEGS_STAR, HEAD_PANIC, 0]
+    if (s.state === 'roll' && s.kind === 'fast' && !panic) return { head: 'plain', arms: 'stiff', legs: f % 2 ? 'stride' : 'together', lean: 2, kind }
+    if (s.state === 'roll' && s.kind === 'slow' && !panic) return { head: 'plain', arms: 'star', legs: f % 2 ? 'stride' : 'together', lean: 0, kind }
+    if (s.state === 'jump') return { head: 'plain', arms: 'stiff', legs: 'together', lean: 0, kind }
+    if (s.state === 'land') return { head: 'plain', arms: f % 2 ? 'upA' : 'upB', legs: 'together', lean: 0, kind }
+    if (s.state === 'fall') return { head: 'panic', arms: 'star', legs: 'star', lean: 0, kind }
     // Panic in the jump zone: arms up, eyes wide. That is the tell.
-    if (s.x >= matX(s.y) - C.ZONE - 14) return [Math.floor(now * 12 + s.id) % 2 ? ARMS_UP : ARMS_UP_B, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD_PANIC, 1]
-    return [f % 2 ? ARMS_SWING : ARMS_SWING_B, f % 2 ? LEGS_STRIDE : LEGS_TOGETHER, HEAD, 1]
+    if (panic) return { head: 'panic', arms: Math.floor(now * 12 + s.id) % 2 ? 'upA' : 'upB', legs: f % 2 ? 'stride' : 'together', lean: 1, kind }
+    return { head: 'plain', arms: f % 2 ? 'swingA' : 'swingB', legs: f % 2 ? 'stride' : 'together', lean: 1, kind }
   }
   const REST = [0, 4, -2, 4]
-  const INTRUDER_COLOURS = {
-    U: '#2b2f4a',
-    G: '#c9c9c9',
-    b: '#2a62c9',
-    w: P.white,
-    r: P.red,
-    C: '#9a6a3a',
-    c: '#6a4424',
-    P: '#7f5ae0',
-    O: P.orange,
-    A: '#5a9a8a',
-    D: '#3a4f7a',
-  }
   function drawIntruder(s) {
     const f = Math.floor(s.anim) % 2
-    const shadowW = s.kind === 'poussette' ? 18 : s.kind === 'chien' ? 9 : 8
-    rect(s.x - (s.kind === 'poussette' ? 16 : 4), s.y - 1, shadowW, 2, 'rgba(20,24,34,0.35)')
-    const ox = Math.round(s.x)
-    const oy = Math.round(s.y - s.z + (s.state === 'fall' && s.t >= 0.75 ? REST[s.rot] : 0))
     const up = s.state === 'jump' || s.state === 'fall'
-    let lists
-    if (s.kind === 'maire') lists = [f ? WALK_A : WALK_B, MAIRE, up ? MAIRE_ARMS_UP : MAIRE_ARMS]
-    else if (s.kind === 'chien') lists = [up ? CHIEN_B : f ? CHIEN_A : CHIEN_B, CHIEN]
-    else if (s.kind === 'poussette') lists = [f ? POUSSETTE_A : POUSSETTE_B, POUSSETTE]
-    else lists = [f ? WALK_A : WALK_B, SECOURISTE, up ? MAIRE_ARMS_UP : []]
-    const colour = (k) => INTRUDER_COLOURS[k] || (k === 'K' ? SKATE : k === 'E' ? P.ink : k === 'W' ? P.white : k === 'S' ? s.look.S : s.look[k])
-    for (const list of lists) for (const [x, y, w, h, k] of list) part(ox, oy, s.rot, x, y, w, h, colour(k))
+    put(s.kind === 'poussette' ? SHADOW.wide : s.kind === 'chien' ? SHADOW.small : SHADOW.skater, s.x - (s.kind === 'poussette' ? 7 : 0), s.y)
+    let c
+    if (s.kind === 'maire') c = (up ? S.maireUp : S.maire)[f]
+    else if (s.kind === 'chien') c = S.chien[up ? 1 : f]
+    else if (s.kind === 'poussette') c = S.poussette[f]
+    else c = (up ? S.secouristeUp : S.secouriste)[f]
+    const y = s.y - s.z + (s.state === 'fall' && s.t >= 0.75 ? REST[s.rot] : 0)
+    if (s.rot) {
+      // Thrown intruders tumble like the skaters: rotate the canvas around the same pivot.
+      ctx.save()
+      ctx.translate(Math.round(s.x), Math.round(y - 9))
+      ctx.rotate((s.rot * Math.PI) / 2)
+      ctx.drawImage(c, -c.ax, -c.ay + 9)
+      ctx.restore()
+    } else put(c, s.x, y)
     // A little warning triangle above intruders while they walk towards the mat.
     if (s.state === 'roll' && !s.crossed && s.x > finishX(s.y) - 20 && Math.floor(now * 4) % 2) {
-      const tx = ox - (s.kind === 'poussette' ? 8 : 0)
-      const ty = oy - (s.kind === 'chien' ? 14 : 27)
-      rect(tx, ty, 1, 1, P.red)
-      rect(tx - 1, ty + 1, 3, 1, P.red)
+      const tx = Math.round(s.x) - (s.kind === 'poussette' ? 8 : 0)
+      const ty = Math.round(y) - (s.kind === 'chien' ? 15 : 28)
+      rect(tx - 3, ty + 3, 7, 1, P.ink)
       rect(tx - 2, ty + 2, 5, 1, P.red)
-      rect(tx, ty + 1, 1, 1, P.yellow)
+      rect(tx - 1, ty + 1, 3, 1, P.red)
+      rect(tx, ty, 1, 1, P.red)
+      rect(tx, ty + 1, 1, 2, P.yellow)
     }
   }
   function drawSkater(s) {
     if (isIntruder(s)) return drawIntruder(s)
-    const shadowW = s.z > 6 ? 5 : 8
-    rect(s.x - shadowW / 2, s.y - 1, shadowW, 2, 'rgba(20,24,34,0.35)')
+    put(s.z > 6 ? SHADOW.small : SHADOW.skater, s.x, s.y)
+    const pose = poseFor(s)
+    const c = skaterCanvas(s.look, pose, s.rot)
     const ox = Math.round(s.x)
     const oy = Math.round(s.y - s.z + (s.state === 'fall' && s.t >= 0.75 ? REST[s.rot] : 0))
-    const rot = s.rot
-    const [arms, legs, head, lean] = poseFor(s)
-    const colour = (k) =>
-      k === 'K' ? SKATE : k === 'R' ? WHEEL : k === 'E' ? P.ink : k === 'W' ? P.white : k === 'M' ? P.redDark : k === 'B' ? P.white : s.look[k]
-    const draw = (list, dx = 0) => {
-      for (const [x, y, w, h, k] of list) part(ox, oy, rot, x + dx, y, w, h, colour(k))
-    }
     if (s.kind === 'fast' && s.state === 'roll') {
-      // FUSÉE: speed lines behind and a pointed aero helmet.
+      // FUSÉE: speed lines behind.
       rect(ox - 10 - (Math.floor(now * 20) % 3), oy - 14, 4, 1, P.white)
       rect(ox - 12 - (Math.floor(now * 20 + 1) % 3), oy - 9, 5, 1, P.white)
     }
-    draw(legs)
-    draw(TORSO, lean)
-    if (s.look.bib) draw(BIB, lean)
-    draw(arms, lean)
-    draw(head, lean)
-    if (s.kind === 'fast' && s.state === 'roll') part(ox, oy, rot, lean - 5, -19, 2, 1, s.look.H)
-    if (s.kind === 'slow' && s.state === 'roll') part(ox, oy, rot, lean - 2, -17, 1, 2, '#d8d8d8')
-    if (s.kind === 'hesitant' && s.state !== 'fall') {
-      // DÉBUTANT: white knee and elbow pads; a question mark while braking.
-      part(ox, oy, rot, -2, -5, 1, 1, P.white)
-      part(ox, oy, rot, 1, -5, 1, 1, P.white)
-      if (s.braking > 0) drawText(ctx, '?', ox - 1, oy - 30, P.yellow)
-    }
+    if (s.rot) put(c, ox, oy - 9)
+    else put(c, ox, oy)
+    if (s.kind === 'hesitant' && s.state === 'roll' && s.braking > 0) text5('?', ox - 2, oy - 32, P.yellow)
   }
 
   /* ---------- pigeons, photographer, fire engine ---------- */
   function drawPigeons() {
     for (const p of pigeons) {
-      const x = Math.round(p.x)
-      const y = Math.round(p.y)
-      if (p.state === 'ground') {
-        const peck = Math.floor(now * 3 + p.tx) % 3 === 0
-        rect(x - 2, y - 3, 5, 3, '#8a8f99')
-        rect(x - 3, y - 3, 1, 1, '#6b707a')
-        rect(x + 2, y - (peck ? 2 : 5), 2, 2, '#5b6b7a')
-        rect(x + 4, y - (peck ? 1 : 4), 1, 1, P.orange)
-        rect(x, y, 1, 1, P.orange)
-      } else {
-        const flap = Math.floor(now * 14 + p.tx) % 2
-        rect(x - 2, y - 2, 5, 2, '#8a8f99')
-        rect(x - 1, y - (flap ? 5 : 0), 3, flap ? 3 : 2, '#6b707a')
-        rect(x + 3, y - 3, 1, 1, '#5b6b7a')
-      }
+      if (p.state === 'ground') put(S.pigeon[Math.floor(now * 3 + p.tx) % 3 === 0 ? 'peck' : 'idle'], p.x, p.y)
+      else put(S.pigeon[Math.floor(now * 14 + p.tx) % 2 ? 'up' : 'down'], p.x, p.y)
     }
   }
   function drawPhotographer() {
@@ -1444,51 +1154,29 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const base = 208
     const x =
       ph.phase === 'in' ? Math.round(W + 10 - (W + 10 - base) * Math.min(1, ph.t / 0.5)) : ph.phase === 'out' ? Math.round(base + (W + 10 - base) * (ph.t / 0.5)) : base
-    const y = 178
-    rect(x - 2, y - 8, 2, 8, '#3a3a44')
-    rect(x + 1, y - 8, 2, 8, '#3a3a44')
-    rect(x - 3, y - 18, 7, 10, '#c9b48a')
-    drawText(ctx, 'PRESSE', x - 11, y - 30, P.white)
-    rect(x - 2, y - 24, 5, 6, SKINS[1])
-    rect(x - 3, y - 25, 6, 2, '#3a2a1e')
-    // Camera held up towards the track, with the red light blinking while aiming.
-    rect(x - 7, y - 23, 6, 4, P.ink)
-    rect(x - 8, y - 22, 2, 2, '#4a5a6e')
-    rect(x - 6, y - 25, 3, 2, P.white)
-    if (ph.phase === 'aim' && Math.floor(now * 8) % 2) rect(x - 3, y - 23, 1, 1, P.red)
+    put(SHADOW.lawn, x, 178)
+    put(S.photographer[ph.phase === 'aim' && Math.floor(now * 8) % 2 ? 1 : 0], x, 178)
   }
   function drawFlash() {
     if (!G) return
     const t = now - G.flashAt
     if (t < 0 || t > C.PHOTO_FLASH) return
-    const a = t < 0.3 ? 1 : 1 - (t - 0.3) / (C.PHOTO_FLASH - 0.3)
-    rect(0, 13, W, H - 13, `rgba(255,255,255,${a.toFixed(2)})`)
+    // Solid white, then a checkerboard for the tail of the flash.
+    if (t > 0.45) return
+    const c = t < 0.3 ? FLASH[0] : FLASH[1]
+    ctx.drawImage(c, 0, 13, W, H - 13, 0, 13, W, H - 13)
   }
   function drawTruck() {
     const tr = G && G.truck
     if (!tr || tr.state === 'done') return
     if (tr.state === 'warn') {
       // Blue lights and PIN-PON at the left edge before it comes in.
-      if (Math.floor(now * 6) % 2) rect(0, 120, 4, 14, '#3a7bff')
-      drawText(ctx, 'PIN-PON !', 6, 116, Math.floor(now * 6) % 2 ? P.red : P.white)
+      if (Math.floor(now * 6) % 2) rect(0, 120, 4, 14, P.cyan)
+      text5('PIN-PON !', 6, 114, Math.floor(now * 6) % 2 ? P.red : P.white)
       return
     }
-    const front = Math.round(tr.x)
-    const base = Math.round(C.LANE_BOTTOM + 6 - tr.z)
-    const back = front - C.TRUCK_LEN
-    rect(back + 2, C.LANE_BOTTOM + 5, C.TRUCK_LEN, 3, 'rgba(20,24,34,0.35)')
-    rect(back, base - 28, C.TRUCK_LEN, 24, P.red)
-    rect(back, base - 16, C.TRUCK_LEN, 2, P.white)
-    rect(front - 14, base - 34, 14, 8, P.red)
-    rect(front - 11, base - 32, 9, 5, '#9fd3ee')
-    rect(back + 2, base - 32, 38, 2, P.grey)
-    for (let i = 0; i < 38; i += 4) rect(back + 2 + i, base - 34, 1, 4, P.grey)
-    rect(front - 10, base - 37, 4, 3, Math.floor(now * 8) % 2 ? '#3a7bff' : '#1a3f88')
-    drawText(ctx, 'POMPIERS', back + 6, base - 27, P.white)
-    for (const wx of [back + 8, front - 12]) {
-      rect(wx - 3, base - 5, 7, 6, P.ink)
-      rect(wx - 1, base - 3, 3, 2, P.grey)
-    }
+    rect(Math.round(tr.x) - C.TRUCK_LEN + 2, C.LANE_BOTTOM + 5, C.TRUCK_LEN, 3, P.slateD)
+    put(S.truck[Math.floor(now * 8) % 2], tr.x, C.LANE_BOTTOM + 6 - tr.z)
   }
 
   /* ---------- overlays ---------- */
@@ -1497,7 +1185,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       const w = textWidth(b.text) + 6
       const x = Math.max(2, Math.min(W - w - 2, Math.round(b.x - w / 2)))
       const y = Math.round(b.y - 10)
-      outlined(x, y, w, 9, P.white)
+      rect(x - 1, y - 1, w + 2, 11, P.ink)
+      rect(x, y, w, 9, P.white)
+      rect(x, y + 8, w, 1, P.grey1)
+      rect(x + w - 1, y, 1, 9, P.grey1)
+      rect(Math.round(b.x) - 1, y + 10, 4, 1, P.ink)
       rect(Math.round(b.x), y + 9, 2, 2, P.white)
       drawText(ctx, b.text, x + 3, y, P.ink)
     }
@@ -1506,61 +1198,48 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     for (const p of popups) {
       const k = (now - p.at) / p.dur
       const y = Math.round(p.y - k * 10)
-      drawTextC(ctx, p.text, p.x + 1, y + 1, P.ink)
-      drawTextC(ctx, p.text, p.x, y, p.colour)
+      text5C(p.text, p.x, y, p.colour, { outline: P.ink })
     }
   }
   function drawNote() {
     if (!G || !G.note) return
     const t = now - G.note.at
-    const w = textWidth(G.note.text) + 26
+    const w = textWidth5(G.note.text) + 28
     const x = Math.round(W / 2 - w / 2)
-    const y = 17 + (t < 0.08 ? -3 : 0)
-    outlined(x, y, w, 11, P.paper)
-    drawText(ctx, G.note.text, x + 22, y + 1, G.note.colour)
-    // A tiny municipal stamp.
-    rect(x + 3, y + 2, 15, 7, P.stamp)
-    rect(x + 4, y + 3, 13, 5, P.paper)
-    drawText(ctx, 'OK', x + 7, y + 1, P.stamp)
+    const y = 16 + (t < 0.08 ? -3 : 0)
+    put(panel(w, 13, RAMPS.paper), x, y)
+    text5(G.note.text, x + 23, y + 2, G.note.colour, {})
+    put(S.stamp, x + 4, y + 3)
   }
-  const SOUND_BTN = { x: W - 20, y: 1, w: 18, h: 11 }
+  const SOUND_BTN = { x: W - 19, y: 1, w: 18, h: 11 }
   function drawSoundButton() {
-    const b = SOUND_BTN
-    rect(b.x, b.y, b.w, b.h, '#2f4054')
-    rect(b.x + 3, b.y + 4, 3, 3, P.white)
-    rect(b.x + 6, b.y + 2, 2, 7, P.white)
-    if (audio.muted) {
-      rect(b.x + 11, b.y + 3, 1, 5, P.red)
-      rect(b.x + 10, b.y + 4, 3, 1, P.red)
-      rect(b.x + 10, b.y + 6, 3, 1, P.red)
-    } else {
-      rect(b.x + 10, b.y + 4, 1, 3, P.white)
-      rect(b.x + 12, b.y + 3, 1, 5, P.white)
-      rect(b.x + 14, b.y + 2, 1, 7, P.white)
-    }
+    put(S.sound[audio.muted ? 1 : 0], SOUND_BTN.x, SOUND_BTN.y)
   }
   function drawHud() {
-    rect(0, 0, W, 13, P.ink)
+    put(S.hud, 0, 0)
     if (G) {
-      drawText(ctx, 'SCORE ' + pad(G.score, 6), 4, 2, P.white)
-      const mult = '×' + C.MULTS[G.level]
-      drawText(ctx, mult, 72, 2, G.level ? P.yellow : P.white)
-      // Progress pips toward the next multiplier.
+      text5('SCORE ' + pad(G.score, 6), 3, 2, P.white, {})
+      text5('×' + C.MULTS[G.level], 80, 2, G.level ? P.yellow : P.white, {})
+      // Progress toward the next multiplier.
       if (G.level < C.LEVELS.length - 1) {
         const from = C.LEVELS[G.level]
         const to = C.LEVELS[G.level + 1]
         const k = (G.chain - from) / (to - from)
-        rect(84, 5, 30, 3, '#2f4054')
-        rect(84, 5, Math.round(30 * k), 3, P.yellow)
-      } else drawText(ctx, 'MAX', 84, 2, P.yellow)
-      drawText(ctx, 'SÉRIE ' + G.combo, 122, 2, P.white)
+        rect(94, 5, 30, 4, P.ink)
+        rect(95, 6, 28, 2, P.slate)
+        rect(95, 6, Math.round(28 * k), 2, P.yellow)
+      } else text5('MAX', 94, 2, P.yellow, {})
+      text5('SÉRIE ' + G.combo, 130, 2, P.white, {})
       if (G.t < G.olaUntil) {
-        if (Math.floor(now * 4) % 2) drawText(ctx, 'OLA : POINTS ×2', 166, 2, P.yellow)
-      } else if (G.precision > 1) drawText(ctx, 'PRÉCISION ×' + Math.min(C.PRECISION_CAP, G.precision) + ' (OLA ' + (G.precision % C.OLA_EVERY) + '/' + C.OLA_EVERY + ')', 166, 2, P.yellow)
+        if (Math.floor(now * 4) % 2) text5('OLA : POINTS ×2', 186, 2, P.yellow, {})
+      } else if (G.precision > 1) text5('PRÉC ×' + Math.min(C.PRECISION_CAP, G.precision) + ' OLA ' + (G.precision % C.OLA_EVERY) + '/' + C.OLA_EVERY, 186, 2, P.yellow, {})
       const left = Math.max(0, Math.ceil(C.RUN_DURATION - G.t))
       const clock = Math.floor(left / 60) + ':' + pad(left % 60, 2)
-      drawText(ctx, clock, W - 42, 2, left <= 10 && Math.floor(now * 4) % 2 ? P.red : P.white)
-    } else drawText(ctx, best > 0 ? 'RECORD ' + pad(best, 6) : 'COURSE DES 10 KM · ÉDITION 2026', 4, 2, P.white)
+      text5(clock, 277, 2, left <= 10 && Math.floor(now * 4) % 2 ? P.red : P.white, {})
+    } else {
+      text5(best > 0 ? 'RECORD ' + pad(best, 6) : 'COURSE DES 10 KM · ÉDITION 2026', 3, 2, P.white, {})
+      drawText(ctx, 'V' + manifest.version, W - 40, 3, P.grey2)
+    }
     drawSoundButton()
   }
 
@@ -1569,8 +1248,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (shake > 0) ctx.translate(Math.round((Math.random() - 0.5) * shake * 2), Math.round((Math.random() - 0.5) * shake))
     ctx.drawImage(bg, 0, 0)
     drawCrowd()
-    drawBarriers()
-    drawArchBack()
     drawVolunteers()
     drawZone()
     drawMat()
@@ -1589,10 +1266,11 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   function drawTitle() {
     drawScene()
-    rect(40, 48, 240, 50, 'rgba(29,42,58,0.9)')
-    big('ATTENTION À LA MOUSSE !', 160, 52, P.yellow)
-    drawTextC(ctx, '10 KILOMÈTRES D’EFFORT. 20 CENTIMÈTRES DE CATASTROPHE.', 160, 72, P.white)
-    if (Math.floor(now * 1.5) % 2) drawTextC(ctx, pointerTouch ? 'TAPOTE POUR DONNER LE DÉPART' : 'ESPACE POUR DONNER LE DÉPART', 160, 85, P.yellow)
+    put(panel(250, 68, RAMPS.navy), 35, 42)
+    put(logo[0], 160 - Math.round(logo[0].width / 2), 44)
+    put(logo[1], 160 - Math.round(logo[1].width / 2), 66)
+    drawTextC(ctx, '10 KILOMÈTRES D’EFFORT. 20 CENTIMÈTRES DE CATASTROPHE.', 160, 90, P.grey1)
+    if (Math.floor(now * 1.5) % 2) text5C(pointerTouch ? 'TAPOTE POUR DONNER LE DÉPART' : 'ESPACE POUR DONNER LE DÉPART', 160, 98, P.yellow)
     drawHud()
   }
 
@@ -1602,32 +1280,36 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       const t = now - G.banner.at
       if (t < 2.6) {
         rect(0, 56, W, 22, Math.floor(t * 8) % 2 ? P.red : P.ink)
-        big(G.banner.text, 160, 60, P.yellow)
+        rect(0, 56, W, 1, P.pink)
+        rect(0, 77, W, 1, P.plum)
+        text5C(G.banner.text, 160, 62, P.yellow)
       } else G.banner = null
     }
     if (G.over) {
       rect(0, 56, W, 22, P.ink)
-      big('FIN DE L’ÉPREUVE', 160, 60, P.white)
+      rect(0, 56, W, 1, P.slate)
+      text5C('FIN DE L’ÉPREUVE', 160, 62, P.white)
     }
     if (G.t < 7 && !G.over && Math.floor(now * 2) % 2)
-      drawTextC(ctx, pointerTouch ? 'UN TAP QUAND ILS PANIQUENT. PAS AVANT.' : 'ESPACE QUAND ILS PANIQUENT. PAS AVANT.', 160, 150, P.yellow)
+      text5C(pointerTouch ? 'UN TAP QUAND ILS PANIQUENT. PAS AVANT.' : 'ESPACE QUAND ILS PANIQUENT. PAS AVANT.', 160, 148, P.yellow, { outline: P.ink })
     drawNote()
     drawHud()
     if (paused) {
-      rect(0, 0, W, H, 'rgba(29,42,58,0.7)')
-      big('PAUSE', 160, 70, P.white)
-      drawTextC(ctx, pointerTouch ? 'TAPOTE POUR REPRENDRE' : 'ESPACE POUR REPRENDRE', 160, 92, P.yellow)
+      ctx.drawImage(DIM, 0, 0)
+      put(panel(120, 40, RAMPS.navy), 100, 60)
+      text5C('PAUSE', 160, 66, P.white)
+      text5C(pointerTouch ? 'TAPOTE POUR REPRENDRE' : 'ESPACE POUR REPRENDRE', 160, 82, P.yellow)
     }
   }
 
   function drawResults() {
     drawScene()
-    rect(30, 20, 260, 146, 'rgba(29,42,58,0.94)')
-    rect(30, 20, 260, 1, P.yellow)
-    rect(30, 165, 260, 1, P.yellow)
+    put(panel(264, 154, RAMPS.navy), 28, 16)
+    rect(29, 17, 262, 1, P.yellow)
+    rect(29, 168, 262, 1, P.yellow)
     const since = now - stateAt
-    big('L’ORGANISATION PARLE', 160, 26, P.white)
-    big('D’UN SUCCÈS.', 160, 42, P.white)
+    text5C('L’ORGANISATION PARLE', 160, 20, P.white)
+    text5C('D’UN SUCCÈS.', 160, 30, P.white)
     const lines = [
       ['SCORE', pad(G.score, 6), P.yellow],
       ['MEILLEUR COMBO', String(G.bestCombo), P.white],
@@ -1641,18 +1323,18 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     ]
     lines.forEach(([label, value, colour], i) => {
       if (since < 0.2 + i * 0.15) return
-      const y = 58 + i * 8
-      drawText(ctx, label, 56, y, P.grey)
-      drawText(ctx, value, 264 - textWidth(value), y, colour)
-      for (let x = 56 + textWidth(label) + 4; x < 260 - textWidth(value); x += 3) rect(x, y + 6, 1, 1, '#4a5a6e')
+      const y = 44 + i * 9
+      text5(label, 50, y, P.grey1, {})
+      text5(value, 270 - textWidth5(value), y, colour, {})
+      for (let x = 50 + textWidth5(label) + 4; x < 266 - textWidth5(value); x += 3) rect(x, y + 8, 1, 1, P.grey3)
     })
     if (since > 1.2) {
       const verdict = G.victims === 0 ? 'AUCUN INCIDENT. LE TAPIS EST DÉÇU.' : G.victims + ' DOSSIERS TRANSMIS À L’ASSURANCE.'
-      drawTextC(ctx, verdict, 160, 132, P.white)
-      drawTextC(ctx, G.newRecord ? 'NOUVEAU RECORD !' : 'RECORD : ' + pad(best, 6), 160, 142, G.newRecord ? P.yellow : P.grey)
+      drawTextC(ctx, verdict, 160, 129, P.white)
+      text5C(G.newRecord ? 'NOUVEAU RECORD !' : 'RECORD : ' + pad(best, 6), 160, 139, G.newRecord ? P.yellow : P.grey1, {})
     }
     if (since > C.RESULTS_LOCK && Math.floor(now * 1.5) % 2)
-      drawTextC(ctx, pointerTouch ? 'TAPOTE : RECOMMENCER' : 'ESPACE : RECOMMENCER', 160, 154, P.yellow)
+      text5C(pointerTouch ? 'TAPOTE : RECOMMENCER' : 'ESPACE : RECOMMENCER', 160, 154, P.yellow, {})
     drawHud()
   }
 
@@ -1741,7 +1423,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     document.removeEventListener('visibilitychange', onVisibility)
   }
 
-  paintBackground()
+
   setState('TITLE')
   raf = requestAnimationFrame(frame)
   return {
