@@ -189,6 +189,12 @@ export function createAudio() {
     land() {
       noise(0.04, 0.08, 1500)
     },
+    /** FAUX DÉPART: the steward's double whistle, sour. */
+    falseStart() {
+      tone(1900, 0.09, 'square', 0.06, 1700)
+      tone(1900, 0.16, 'square', 0.06, 1500, later(0.12))
+      noise(0.06, 0.08, 600)
+    },
     whiff() {
       noise(0.06, 0.08, 600)
       tone(180, 0.06, 'sine', 0.05, 120)
