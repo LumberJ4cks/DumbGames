@@ -13,6 +13,7 @@ import { Pix, PAL as P, toCanvas } from './pixel.js'
 import { mirror, buildSprites, TILE_W } from './sprites.js'
 import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js'
 import { drawText, drawTextC, textWidth } from './font.js'
+import { createAudio } from './audio.js'
 
 export const GW = 480
 export const GH = 270
@@ -88,8 +89,15 @@ export function create(canvas) {
   let laneTarget = null
   let pointerTouch = false
   let S
+  const audio = createAudio()
+  try { audio.setMuted(localStorage.getItem('consDeMime:muted') === '1') } catch {}
+  function toggleMute() {
+    audio.setMuted(!audio.muted)
+    try { localStorage.setItem('consDeMime:muted', audio.muted ? '1' : '0') } catch {}
+  }
 
   function reset() {
+    audio.music(false, 0.4)
     const seed = seedParam ? +seedParam : (Math.random() * 1e9) | 0
     const r = rng(seed)
     S = {
@@ -172,6 +180,8 @@ export function create(canvas) {
     if (S.tripT > 0) return
     S.tripT = CFG.tripTime
     S.boostT = 0
+    audio.trip(e && e.type === 'mime' ? 'mime' : 'ped')
+    if (S.combo >= 5) audio.comboLost()
     if (S.combo >= 5) pop(S.serge.x, S.serge.y - 30, 'COMBO PERDU', '#ff5050', true)
     S.combo = 0
     S.shake = 0.3
@@ -181,6 +191,7 @@ export function create(canvas) {
   function doFart() {
     if (S.mode !== 'run' || S.fart < CFG.fartCost || S.tripT > 0) return
     S.fart -= CFG.fartCost
+    audio.fart()
     S.boostT = CFG.boostTime
     S.shake = 0.15
     const sx = S.serge.x, sy = S.serge.y
@@ -190,7 +201,7 @@ export function create(canvas) {
       if (e.type === 'furn' || e.state !== 'walk' && e.state !== 'mime') continue
       const dx = e.x - sx, dy = e.y - sy
       if (dx < -CFG.fartCone.back || dx > CFG.fartCone.front || Math.abs(dy) > CFG.fartCone.half) continue
-      if (e.type === 'mime') { pop(e.x, e.y - 24, 'IMMUNISÉ', '#ffffff'); continue }
+      if (e.type === 'mime') { pop(e.x, e.y - 24, 'IMMUNISÉ', '#ffffff'); audio.immune(); continue }
       hit++
       e.state = 'fly'; e.solid = false
       e.z = 0
@@ -215,16 +226,25 @@ export function create(canvas) {
     if (it.lineT < 0.25 || it.line >= DIALOG.length - 1) return
     it.line++
     it.lineT = 0
+    audio.click()
+    audio.talk(DIALOG[it.line].who, DIALOG[it.line].text)
   }
   function startRun() {
     S.mode = 'run'
     S.t = 0
     S.intro.started = true
+    audio.alarm()
+    audio.music(true)
+    audio.duck(1)
+    S.lastTick = -1
     S.martine.bubble = "MAIS NON, C'ÉTAIT POUR DÉCONNER."
     S.martine.bubbleT = 4
+    setTimeout(() => audio.talk('martine', S.martine.bubble), 500)
   }
 
   function press(a) {
+    if (a === 'mute') { toggleMute(); return }
+    audio.resume()
     if (a in held) held[a] = true
     if (S.mode === 'intro' && (a === 'start' || a === 'fart' || a === 'look')) { nextLine(); return }
     if (S.mode === 'over' && a === 'start') { reset(); return }
@@ -235,6 +255,7 @@ export function create(canvas) {
   /** Tactile : un doigt posé. Côté droit = prout, les écrans d'intro et de fin réagissent aux deux. */
   function tap(side) {
     pointerTouch = true
+    audio.resume()
     if (S.mode === 'intro') { nextLine(); return }
     if (S.mode === 'over') { if (S.overT > 1.5) reset(); return }
     if (side === 'R') doFart()
@@ -246,6 +267,8 @@ export function create(canvas) {
     if (S.mode !== 'run' || S.lookWindow <= 0 || S.looked) return
     S.looked = true
     S.invertT = CFG.lookInvert
+    audio.whistle()
+    setTimeout(() => audio.wobble(), 450)
     S.serge.face = -1
     addScore(CFG.score.look, S.serge.x, S.serge.y, 'LA FILLE EN JAUNE')
   }
@@ -278,6 +301,7 @@ export function create(canvas) {
       if (!S.truck && m.x < S.serge.x + 90) {
         S.truck = { x: m.x + 10, y: CFG.roadTop - 30, w: 54, h: 26, vy: 170, t: 0, target: m }
         pop(m.x, CFG.roadBottom, 'TUUUT', '#ffffff', true)
+        audio.horn()
       }
     }
     if (S.truck) {
@@ -292,6 +316,8 @@ export function create(canvas) {
           m.state = 'splat'; m.solid = false; m.downT = 0
           S.shake = 0.5
           addScore(CFG.score.mamie, m.x, m.y, 'MAMIE !')
+          audio.splat()
+          audio.explode()
           S.ents.push({ type: 'boom', x: m.x, y: m.y, t: 0, big: true })
         } else pop(m.x, m.y - 20, 'TROP TARD POUR LE CAMION', '#aaaaaa')
         S.mamieDone = true
@@ -323,7 +349,7 @@ export function create(canvas) {
   function update(dt) {
     S.clock += dt
     if (S.mode === 'intro') { updateIntro(dt); return }
-    if (S.mode === 'over') { S.overT += dt; return }
+    if (S.mode === 'over') { const was = S.overT; S.overT += dt; if (was < 1.8 && S.overT >= 1.8) audio.stamp(); return }
     if (S.martine) { S.martine.bubbleT = Math.max(0, S.martine.bubbleT - dt) }
     const sg = S.serge
 
@@ -331,6 +357,8 @@ export function create(canvas) {
 
     S.t += dt
     if (S.t >= CFG.duration) { beginJump(); return }
+    const left = Math.ceil(CFG.duration - S.t)
+    if (left <= 10 && left !== S.lastTick) { S.lastTick = left; audio.tick(left <= 3) }
 
     // vitesse caméra
     S.boostT = Math.max(0, S.boostT - dt)
@@ -367,7 +395,7 @@ export function create(canvas) {
     S.killer.y = Math.max(CFG.sidewalkTop, Math.min(CFG.sidewalkBottom, S.killer.y))
     S.killer.taunt -= dt
     S.killer.tauntT = Math.max(0, S.killer.tauntT - dt)
-    if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; S.killer.tauntT = 1.1; pop(S.killer.x, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
+    if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; S.killer.tauntT = 1.1; audio.taunt(); pop(S.killer.x, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
 
     updateScripts(dt)
 
@@ -405,10 +433,12 @@ export function create(canvas) {
             S.ents.push({ type: 'scorch', x: e.x, y: e.y })
             for (let d = 0; d < 4; d++) S.ents.push({ type: 'debris', kind: (S.r() * 5) | 0, x: e.x, y: e.y, z: 2, vx: (S.r() - 0.5) * 120, vy: (S.r() - 0.5) * 60, vz: 60 + S.r() * 90, t: 0 })
             addScore(CFG.score.explode, e.x, e.y, 'PLAGE')
+            audio.explode()
             S.shake = Math.max(S.shake, 0.2)
           } else {
             e.state = e.y <= CFG.roadBottom ? 'road' : 'down'; e.downT = 0
             addScore(CFG.score.knock, e.x, e.y, e.state === 'road' ? 'ROUTE' : 'À PLAT')
+            audio.knock()
           }
         }
       } else if (e.state === 'down' || e.state === 'splat' || e.state === 'road') {
@@ -433,9 +463,11 @@ export function create(canvas) {
           const near = e.type === 'mime' ? e.wallH / 2 + 14 : CFG.nearMissDist
           if (d < near) {
             S.combo++
+            audio.nearMiss(S.combo)
             S.bestCombo = Math.max(S.bestCombo, S.combo)
             S.fart = Math.min(1, S.fart + CFG.fartNearMiss)
             addScore(CFG.score.nearMiss, sg.x, sg.y, e.type === 'mime' ? 'MUR ÉVITÉ' : null)
+            if (S.combo % 5 === 0) audio.combo(mult())
             if (S.combo % 5 === 0) pop(sg.x, sg.y - 40, 'COMBO ' + S.combo + '  ×' + mult(), '#80e0ff', true)
           }
         }
@@ -490,17 +522,17 @@ export function create(canvas) {
       sg.x += 170 * dt
       sg.y += (j.ky - sg.y) * Math.min(1, dt * 4)
       follow(sg.x - CFG.sergeHomeX, 8)
-      if (sg.x >= j.kx) { j.phase = 'climb'; j.t = 0; sg.y = j.ky }
+      if (sg.x >= j.kx) { j.phase = 'climb'; j.t = 0; sg.y = j.ky; audio.climb() }
     } else if (j.phase === 'climb') {
       const p = Math.min(1, j.t / 0.55)
       sg.x = j.kx + p * (KIOSK_W - 8)
       j.z = p * KIOSK_H
       follow(sg.x - 160, 8)
-      if (p >= 1) { j.phase = 'shout'; j.t = 0; S.shake = 0.15 }
+      if (p >= 1) { j.phase = 'shout'; j.t = 0; S.shake = 0.15; audio.duck(0.35); audio.shout() }
     } else if (j.phase === 'shout') {
       follow(sg.x - 160, 8)
-      if (j.t > 0.3) for (const e of S.ents) if (e.type === 'mime' && e.state === 'crowd' && !e.shocked && S.r() < dt * 6) e.shocked = true
-      if (j.t > 1.6) { j.phase = 'air'; j.t = 0; j.xStart = sg.x; j.dist = 16 + j.meters * 16 }
+      if (j.t > 0.3) for (const e of S.ents) if (e.type === 'mime' && e.state === 'crowd' && !e.shocked && S.r() < dt * 6) { e.shocked = true; if (S.r() < 0.4) audio.gasp() }
+      if (j.t > 1.6) { j.phase = 'air'; j.t = 0; j.xStart = sg.x; j.dist = 16 + j.meters * 16; audio.duck(1); audio.jump() }
     } else if (j.phase === 'air') {
       const dur = 0.9 + j.meters * 0.07
       const p = Math.min(1, j.t / dur)
@@ -508,7 +540,7 @@ export function create(canvas) {
       j.z = KIOSK_H * (1 - p) + Math.sin(p * Math.PI) * (24 + j.meters * 2.5)
       follow(sg.x - 200, 6)
       for (const e of S.ents) if (e.type === 'mime' && e.state === 'crowd' && !e.shocked && e.x < sg.x + 10) e.shocked = true
-      if (p >= 1) { j.phase = 'land'; j.t = 0; j.z = 0; S.shake = 0.3; S.gas.push({ x: sg.x, y: sg.y, t: 0.2, dust: true }) }
+      if (p >= 1) { j.phase = 'land'; j.t = 0; j.z = 0; S.shake = 0.3; S.gas.push({ x: sg.x, y: sg.y, t: 0.2, dust: true }); audio.land(); setTimeout(() => audio.fanfare(), 400) }
     } else if (j.phase === 'land') {
       follow(sg.x - 200, 6)
       if (j.t > 1.8) {
@@ -516,6 +548,7 @@ export function create(canvas) {
         S.score += bonus
         S.jump.bonus = bonus
         S.mode = 'over'; S.overT = 0
+        audio.duck(0.4)
         if (S.score > best) { best = S.score; try { localStorage.setItem('consDeMime:best', String(best)) } catch {} }
       }
     }
@@ -854,6 +887,7 @@ export function create(canvas) {
       text3C('FRÔLE LES CANNOIS POUR LE COMBO. PÈTE DESSUS POUR LES ENVOYER SUR LA PLAGE. 90 SECONDES.', GW / 2, 232, P.grey2)
       if (best) text3C('RECORD ' + best, GW / 2, 246, P.yellow)
       text3('V1', GW - 12, GH - 10, P.grey3)
+      text3(audio.muted ? 'M : SON COUPÉ' : 'M : COUPER LE SON', 4, GH - 10, P.grey2)
       return
     }
     // Le dialogue : une bulle au-dessus de celui qui parle.
@@ -958,5 +992,5 @@ export function create(canvas) {
   reset()
   requestAnimationFrame(frame)
 
-  return { press, release, tap, touchLane, get state() { return S }, reset }
+  return { press, release, tap, touchLane, get state() { return S }, reset, audio }
 }
