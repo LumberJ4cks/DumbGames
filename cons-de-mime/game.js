@@ -265,10 +265,8 @@ export function create(canvas) {
    * Le tutoriel : trois gestes, montrés dans la course elle-même. À chaque étape le temps ralentit,
    * le chrono gèle, un panneau dit quoi faire et attend que ce soit fait. Une fois par appareil.
    */
-  let tutoWanted = true
-  try { tutoWanted = localStorage.getItem('consDeMime:tuto') !== 'done' } catch {}
-  if (q.get('tuto') === '0') tutoWanted = false
-  if (q.get('tuto') === '1') tutoWanted = true
+  // Mis de côté pour l'instant : il ne se lance qu'avec ?tuto=1 (ou la touche T sur le titre).
+  let tutoWanted = q.get('tuto') === '1'
   function tutoStart(step) {
     const tu = S.tuto
     tu.step = step
@@ -1306,7 +1304,7 @@ export function create(canvas) {
     ctx.fillStyle = on ? P.yellow : P.amber; ctx.fillRect(130, 226, 220, 24); ctx.fillStyle = P.ink; ctx.fillRect(130, 248, 220, 2); ctx.fillRect(348, 226, 2, 24)
     text5Scaled(pointerTouch ? 'TAPOTE : COMMENCER' : 'ESPACE : COMMENCER', GW / 2, 230, P.ink, 1.6, {})
     text3(audio.muted ? 'M : SON COUPÉ' : 'M : SON', 6, GH - 10, P.grey2)
-    text3(tutoWanted ? 'TUTORIEL AU DÉPART' : 'T : REVOIR LE TUTORIEL', 60, GH - 10, P.grey2)
+    if (tutoWanted) text3('TUTORIEL AU DÉPART', 60, GH - 10, P.grey2)
     if (best) text3('RECORD ' + best, GW - 10 - textWidth('RECORD ' + best), GH - 10, P.yellow)
     text3('V2', GW - 12, GH - 20, P.grey3)
   }
