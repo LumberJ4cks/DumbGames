@@ -172,26 +172,48 @@ export function sergeSprite(frame, { look = false, trip = false, boost = false, 
 }
 
 /* ---------- le tueur ---------- */
+/*
+ * Combinaison bleue de travail, casque en fer carré (un masque de soudeur, avec la fente), la
+ * faucille dans une main et le marteau dans l'autre. Pieds en (0, 0), il court à droite.
+ */
 export function killerSprite(frame, taunt = false) {
-  const lg = legend({ K: [R.black, 2], k: [R.black, 1], i: [R.black, 0], s: [R.skinPale, 1], S: [R.skinPale, 2], z: [R.skinPale, 0], E: [P.hot], H: [R.black, 3], W: [P.grey1], w: [P.grey2] })
-  return sprite(20, 26, 10, 24, (a) => {
-    runner(a, frame, R.black, R.rubber)
-    // Long manteau noir, col relevé.
-    a.map(['KKkkki', 'Kkkkki', 'Kkkkki', 'kkkkii', 'kkkkii', 'kkkiii', 'kkkiii'], lg, -3, -15)
-    // Chapeau, visage dans l'ombre, yeux rouges.
-    a.map(['.HHHHH.', 'KKKKKKk', '.zssz..', '.zEEz..', '.zssz..'], lg, -4, -21)
+  const DEN = [P.ink, P.slateD, P.blueD, P.blue]
+  const lg = legend({ U: [DEN, 2], u: [DEN, 1], V: [DEN, 3], i: [DEN, 0], s: [R.skinTan, 2], z: [R.skinTan, 1], E: [P.ink], K: [P.grey2], k: [P.grey3], L: [P.grey1], M: [P.slate], w: [P.white], R: [P.red], m: [P.ink] })
+  return sprite(24, 28, 12, 26, (a) => {
+    runner(a, frame, DEN, R.rubber)
+    // Combinaison : poitrine avec la ceinture à outils.
+    a.map(['VUUuui', 'VUUuui', 'UUuuui', 'UUuuui', 'uuuuii', 'mmmmmm', 'uuuuii'], lg, -3, -15)
+    a.px(-1, -10, P.amber) // la boucle
+    // Le casque : une boîte en tôle martelée, la fente pour les yeux, un trou pour la bouche.
+    a.map(['.KKKKKk.', 'KLKKKKkk', 'KKKKKKkk', 'KmmmmKkk', 'KKKKKKkk', 'KKmmKKkk', 'KKKKKKkk', '.KKKKkk.'], lg, -4, -24)
+    a.px(-2, -21, P.red) // les yeux dans la fente
+    a.px(1, -21, P.red)
+    for (const [x, y] of [[-3, -23], [0, -22], [2, -19], [-2, -18], [1, -17]]) a.px(x, y, P.grey1) // le martelage
     if (taunt) {
-      // Il se retourne et fait coucou : le visage vers Serge, le couteau levé.
-      a.rect(-4, -20, 7, 2, R.black[2])
-      a.rect(-6, -14, 1, 4, R.skinPale[1])
-      a.rect(-7, -18, 1, 4, P.grey1)
-      a.px(-7, -19, P.white)
+      // Bras levés : la faucille d'un côté, le marteau de l'autre.
+      a.shaded(-5, -20, 1, 6, DEN)
+      a.shaded(5, -20, 1, 6, DEN)
+      a.rect(-6, -22, 2, 2, P.ink) // gants
+      a.rect(5, -22, 2, 2, P.ink)
+      // La faucille à gauche.
+      a.rect(-6, -26, 1, 4, R.wood[2])
+      a.map(['.LLL.', 'L...L', 'L....', 'L....'], { L: P.grey1 }, -9, -30)
+      // Le marteau à droite.
+      a.rect(6, -27, 1, 5, R.wood[2])
+      a.rect(4, -29, 5, 2, P.grey3)
+      a.rect(4, -29, 5, 1, P.grey1)
     } else {
-      // Le couteau dans la main avant.
-      a.rect(4, -12, 1, 2, R.skinPale[1])
-      a.rect(5, -11, 4, 1, P.grey1)
-      a.px(9, -11, P.white)
-      a.px(5, -10, P.grey3)
+      // En course : la faucille devant, le marteau derrière.
+      const sw = frame % 2 ? 0 : 1
+      a.shaded(3, -13 + sw, 3, 1, DEN)
+      a.rect(6, -14 + sw, 2, 2, P.ink)
+      a.rect(8, -13 + sw, 1, 1, R.wood[2])
+      a.map(['.LL', 'L..', 'L..'], { L: P.grey1 }, 8, -17 + sw)
+      a.shaded(-5, -12 - sw, 3, 1, DEN)
+      a.rect(-6, -13 - sw, 2, 2, P.ink)
+      a.rect(-7, -16 - sw, 1, 3, R.wood[2])
+      a.rect(-9, -17 - sw, 4, 2, P.grey3)
+      a.px(-9, -17 - sw, P.grey1)
     }
   })
 }
