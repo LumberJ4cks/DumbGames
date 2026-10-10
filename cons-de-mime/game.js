@@ -36,7 +36,7 @@ export const CFG = {
   fartCost: 1,
   fartMin: 0.15,           // jauge minimale pour péter
   fartCone: { back: 100, front: 40, half: 58 },
-  nearMissDist: 24,        // px vertical pour compter une esquive
+  nearMissDist: 34,        // px vertical pour compter une esquive
   score: { nearMiss: 50, knock: 100, explode: 300, look: 500, lookGag: 400, lookMamie: 350, mamie: 1000, meter: 100, blast: 75 },
   lookRange: { behind: -10, ahead: 120 },
   rollerAt: 12, mamieAt: 26, mimesFrom: 33, acteurAt: 19, odileAt: 40, bialesAt: 47,
@@ -192,8 +192,8 @@ export function create(canvas) {
     S.boostT = 0
     audio.trip(e && e.type === 'mime' ? 'mime' : 'ped')
     if (S.combo >= 5) audio.comboLost()
-    if (S.combo >= 5) pop(S.serge.x, S.serge.y - 30, 'COMBO PERDU', '#ff5050', true)
-    S.combo = 0
+    if (S.combo >= 5) pop(S.serge.x, S.serge.y - 30, 'COMBO ÷2', '#ff5050', true)
+    S.combo = Math.floor(S.combo / 2)
     S.shake = 0.3
     if (e && e.type === 'ped') { e.state = 'down'; e.vx = e.vy = 0; e.solid = false; e.downT = 0 }
   }
@@ -216,8 +216,9 @@ export function create(canvas) {
       if (dx < -CFG.fartCone.back * reach || dx > CFG.fartCone.front * reach || Math.abs(dy) > CFG.fartCone.half * reach) continue
       if (e.type === 'mime') { pop(e.x, e.y - 24, 'IMMUNISÉ', '#ffffff'); audio.immune(); continue }
       hit++
-      e.state = 'fly'; e.solid = false
+      e.state = 'fly'; e.solid = false; e.passed = true
       e.farted = true
+      S.combo++; S.comboBump = 1; S.bestCombo = Math.max(S.bestCombo, S.combo)
       // Chaque personne soufflée rapporte, et part dans un petit éclat.
       addScore(CFG.score.blast, e.x, e.y - 10, 'PROUT')
       S.ents.push({ type: 'boom', x: e.x, y: e.y - 8, t: 0.1, small: true })
@@ -529,6 +530,16 @@ export function create(canvas) {
         const hw = e.type === 'mime' ? 4 : e.w / 2
         const hh = e.type === 'mime' ? e.wallH / 2 : Math.max(5, e.h * 0.35)
         if (Math.abs(e.x - sg.x) < hw + sg.w / 2 - 1 && Math.abs(e.y - sg.y) < hh + 5) {
+          if (S.boostT > 0 && e.type === 'ped') {
+            // En plein boost, Serge passe à travers : le piéton part en vol plané, le combo monte.
+            e.state = 'fly'; e.solid = false; e.farted = true; e.passed = true
+            e.z = 0; e.vz = 110 + S.r() * 40; e.vx = 80 + S.r() * 40; e.vy = (e.y >= sg.y ? 1 : -1) * (70 + S.r() * 40); e.spin = (S.r() - 0.5) * 20
+            S.combo++; S.comboBump = 1; S.bestCombo = Math.max(S.bestCombo, S.combo)
+            addScore(CFG.score.blast, e.x, e.y - 10, 'PERCUTÉ')
+            S.ents.push({ type: 'boom', x: e.x, y: e.y - 8, t: 0.1, small: true })
+            audio.knock()
+            continue
+          }
           trip(e)
           pop(sg.x, sg.y - 30, e.type === 'mime' ? 'CON DE MIME !' : e.type === 'furn' ? e.k.toUpperCase() + ' !' : 'PARDON !', '#ff5050', e.type === 'mime')
         }
