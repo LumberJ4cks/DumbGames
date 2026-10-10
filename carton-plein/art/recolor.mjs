@@ -14,6 +14,7 @@ const WHITE = ['#f3f5f4', '#e2eaed', '#a0acc0', '#b3c0d1', '#8f9ab0', '#8190ac',
 const RED = ['#731426', '#9f1d26', '#8e1926', '#801627', '#d83728', '#c32c26', '#d51f25', '#9e3431', '#691b1f', '#6e2b25', '#5b2a21']
 const HAIR = ['#7e5130', '#401f1a', '#5c331d', '#552d1c', '#bf854c', '#ac743f', '#220f11', '#6a3d23', '#351817', '#764829', '#9a6639']
 const SKIN = ['#fbc69a', '#db8b67', '#c26c4f', '#e2956d', '#ca7757', '#eba275', '#b96247', '#ac704c', '#88432b', '#964d32', '#ae583e', '#733423', '#c37c57', '#d3946a', '#b77d55', '#f2b68a', '#a94930']
+export const FAMILIES = { hair: HAIR, skin: SKIN, blue: BLUE, white: WHITE, red: RED }
 const lum = (c) => 0.299 * parseInt(c.slice(1, 3), 16) + 0.587 * parseInt(c.slice(3, 5), 16) + 0.114 * parseInt(c.slice(5, 7), 16)
 /** Table couleur brute → ton de la rampe cible, par luminance relative dans la famille. */
 function table(family, ramp) {
