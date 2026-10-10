@@ -1,5 +1,5 @@
 import { createAudio } from './audio.js'
-import { POSES, sprite, makeFan, fanSprite, mini, prop } from './sprites.js'
+import { makeFan, mini, prop, loadArt, drawRonaldo, drawFan } from './sprites.js'
 import { drawText, drawTextC, drawTextR, textWidth, LINE_H } from './font.js'
 
 /*
@@ -207,6 +207,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
 
   const audio = createAudio()
   audio.setMuted(load('muted', false) === true)
+  if (settings.art !== false) loadArt().catch(() => {})
 
   /* ----- persistent scene: the crowd, the bench, the officials, the props ----- */
   const fans = []
@@ -215,7 +216,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     for (let x = -6 + (row % 2) * 7; x < GW - 10; x += 13) {
       const jx = x + Math.floor(artRng() * 5) - 2
       if (AISLES.some(([a, b]) => jx + 24 > a && jx + 8 < b)) continue
-      fans.push({ x: jx, y, desc: makeFan(artRng), phase: artRng() * Math.PI * 2, rate: 5 + artRng() * 3, up: false })
+      fans.push({ x: jx, y, desc: makeFan(artRng), variant: Math.floor(artRng() * 1000), phase: artRng() * Math.PI * 2, rate: 5 + artRng() * 3, up: false })
     }
   }
   const subs = Array.from({ length: 6 }, (_, i) => ({
@@ -694,7 +695,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     g.feverTime = CONFIG.FEVER_DURATION
     g.feverCount++
     audio.fever()
-    audio.setTempo(1.25)
+    audio.setTempo(1.12)
     popups.push({ text: 'SIUUU FEVER !', x: GW / 2, y: 120, life: 1.4, scale: 4, colour: P.yellow, outline: P.red2 })
     burst(GW / 2, 140, 60, [P.yellow, P.lime, P.orange, P.white], 200, 1.4)
   }
@@ -951,7 +952,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
       if (chaos) dx = Math.round(Math.sin(clock * 9 + f.phase))
       const pose = jumping && s > 0 ? 'up' : 'idle'
-      ctx.drawImage(fanSprite(f.desc, pose), f.x + dx, f.y + dy)
+      drawFan(ctx, f, pose, f.x + dx, f.y + dy)
     }
     const roofShade = ctx.createLinearGradient(0, oy, 0, oy + 70)
     roofShade.addColorStop(0, 'rgba(10,10,30,0.4)')
@@ -1024,8 +1025,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     const sw = Math.round(44 * sh)
     ctx.fillRect(Math.round(r.x + RON_CX - sw / 2), r.y - 3, sw, 5)
     ctx.fillRect(Math.round(r.x + RON_CX - sw / 2) + 4, r.y - 4, sw - 8, 7)
-    const sp = sprite(POSES[r.pose], r.pose, r.flip)
-    ctx.drawImage(sp, Math.round(r.x), Math.round(r.y - RON_FEET - r.air))
+    drawRonaldo(ctx, r.pose, r.x + RON_CX, r.y - r.air, r.flip)
 
     for (const p of particles) {
       if (p.ring) {

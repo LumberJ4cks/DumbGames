@@ -1,12 +1,21 @@
 /*
- * SIUUUU SIMULATOR — sound. Everything is synthesised with Web Audio after the first user
- * interaction: a crowd bed (filtered noise that swells with the score), a small chiptune loop,
+ * SIUUUU SIMULATOR — sound. The soundtrack is siuuuu.mp3 (1:02, looped, sped up during the
+ * Fever); the chiptune loop below only plays if the file cannot be loaded. Everything else is
+ * synthesised with Web Audio after the first user interaction: a crowd bed (filtered noise
+ * that swells with the score),
  * the jump blip, the rising spin tone (held while the key is held), four landing verdicts
  * (a stylised "SIUUU" shout, a modest one, a squeak and a slapstick thud), the Fever sting and
  * the stadium event sting. No recording of anyone is used.
  */
+export const TRACK_FILE = new URL('./siuuuu.mp3', import.meta.url).href
+export const TRACK_VOLUME = 0.9
+
 export function createAudio() {
   let ac = null
+  let trackBuffer = null
+  let trackSrc = null
+  let trackWanted = false
+  let trackFailed = false
   let master = null
   let music = null
   let crowd = null
@@ -30,6 +39,17 @@ export function createAudio() {
     music.gain.value = 0.5
     music.connect(master)
     startCrowd()
+    fetch(TRACK_FILE)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+      .then((data) => ac.decodeAudioData(data))
+      .then((buffer) => {
+        trackBuffer = buffer
+        if (trackWanted) startMusic()
+      })
+      .catch(() => {
+        trackFailed = true
+        if (trackWanted) startMusic()
+      })
   }
   function resume() {
     if (ac && ac.state === 'suspended') ac.resume().catch(() => {})
@@ -125,7 +145,23 @@ export function createAudio() {
   const BASS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 5, 5, 5, 5, 7, 7, 7, 7]
   const note = (n, base) => base * Math.pow(2, n / 12)
   function startMusic() {
-    if (!ac || musicTimer) return
+    trackWanted = true
+    if (!ac) return
+    if (trackBuffer) {
+      if (trackSrc) return
+      const src = ac.createBufferSource()
+      src.buffer = trackBuffer
+      src.loop = true
+      src.playbackRate.value = tempo
+      const g = ac.createGain()
+      g.gain.value = TRACK_VOLUME
+      src.connect(g)
+      g.connect(music)
+      src.start()
+      trackSrc = src
+      return
+    }
+    if (!trackFailed || musicTimer) return
     const tick = () => {
       const i = step % LEAD.length
       const d = 0.125 / tempo
@@ -139,11 +175,19 @@ export function createAudio() {
     tick()
   }
   function stopMusic() {
+    trackWanted = false
+    if (trackSrc) {
+      try {
+        trackSrc.stop()
+      } catch {}
+      trackSrc = null
+    }
     if (musicTimer) clearTimeout(musicTimer)
     musicTimer = null
   }
   function setTempo(t) {
     tempo = t
+    if (trackSrc && ac) trackSrc.playbackRate.setTargetAtTime(t, ac.currentTime, 0.2)
   }
 
   /* ---------- game sounds ---------- */

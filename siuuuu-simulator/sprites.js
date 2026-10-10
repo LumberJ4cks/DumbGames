@@ -1124,3 +1124,54 @@ export function prop(name, scale = 1) {
   propCache.set(key, c)
   return c
 }
+
+/* ---------- image sheets (art/*.png + art/*.json), optional ---------- */
+// When present, a sheet replaces the code-drawn sprite pose by pose; see art/SPEC.md.
+export const art = { ronaldo: null, fans: null }
+async function loadSheet(name) {
+  const base = new URL('./art/', import.meta.url).href
+  const meta = await fetch(base + name + '.json').then((r) => (r.ok ? r.json() : null))
+  if (!meta) return null
+  const img = new Image()
+  img.src = base + name + '.png'
+  await img.decode()
+  return { ...meta, img }
+}
+/** Loads the sheets that exist; resolves when both attempts are done. */
+export async function loadArt() {
+  const [r, f] = await Promise.all([loadSheet('ronaldo').catch(() => null), loadSheet('fans').catch(() => null)])
+  art.ronaldo = r
+  art.fans = f && f.ids && f.ids.length ? f : null
+  return art
+}
+/**
+ * Draws Ronaldo with his feet at (x, y): from the sheet when it has the pose, else from the
+ * code-drawn pose. `flip` mirrors horizontally.
+ */
+export function drawRonaldo(ctx, pose, x, y, flip = false) {
+  const fr = art.ronaldo && art.ronaldo.frames[pose]
+  if (fr) {
+    ctx.save()
+    if (flip) {
+      ctx.translate(Math.round(x), 0)
+      ctx.scale(-1, 1)
+      ctx.drawImage(art.ronaldo.img, fr.x, fr.y, fr.w, fr.h, -fr.ax, Math.round(y) - fr.ay - 1, fr.w, fr.h)
+    } else ctx.drawImage(art.ronaldo.img, fr.x, fr.y, fr.w, fr.h, Math.round(x) - fr.ax, Math.round(y) - fr.ay - 1, fr.w, fr.h)
+    ctx.restore()
+    return
+  }
+  const sp = sprite(POSES[pose], pose, flip)
+  ctx.drawImage(sp, Math.round(x) - 33, Math.round(y) - 81)
+}
+/** Draws a supporter with the given variant index (sheet) or description (code), top-left at (x, y). */
+export function drawFan(ctx, f, pose, x, y) {
+  if (art.fans && f.variant != null) {
+    const id = art.fans.ids[f.variant % art.fans.ids.length]
+    const fr = art.fans.frames[id + '-' + pose] || art.fans.frames[id + '-idle']
+    if (fr) {
+      ctx.drawImage(art.fans.img, fr.x, fr.y, fr.w, fr.h, x + 17 - fr.ax, y + 38 - fr.h, fr.w, fr.h)
+      return
+    }
+  }
+  ctx.drawImage(fanSprite(f.desc, pose), x, y)
+}
