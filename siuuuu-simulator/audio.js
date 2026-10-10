@@ -11,7 +11,7 @@ export const TRACK_FILE = new URL('./siuuuu.mp3', import.meta.url).href
 export const TRACK_VOLUME = 0.9
 // The "SIUUU" shout recorded for the game (1.5 s): played on PERFECT, softer on GOOD.
 export const SHOUT_FILE = new URL('./siuuu-cri.mp3', import.meta.url).href
-export const SHOUT_VOLUME = 1.4
+export const SHOUT_VOLUME = 0.7
 // The crowd bed is a background texture: keep it low under the music and the shout.
 export const CROWD_BASE = 0.1
 export const CROWD_SWELL = 0.3
