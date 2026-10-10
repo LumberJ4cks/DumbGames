@@ -24,7 +24,7 @@
 <div id="stage"><canvas id="c"></canvas></div>
 <div id="shell">
   <span><b>CONS DE MIME !</b> · v1</span>
-  <span>↑↓ couloir · →← avancer/reculer · <b>ESPACE</b> prout · <b>R</b> regarder · <b>M</b> son · <b>Entrée</b> rejouer</span>
+  <span>↑↓ couloir · →← avancer/reculer · <b>ESPACE</b> prout · <b>R</b> regarder · <b>M</b> son · <b>T</b> tutoriel · <b>Entrée</b> passer / rejouer</span>
   <span><code>?seed=42</code> rejoue la même partie · <code>?debug=1</code> hitboxes</span>
 </div>
 <script type="module">
@@ -60,7 +60,7 @@
     ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
     KeyW: 'up', KeyZ: 'up', KeyS: 'down', KeyA: 'left', KeyQ: 'left', KeyD: 'right',
     Space: 'fart', KeyR: 'look', Enter: 'start', ShiftLeft: 'look', ShiftRight: 'look',
-    KeyM: 'mute',
+    KeyM: 'mute', KeyT: 'tuto',
   }
   addEventListener('keydown', (e) => {
     const a = keymap[e.code]
@@ -70,25 +70,37 @@
   })
   addEventListener('keyup', (e) => { const a = keymap[e.code]; if (a) game.release(a) })
 
-  /* Touch / pointer: left half = vertical drag (lane) + tap (look), right half = tap (fart). */
+  /* Tactile : tiers gauche = joystick flottant (origine là où le pouce se pose), le reste = tap
+     (prout, ou l'œil « regarder » quand il est affiché). Un tap long pendant le tutoriel le passe. */
   const touches = new Map()
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId)
     const p = toInternal(e)
-    const side = p.x < GW / 2 ? 'L' : 'R'
-    touches.set(e.pointerId, { x0: p.x, y0: p.y, y: p.y, t: performance.now(), side, moved: false })
-    game.tap(side)
+    const st = game.state
+    const left = p.x < GW * 0.4 && st.mode === 'run'
+    touches.set(e.pointerId, { x0: p.x, y0: p.y, t: performance.now(), left, moved: false, long: null })
+    if (left) game.joystick(p.x, p.y, p.x, p.y)
+    else game.tapAt(p.x, p.y)
+    if (st.mode === 'run' && st.tuto) {
+      const tm = setTimeout(() => game.press('start'), 700)
+      touches.get(e.pointerId).long = tm
+    }
   })
   canvas.addEventListener('pointermove', (e) => {
     const t = touches.get(e.pointerId); if (!t) return
     const p = toInternal(e)
-    if (Math.abs(p.y - t.y0) > 6 || Math.abs(p.x - t.x0) > 6) t.moved = true
-    if (t.side === 'L') game.touchLane(p.y)
+    if (Math.abs(p.y - t.y0) > 6 || Math.abs(p.x - t.x0) > 6) { t.moved = true; if (t.long) { clearTimeout(t.long); t.long = null } }
+    if (t.left) game.joystick(t.x0, t.y0, p.x, p.y)
   })
   const end = (e) => {
     const t = touches.get(e.pointerId); if (!t) return
     touches.delete(e.pointerId)
-    if (t.side === 'L') { game.touchLane(null); if (!t.moved && performance.now() - t.t < 250) game.press('look') }
+    if (t.long) clearTimeout(t.long)
+    if (t.left) {
+      game.joystick(null)
+      // Un tap court à gauche, sans glisser : regarder, si une cible est là.
+      if (!t.moved && performance.now() - t.t < 250 && game.state.lookTarget) game.press('look')
+    }
   }
   canvas.addEventListener('pointerup', end)
   canvas.addEventListener('pointercancel', end)
