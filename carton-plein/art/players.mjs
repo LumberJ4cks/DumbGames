@@ -201,7 +201,7 @@ function stamp(p, pc, x, y, mats) {
  * 'stun' 'ko' 'hand'. Face : 'f' (face), 'b' (dos), 'p' (profil droit ; gauche = miroir).
  * Ancre aux pieds (ax, ay). Largeur variable, marge de 2 px pour le contour.
  */
-export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', number = null, flip = false } = {}) {
+export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', number = null, flip = false, lean: leanPerRow = 1 } = {}) {
   if (pose.startsWith('tackle')) face = 'p' // le tacle est toujours de profil
   const K = KITS[kit]
   const L = LOOKS[look % LOOKS.length]
@@ -326,13 +326,14 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     put(27, G - 8 - k, 4, 3, 'C')
     put(30, G - 7, 6, 4, 'B') // pied du dessus posé devant, un cran au-dessus de l'autre
     // Buste à 45° : 7 rangées de 8, de la hanche vers le haut et l'arrière.
-    const lean = (r) => Math.floor(r * 1.5)
+    const lean = (r) => Math.round(r * leanPerRow)
     for (let r = 0; r < 7; r++) put(9 - lean(r), G - 7 - r, 8, 1, 'J')
     // Bras avant planté au sol devant la hanche : de l'épaule avant (10, G-12) à la main.
     // Bras avant : de l'épaule avant (sommet du buste, x 7) vers le bas et l'avant, la main passe derrière la cuisse pliée.
-    put(7, G - 13, 3, 3, 'J')
-    put(9, G - 11, 3, 3, 'J')
-    put(11, G - 9, 3, 3, 'J')
+    const sh = 9 - lean(6) + 7 // épaule avant = bord droit du sommet du buste
+    put(sh, G - 13, 3, 3, 'J')
+    put(sh + 2, G - 11, 3, 3, 'J')
+    put(sh + 4, G - 9, 3, 3, 'J')
     const A = grid.map((r) => r.join(''))
     // Rayures Paraguay parallèles à l'axe du buste.
     const A2 = K.jersey2 ? A.map((r, y) => r.split('').map((m, x) => {
@@ -343,7 +344,7 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     const t = new Pix(AW + 4, AH + 4)
     stamp(t, piece(A2), 2, 2, mats)
     // Tête haute, posée sur les épaules (sommet du buste x 3..10, rangée G-13), un peu en arrière.
-    stamp(t, head, 2 + ox - 2, 2 + G - 24 + slide, mats) // sommet du buste : x 0..7
+    stamp(t, head, 2 + ox + 9 - lean(6) - 2, 2 + G - 24 + slide, mats) // posée sur le sommet du buste, un peu en arrière
     // Mottes et poussière derrière la glissade.
     const motte = (x, y, big) => {
       t.rect(x, y, big ? 3 : 2, 1, P.sand)
