@@ -824,52 +824,82 @@ export function palaisSprite(C) {
 
 /* ---------- la tapette géante, avec le tueur dedans ---------- */
 export function tapetteSprite() {
-  // Planche de bois vue de 3/4, ressort en cuivre à gauche, l'arceau rabattu sur le tueur
-  // couché sur le dos, la faucille et le marteau tombés à côté. Ancre : milieu du bord bas.
+  // Une tapette classique vue de dessus, en grand : planche de bois bordée, le gros ressort à
+  // spires au milieu, l'arceau de cuivre épais rabattu en U sur le tueur couché, la pédale et
+  // son morceau de fromage au bout. Ancre : milieu du bord bas.
   const COP = [P.brown, P.rust, P.tan, P.amber]
-  return sprite(100, 44, 50, 42, (a) => {
-    a.box(-48, -30, 96, 26, 4, R.wood)
-    for (let x = -44; x < 46; x += 12) a.rect(x, -24, 1, 18, R.wood[1]) // le fil du bois
-    // Le ressort : des anneaux de cuivre.
-    for (let i = 0; i < 5; i++) {
-      a.rect(-42 + i * 3, -27, 2, 10, i % 2 ? COP[2] : COP[3])
-      a.px(-42 + i * 3, -27, COP[3])
-      a.px(-41 + i * 3, -18, COP[1])
+  const DEN = [P.ink, P.slateD, P.blueD, P.blue]
+  const W = 128
+  const H = 50
+  return sprite(W + 4, H + 6, Math.round(W / 2) + 2, H + 2, (a) => {
+    const x0 = -Math.round(W / 2)
+    // La planche : bois clair, bord épais, veines, et le biseau du bas.
+    a.rect(x0, -H, W, H, R.wood[3])
+    a.rect(x0, -H, W, 2, R.wood[4])
+    a.rect(x0, -3, W, 3, R.wood[1])
+    a.rect(x0, -H, 2, H, R.wood[4])
+    a.rect(x0 + W - 2, -H, 2, H, R.wood[2])
+    for (let y = -H + 6; y < -6; y += 7) for (let x = x0 + 4; x < x0 + W - 4; x += 1) if ((x * 7 + y * 3) % 23 < 12) a.px(x, y, R.wood[2])
+    // Le ressort : un gros cylindre de spires au milieu de la planche, dans le sens de la largeur.
+    const sx = x0 + 46
+    for (let i = 0; i < 9; i++) {
+      const x = sx + i * 4
+      a.rect(x, -H + 8, 3, H - 16, i % 2 ? COP[1] : COP[3])
+      a.rect(x + 2, -H + 8, 1, H - 16, COP[0])
+      a.px(x, -H + 8, COP[3])
+      a.px(x, -9, COP[0])
     }
-    // Le tueur sur le dos : combinaison bleue, casque, les bras en croix.
-    const DEN = [P.ink, P.slateD, P.blueD, P.blue]
-    a.shaded(-24, -17, 44, 7, DEN)
-    a.shaded(-20, -20, 10, 3, DEN) // les bras
-    a.shaded(10, -20, 10, 3, DEN)
-    a.rect(-26, -13, 3, 2, R.skinTan[2])
-    a.rect(23, -13, 3, 2, R.skinTan[2])
-    a.rect(-24, -10, 8, 2, DEN[2]) // les jambes qui dépassent
-    a.rect(8, -10, 8, 2, DEN[2])
-    a.rect(-30, -9, 4, 2, P.ink)
-    a.rect(18, -9, 4, 2, P.ink)
-    // Le casque, tombé de travers, les yeux rouges qui clignotent encore.
-    a.rect(24, -22, 10, 10, P.grey2)
-    a.rect(24, -22, 10, 1, P.grey1)
-    a.rect(33, -22, 1, 10, P.grey3)
-    a.rect(26, -18, 6, 1, P.ink)
-    a.px(27, -18, P.red)
-    a.px(30, -18, P.red)
-    // L'arceau de cuivre rabattu en travers.
-    a.line(-30, -27, 30, -27, COP[2])
-    a.line(30, -27, 36, -8, COP[2])
-    a.line(-30, -27, -36, -8, COP[2])
-    a.line(-30, -26, 30, -26, COP[3])
-    a.line(-4, -27, -4, -8, COP[2])
-    a.line(6, -27, 6, -8, COP[2])
-    // Les outils, tombés sur la planche.
-    a.map(['.LL', 'L..', 'L..'], { L: P.grey1 }, 38, -14)
-    a.rect(38, -11, 1, 4, R.wood[2])
-    a.rect(-46, -9, 5, 2, P.grey3)
-    a.rect(-44, -7, 1, 4, R.wood[2])
-    // Un petit panneau « FROMAGE » cloué au bout, l'appât.
-    a.rect(38, -30, 10, 6, P.yellow)
-    a.px(40, -28, P.amber)
-    a.px(44, -27, P.amber)
+    a.rect(sx - 2, -H + 10, 2, H - 20, COP[1]) // l'axe
+    a.rect(sx + 36, -H + 10, 2, H - 20, COP[1])
+    // Le tueur, couché sur le dos en travers de la moitié droite, les jambes sur le ressort.
+    const bx = sx + 8
+    a.shaded(bx, -H + 18, 46, 12, DEN) // le corps
+    a.shaded(bx + 10, -H + 14, 6, 4, DEN) // les bras en l'air
+    a.shaded(bx + 30, -H + 14, 6, 4, DEN)
+    a.rect(bx + 10, -H + 12, 6, 2, R.skinTan[2])
+    a.rect(bx + 30, -H + 12, 6, 2, R.skinTan[2])
+    a.shaded(bx - 16, -H + 20, 16, 4, DEN) // les jambes
+    a.shaded(bx - 16, -H + 26, 16, 4, DEN)
+    a.rect(bx - 22, -H + 19, 6, 5, P.ink) // les chaussures
+    a.rect(bx - 22, -H + 26, 6, 5, P.ink)
+    a.rect(bx + 20, -H + 22, 14, 4, P.ink) // la ceinture
+    a.px(bx + 26, -H + 23, P.amber)
+    // Le casque carré, de travers, les yeux rouges.
+    a.rect(bx + 46, -H + 16, 14, 14, P.grey2)
+    a.rect(bx + 46, -H + 16, 14, 1, P.grey1)
+    a.rect(bx + 59, -H + 16, 1, 14, P.grey3)
+    a.rect(bx + 46, -H + 29, 14, 1, P.grey3)
+    a.rect(bx + 48, -H + 21, 10, 2, P.ink)
+    a.rect(bx + 50, -H + 21, 2, 2, P.red)
+    a.rect(bx + 54, -H + 21, 2, 2, P.red)
+    a.rect(bx + 51, -H + 25, 4, 2, P.ink)
+    // L'arceau : un U de cuivre épais (3 px), rabattu du ressort jusqu'au bout droit.
+    const ux0 = sx + 2
+    const ux1 = x0 + W - 8
+    const uy0 = -H + 7
+    const uy1 = -7
+    a.rect(ux0, uy0, ux1 - ux0, 4, COP[2])
+    a.rect(ux0, uy0, ux1 - ux0, 1, COP[3])
+    a.rect(ux0, uy0 + 3, ux1 - ux0, 1, COP[0])
+    a.rect(ux0, uy1 - 3, ux1 - ux0, 4, COP[2])
+    a.rect(ux0, uy1 - 3, ux1 - ux0, 1, COP[3])
+    a.rect(ux0, uy1, ux1 - ux0, 1, COP[0])
+    a.rect(ux1 - 4, uy0, 4, uy1 - uy0 + 1, COP[2])
+    a.rect(ux1 - 4, uy0, 1, uy1 - uy0 + 1, COP[3])
+    a.rect(ux1 - 1, uy0, 1, uy1 - uy0 + 1, COP[0])
+    // La pédale et le fromage, sous l'arceau au bout droit.
+    a.rect(ux1 - 26, -19, 12, 9, COP[1])
+    a.rect(ux1 - 25, -18, 10, 7, P.yellow)
+    a.px(ux1 - 23, -16, P.amber)
+    a.px(ux1 - 19, -13, P.amber)
+    a.px(ux1 - 21, -14, P.amber)
+    // La tige de déclenchement, de la pédale à l'arceau.
+    a.line(ux1 - 14, -16, ux1 - 6, -9, COP[1])
+    // Les outils tombés à côté, sur le trottoir.
+    a.map(['.LL', 'L..', 'L..'], { L: P.grey1 }, x0 + W + 2, -12)
+    a.rect(x0 + W + 2, -9, 1, 5, R.wood[2])
+    a.rect(x0 - 8, -8, 6, 2, P.grey3)
+    a.rect(x0 - 6, -6, 1, 5, R.wood[2])
   })
 }
 
