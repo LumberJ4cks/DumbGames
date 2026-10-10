@@ -28,7 +28,7 @@
   <span>Coquille de test · <b id="title"></b></span>
   <span>État : <b id="state">idle</b></span>
   <span>Dernier résultat : <b id="result">—</b></span>
-  <span>Ajoute <code>?debug=1</code>, <code>?seed=42</code> ou <code>?run=15</code> à l’adresse.</span>
+  <span>Ajoute <code>?debug=1</code>, <code>?seed=42</code>, <code>?run=15</code> ou <code>?art=0</code> à l’adresse.</span>
 </div>
 <script type="module">
   import { manifest, create, validate, grade } from './game.js'
@@ -44,6 +44,7 @@
     canvas,
     settings: {
       debug: params.get('debug') === '1',
+      art: params.get('art') !== '0',
       seed: params.has('seed') ? params.get('seed') : null,
       // Debug only: ?run=15 shortens the match to fifteen seconds to reach the results quickly.
       config: params.has('run') ? { RUN_DURATION: Number(params.get('run')) } : null,
