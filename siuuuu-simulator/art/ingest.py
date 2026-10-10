@@ -17,29 +17,44 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, 'sources')
-RONALDO_POSES = ['siuuu', 'good', 'bad', 'jumpBack', 'jumpSide', 'jumpFront', 'run1', 'run2', 'crouch', 'fail1', 'fail2', 'idle']
-RONALDO_HEIGHT = 96   # hauteur du personnage debout, en pixels du jeu (écran 640 × 360)
+RONALDO_POSES = ['siuuu', 'good', 'bad', 'jumpBack', 'jumpSide', 'jumpFront', 'run1', 'run2', 'run3', 'run4', 'crouch', 'fail1', 'fail2', 'idle']
+# Poses fabriquées à partir d'une autre quand la source manque : (pose, source, transformation)
+DERIVED = [('idle', 'siuuu', 'same'), ('crouch', 'run4', 'same'), ('run3', 'run1', 'same'), ('run4', 'run2', 'same'), ('bad', 'good', 'lean'), ('fail1', 'run2', 'lie'), ('fail2', 'jumpBack', 'lieBack')]
+RONALDO_HEIGHT = 88   # hauteur de la pose SIUUU debout, en pixels du jeu (écran 640 × 360)
 FAN_HEIGHT = 36       # hauteur d'un supporter (tête + buste), poses idle/up
 OUTLINE = (19, 17, 28, 255)
 MAX_COLOURS = 24
 
 
-def key_out_background(im, tolerance=40):
-    """Rend transparent le fond uni (couleur médiane des quatre coins)."""
+def key_out_background(im, tolerance=60):
+    """Rend transparent le fond uni : la couleur des coins, mais seulement les zones reliées au
+    bord de l'image, pour garder un blanc ou un vert à l'intérieur du personnage."""
     im = im.convert('RGBA')
     w, h = im.size
     px = im.load()
     corners = [px[0, 0], px[w - 1, 0], px[0, h - 1], px[w - 1, h - 1]]
-    bg = tuple(sorted(c[i] for c in corners)[1] for i in range(3))
     if min(c[3] for c in corners) < 128:
-        return im  # déjà transparent
-    out = Image.new('RGBA', im.size)
+        # déjà transparent : on durcit l'alpha (pas de demi-transparence en pixel art)
+        alpha = im.getchannel('A').point(lambda v: 255 if v > 16 else 0)
+        im.putalpha(alpha)
+        return im
+    bg = tuple(sorted(c[i] for c in corners)[1] for i in range(3))
+    near = lambda p: abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) < tolerance
+    seen = bytearray(w * h)
+    stack = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
+    while stack:
+        x, y = stack.pop()
+        if x < 0 or y < 0 or x >= w or y >= h or seen[y * w + x] or not near(px[x, y]):
+            continue
+        seen[y * w + x] = 1
+        stack.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+    out = im.copy()
     op = out.load()
     for y in range(h):
         for x in range(w):
-            r, g, b, a = px[x, y]
-            d = abs(r - bg[0]) + abs(g - bg[1]) + abs(b - bg[2])
-            op[x, y] = (r, g, b, 0) if d < tolerance else (r, g, b, a)
+            if seen[y * w + x]:
+                r, g, b, _ = px[x, y]
+                op[x, y] = (r, g, b, 0)
     return out
 
 
@@ -87,14 +102,29 @@ def outline(im):
     return res
 
 
-def prepare(path, target_h):
-    im = Image.open(path)
-    im = key_out_background(im)
-    im = crop_to_content(im)
-    im = shrink(im, target_h)
-    im = quantize(im)
-    im = outline(im)
-    return im
+def load_source(path):
+    return crop_to_content(key_out_background(Image.open(path)))
+
+
+def finish(im, target_h):
+    """Réduction à la hauteur donnée, palette, contour."""
+    return outline(quantize(shrink(im, max(1, round(target_h)))))
+
+
+def derive(src, how):
+    """Transformation d'une image source (pleine résolution) pour fabriquer une pose manquante."""
+    if how == 'same':
+        return src
+    if how == 'lean':
+        w, h = src.size
+        k = 0.18
+        out = src.transform((w + int(h * k), h), Image.AFFINE, (1, -k, 0, 0, 1, 0), Image.NEAREST)
+        return crop_to_content(out)
+    if how == 'lie':
+        return crop_to_content(src.rotate(90, expand=True))
+    if how == 'lieBack':
+        return crop_to_content(src.rotate(-90, expand=True))
+    return src
 
 
 def pack(frames, out_png, out_json, meta):
@@ -120,17 +150,32 @@ def pack(frames, out_png, out_json, meta):
 def main():
     os.makedirs(SRC, exist_ok=True)
     files = {f.lower(): f for f in os.listdir(SRC)}
-    # Ronaldo : ronaldo-<pose>.png, pieds en bas de l'image, ancre = milieu bas
-    frames = []
+    # Ronaldo : ronaldo-<pose>.png, pieds en bas de l'image, ancre = milieu bas. Toutes les
+    # poses partagent la même échelle (la plus haute pose debout fait RONALDO_HEIGHT px).
+    sources = {}
     for pose in RONALDO_POSES:
         name = f'ronaldo-{pose.lower()}.png'
-        if name not in files:
-            continue
-        lying = pose.startswith('fail')
-        im = prepare(os.path.join(SRC, files[name]), RONALDO_HEIGHT // 2 if lying else RONALDO_HEIGHT)
-        frames.append((pose, im, im.size[0] // 2, im.size[1] - 1))
+        if name in files:
+            sources[pose] = load_source(os.path.join(SRC, files[name]))
+    derived = []
+    for pose, base, how in DERIVED:
+        if pose not in sources and base in sources:
+            sources[pose] = derive(sources[base], how)
+            derived.append(pose)
+    frames = []
+    if sources:
+        # l'échelle commune est calée sur une pose debout (siuuu, sinon good, sinon la première)
+        ref = sources.get('siuuu') or sources.get('good') or sources[next(iter(sources))]
+        scale = RONALDO_HEIGHT / ref.size[1]
+        for pose in RONALDO_POSES:
+            if pose not in sources:
+                continue
+            im = finish(sources[pose], sources[pose].size[1] * scale)
+            frames.append((pose, im, im.size[0] // 2, im.size[1] - 1))
     if pack(frames, os.path.join(HERE, 'ronaldo.png'), os.path.join(HERE, 'ronaldo.json'), {'kind': 'ronaldo', 'height': RONALDO_HEIGHT}):
-        missing = [p for p in RONALDO_POSES if f'ronaldo-{p.lower()}.png' not in files]
+        if derived:
+            print('  poses fabriquées à partir des autres :', ', '.join(derived))
+        missing = [p for p in RONALDO_POSES if p not in sources]
         if missing:
             print('  poses manquantes (repli sur le dessin au code) :', ', '.join(missing))
     # Supporters : fan-<nn>-idle.png et fan-<nn>-up.png
@@ -140,7 +185,7 @@ def main():
         for pose in ('idle', 'up'):
             name = f'fan-{i}-{pose}.png'
             if name in files:
-                im = prepare(os.path.join(SRC, files[name]), FAN_HEIGHT)
+                im = finish(load_source(os.path.join(SRC, files[name])), FAN_HEIGHT)
                 fans.append((f'{i}-{pose}', im, im.size[0] // 2, im.size[1] - 1))
     pack(fans, os.path.join(HERE, 'fans.png'), os.path.join(HERE, 'fans.json'), {'kind': 'fans', 'height': FAN_HEIGHT, 'ids': ids})
     if not frames and not fans:
