@@ -5,7 +5,7 @@ import { Pix, PAL } from '../../cons-de-mime/pixel.js'
 import { glyph3 } from '../../cons-de-mime/font.js'
 import { pixToPng } from '../../cons-de-mime/test/png.mjs'
 import { pixToGif } from './gif.mjs'
-import { player, flame, grass, shadow, cardSprite, RAMP, KITS, LOOKS, ALL_POSES } from './players.mjs'
+import { player, flame, stars, grass, shadow, cardSprite, RAMP, KITS, LOOKS, ALL_POSES } from './players.mjs'
 
 const P = PAL
 const label = (p, text, x, y, c = P.grey1) => {
@@ -103,6 +103,16 @@ function sprites() {
     put(fl, player({ kit: 'paraguay', look: 12, pose: 'run' + i, number: 4 }), x, 60)
   }
   sheet.blit(fl, 210, y + 2)
+  const se = grass(130, 66, { lines: false })
+  label(se, 'ETOILES, 8 IMAGES', 2, 2, P.white)
+  for (let i = 0; i < 4; i++) {
+    const x = 16 + i * 32
+    const st = stars(i * 2, 3)
+    se.blit(st.back, x - st.back.ax, 60 - st.back.ay)
+    put(se, player({ kit: 'france', look: i, pose: 'stun', number: 5 }), x, 60)
+    se.blit(st.front, x - st.front.ax, 60 - st.front.ay)
+  }
+  sheet.blit(se, 436, y + 2)
   return sheet
 }
 
@@ -117,7 +127,9 @@ function scene() {
   const F1 = flame(1, -1); pitch.blit(F1, 300 - F1.ax, 78 - F1.ay)
   put(pitch, player({ kit: 'paraguay', look: 12, pose: 'run1', face: 'p', number: 4 }), 300, 78)
   put(pitch, player({ kit: 'paraguay', look: 12, pose: 'punch1', number: 4 }), 340, 60)
+  const st = stars(2, 3); pitch.blit(st.back, 364 - st.back.ax, 60 - st.back.ay)
   put(pitch, player({ kit: 'france', look: 8, pose: 'stun', number: 7 }), 364, 60)
+  pitch.blit(st.front, 364 - st.front.ax, 60 - st.front.ay)
   return pitch
 }
 
@@ -125,7 +137,7 @@ function anim() {
   const frames = []
   for (let i = 0; i < 8; i++) {
     const fr = i % 4
-    const g = grass(300, 70, { lines: false })
+    const g = grass(390, 70, { lines: false })
     put(g, player({ kit: 'france', look: 0, pose: 'run' + fr, face: 'f', number: 10 }), 24, 60)
     put(g, player({ kit: 'france', look: 1, pose: 'run' + fr, face: 'b', number: 10 }), 60, 60)
     put(g, player({ kit: 'france', look: 3, pose: 'run' + fr, face: 'p', number: 10 }), 96, 60)
@@ -134,6 +146,12 @@ function anim() {
     put(g, player({ kit: 'paraguay', look: 12, pose: 'run' + fr, face: 'p', number: 4 }), 190, 60)
     put(g, player({ kit: 'paraguay', look: 12, pose: 'tackle' + (fr % 2), number: 4 }), 250, 62)
     put(g, player({ kit: 'arbitre', look: 11, pose: 'run' + fr, face: 'p' }), 285, 60)
+    const st = stars(i, 3); g.blit(st.back, 330 - st.back.ax, 60 - st.back.ay)
+    put(g, player({ kit: 'france', look: 8, pose: 'stun', number: 7 }), 330, 60)
+    g.blit(st.front, 330 - st.front.ax, 60 - st.front.ay)
+    const s2 = stars(i, 2); g.blit(s2.back, 366 - s2.back.ax, 60 - s2.back.ay)
+    put(g, player({ kit: 'france', look: 3, pose: 'stun', face: 'b', number: 2 }), 366, 60)
+    g.blit(s2.front, 366 - s2.front.ax, 60 - s2.front.ay)
     frames.push(g)
   }
   return pixToGif(frames, { scale: 4, delay: 12 })

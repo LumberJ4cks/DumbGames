@@ -367,16 +367,6 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
   }
   // Tête (mord d'un pixel sur le torse).
   stamp(p, head, X(face === 'p' ? 6 : 5), Y(0), mats)
-  // Étourdi : étoiles.
-  if (pose === 'stun') {
-    for (const [sx, sy] of [[3, -2], [12, -4], [20, -1]]) {
-      p.px(X(sx), Y(sy), P.yellow)
-      p.px(X(sx) - 1, Y(sy), P.amber)
-      p.px(X(sx) + 1, Y(sy), P.amber)
-      p.px(X(sx), Y(sy) - 1, P.amber)
-      p.px(X(sx), Y(sy) + 1, P.amber)
-    }
-  }
   const out = p.outline()
   out.ax = X(12)
   out.ay = oy + 31
@@ -485,6 +475,48 @@ export function flame(frame = 0, lean = 0) {
   f.ax = cx
   f.ay = base
   return f
+}
+
+/* ---------- les étoiles de l'assommé (couche à part, comme la flamme) ---------- */
+/**
+ * `count` étoiles (2 ou 3) qui tournent autour de la tête sur une ellipse vue de dessus :
+ * celles qui passent derrière la tête montent d'un pixel et pâlissent. 8 images par tour.
+ * Deux pièces : `back` à dessiner avant le joueur, `front` après. Ancre : pieds du joueur.
+ */
+export function stars(frame = 0, count = 3) {
+  const W = 36
+  const H = 44
+  const mk = () => { const p = new Pix(W, H); p.ax = W / 2; p.ay = H - 2; return p }
+  const back = mk()
+  const front = mk()
+  const cx = W / 2
+  const cy = H - 2 - 33 // juste au-dessus du crâne
+  const rx = 11
+  const ry = 3
+  for (let k = 0; k < count; k++) {
+    const a = ((frame % 8) / 8 + k / count) * Math.PI * 2
+    const x = Math.round(cx + Math.cos(a) * rx)
+    const behind = Math.sin(a) < 0
+    const y = Math.round(cy + Math.sin(a) * ry) - (behind ? 1 : 0)
+    const dst = behind ? back : front
+    const c1 = behind ? P.amber : P.yellow
+    const c2 = behind ? P.orange : P.amber
+    // Étoile en brique : croix de 5 avec un cœur, plus une pointe diagonale sur deux images.
+    dst.px(x, y, c1)
+    dst.px(x - 1, y, c2)
+    dst.px(x + 1, y, c2)
+    dst.px(x, y - 1, c2)
+    dst.px(x, y + 1, c2)
+    if ((frame + k) % 2 === 0) {
+      dst.px(x - 2, y, c2)
+      dst.px(x + 2, y, c2)
+    } else {
+      dst.px(x, y - 2, c2)
+      dst.px(x, y + 2, c2)
+    }
+    dst.px(x, y, P.white)
+  }
+  return { back: back.outline(), front: front.outline() }
 }
 
 /* ---------- pelouse et ombre ---------- */
