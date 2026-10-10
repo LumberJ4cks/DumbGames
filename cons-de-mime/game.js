@@ -81,7 +81,8 @@ export function create(canvas) {
   const q = new URLSearchParams(location.search)
   const debug = q.get('debug') === '1'
   const seedParam = q.get('seed')
-  let best = +(localStorage.getItem('cdm_best') || 0)
+  let best = 0
+  try { best = +(localStorage.getItem('consDeMime:best') || 0) } catch {}
 
   const held = { up: false, down: false, left: false, right: false }
   let laneTarget = null
@@ -427,7 +428,7 @@ export function create(canvas) {
         S.score += bonus
         S.jump.bonus = bonus
         S.mode = 'over'; S.overT = 0
-        if (S.score > best) { best = S.score; localStorage.setItem('cdm_best', String(best)) }
+        if (S.score > best) { best = S.score; try { localStorage.setItem('consDeMime:best', String(best)) } catch {} }
       }
     }
     for (let i = S.pops.length - 1; i >= 0; i--) { const p = S.pops[i]; p.t += dt; p.y -= 10 * dt; if (p.t > 2) S.pops.splice(i, 1) }

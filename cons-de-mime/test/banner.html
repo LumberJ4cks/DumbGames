@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Bannière Cons de mime</title>
+<style>body{margin:0;background:#111}canvas{image-rendering:pixelated;display:block}</style></head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+  /* Compose la bannière de l'accueil (1600 × 450) à partir des sprites du jeu : une scène de
+     400 × 113 dessinée au pixel, puis agrandie ×4. node cons-de-mime/test/banner.mjs l'exporte en webp. */
+  import { toCanvas, PAL as P } from '../pixel.js'
+  import { buildSprites, mirror } from '../sprites.js'
+  import { logoLine } from '../font5.js'
+  const W = 400, H = 113
+  const C = { GH: H, roadTop: 14, roadBottom: 40, beachTop: 88, seaTop: 104, sidewalkTop: 48, sidewalkBottom: 80 }
+  const S = buildSprites(C)
+  const c = document.getElementById('c')
+  c.width = W; c.height = H
+  const g = c.getContext('2d')
+  g.imageSmoothingEnabled = false
+  const blit = (p, x, y, flip = false) => { const q = flip ? mirror(p) : p; g.drawImage(toCanvas(q), Math.round(x) - q.ax, Math.round(y) - q.ay) }
+  const tile = toCanvas(S.tile)
+  for (let x = 0; x < W; x += tile.width) g.drawImage(tile, x, 0)
+  blit(S.facade.palais, 0, C.roadTop)
+  blit(S.facade.hotel[1], 160, C.roadTop)
+  blit(S.facade.carlton, 310, C.roadTop)
+  for (let x = 30; x < W; x += 80) blit(S.palm[Math.floor(x / 80) & 1], x, C.roadBottom + 8)
+  for (let x = 10; x < W; x += 60) { blit(S.serviette[Math.floor(x / 60) % 4], x + 20, C.beachTop + 14); blit(S.parasol[Math.floor(x / 60) % 4], x, C.beachTop + 10) }
+  blit(S.bateau, 340, C.seaTop + 8)
+  // La scène, de gauche à droite : l'explosion sur la plage, la mamie et le camion, Serge qui pète,
+  // un jeune qui vole, la fille en roller, le con de mime, le tueur au bord.
+  blit(S.scorch, 150, C.beachTop + 6)
+  blit(S.boomBig[2], 150, C.beachTop)
+  blit(S.debris[0], 140, C.beachTop - 10); blit(S.debris[2], 162, C.beachTop - 14)
+  blit(S.truck, 214, 36)
+  blit(S.mamie[0], 214, 62, true)
+  blit(S.ped.vieux[0][0], 118, 76, true); blit(S.chien[0], 104, 78, true)
+  blit(S.furn.poubelle, 180, 78)
+  blit(S.furn['chaise bleue'], 95, 86)
+  blit(S.shadow.m, 262, 72)
+  blit(S.gas[3], 232, 64); blit(S.gas[2], 244, 66); blit(S.gas[1], 254, 66)
+  blit(S.sergeBoost[1], 262, 72)
+  g.save(); g.translate(290, 40); g.rotate(-0.9); g.drawImage(toCanvas(S.ped.jeune[0][1]), -S.ped.jeune[0][1].ax, -S.ped.jeune[0][1].ay); g.restore()
+  blit(S.roller[1], 300, 80)
+  blit(S.mime[0], 336, 70)
+  g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(332, 48, 9, 44)
+  blit(S.killerTaunt, 384, 66)
+  blit(S.furn.reverbere, 365, 50)
+  // Le logo sur la route, avec son ombre.
+  const logo = toCanvas(logoLine('CONS DE MIME !'))
+  g.drawImage(logo, 10, 8)
+  // Le sous-titre en petit.
+  import('../font.js').then(({ drawText }) => { drawText(g, 'VOUS ÊTES À CANNES. LUI AUSSI.', 14, 40, P.white); window.__ready = true })
+</script>
+</body>
+</html>
