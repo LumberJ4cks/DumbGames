@@ -218,7 +218,6 @@ export function create(canvas) {
       hit++
       e.state = 'fly'; e.solid = false; e.passed = true
       e.farted = true
-      S.combo++; S.comboBump = 1; S.bestCombo = Math.max(S.bestCombo, S.combo)
       // Chaque personne soufflée rapporte, et part dans un petit éclat.
       addScore(CFG.score.blast, e.x, e.y - 10, 'PROUT')
       S.ents.push({ type: 'boom', x: e.x, y: e.y - 8, t: 0.1, small: true })
@@ -228,6 +227,7 @@ export function create(canvas) {
       e.vy = (dy >= 0 ? 1 : -1) * (90 + Math.abs(dy) * 1.2) // vers la plage si en bas, vers la route si en haut
       e.spin = (S.r() - 0.5) * 20
     }
+    if (hit >= 1) { S.combo++; S.comboBump = 1; S.bestCombo = Math.max(S.bestCombo, S.combo) } // un prout qui touche vaut une esquive
     if (hit >= 2) pop(sx, sy - 34, 'PROUT ×' + hit, '#80ff80', true)
     if (hit >= 3) audio.combo(Math.min(4, hit))
   }
@@ -534,7 +534,6 @@ export function create(canvas) {
             // En plein boost, Serge passe à travers : le piéton part en vol plané, le combo monte.
             e.state = 'fly'; e.solid = false; e.farted = true; e.passed = true
             e.z = 0; e.vz = 110 + S.r() * 40; e.vx = 80 + S.r() * 40; e.vy = (e.y >= sg.y ? 1 : -1) * (70 + S.r() * 40); e.spin = (S.r() - 0.5) * 20
-            S.combo++; S.comboBump = 1; S.bestCombo = Math.max(S.bestCombo, S.combo)
             addScore(CFG.score.blast, e.x, e.y - 10, 'PERCUTÉ')
             S.ents.push({ type: 'boom', x: e.x, y: e.y - 8, t: 0.1, small: true })
             audio.knock()
