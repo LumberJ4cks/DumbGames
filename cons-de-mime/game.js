@@ -557,9 +557,9 @@ export function create(canvas) {
   const text5C = (t, cx, y, col = P.white, style = { shadow: P.ink }) => drawText5C(ctx, t, cx, y, col, style)
   const text3 = (t, x, y, col = P.white) => drawText(ctx, t, x, y, col)
   const text3C = (t, cx, y, col = P.white) => drawTextC(ctx, t, cx, y, col)
-  const lookKey = (k) => (k === 'vieux+chien' ? 'vieux' : k)
-  const walkFrame = (e) => Math.floor(S.clock * 6 + (e.phase || 0)) % 2
   const mod = (a, n) => ((a % n) + n) % n
+  const lookKey = (k) => (k === 'vieux+chien' ? 'vieux' : k)
+  const walkFrame = (e) => mod(Math.floor(S.clock * 6 + (e.phase || 0)), 2)
 
   function drawGround(cam) {
     // La tuile de sol, répétée.
@@ -948,7 +948,9 @@ export function create(canvas) {
   function frame(now) {
     let dt = (now - last) / 1000
     last = now
+    // Le premier timestamp de requestAnimationFrame peut précéder le performance.now() de départ.
     if (dt > 0.1) dt = 0.1
+    if (dt < 0) dt = 0
     update(dt)
     draw()
     requestAnimationFrame(frame)

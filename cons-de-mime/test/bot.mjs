@@ -12,7 +12,7 @@ const seed = process.argv[2] || '42'
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 960, height: 600 } })
 const errors = []
-page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
+page.on('pageerror', (e) => errors.push('pageerror: ' + e.message + ' ' + (e.stack || '').split('\n').slice(0, 3).join(' « ')))
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()) })
 await page.goto(`http://localhost:8787/cons-de-mime/?seed=${seed}&debug=1`)
 await page.waitForTimeout(1500)
