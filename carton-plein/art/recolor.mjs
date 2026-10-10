@@ -59,3 +59,44 @@ if (process.argv[1] && process.argv[1].endsWith('recolor.mjs')) {
   for (const src of [south, east]) for (const c of src.data) if (c && !HAIR.includes(c) && !SKIN.includes(c)) unknown.add(c)
   console.error('couleurs hors familles :', [...unknown].join(' '))
 }
+
+/* ---------- le Paraguayen n°4, dérivé du Français ---------- */
+const BLUE = ['#3e649a', '#1e3263', '#2d497b', '#294171', '#1b2852', '#4f78ae', '#626f8b', '#4d5a73', '#79899d', '#87b0e5', '#98bce3']
+const WHITE = ['#f3f5f4', '#e2eaed', '#a0acc0', '#b3c0d1', '#8f9ab0', '#8190ac', '#b0cef1']
+const RED = ['#731426', '#9f1d26', '#8e1926', '#801627', '#d83728', '#c32c26', '#d51f25']
+/**
+ * Maillot rouge à rayures blanches verticales (3 px), short et chaussettes bleu clair, crampons
+ * blancs, bandeau rouge sur le front, barbe noire. `headEnd` : dernière rangée de la tête,
+ * `shortsEnd` : dernière rangée du short ; au-dessous, ce qui est blanc est chaussette.
+ */
+export function paraguay(raw, { nearest, look = { skin: 'skinTan', hair: 'hairBlack' } }) {
+  const tj = table(BLUE, RAMP.red)
+  const tw = table(BLUE, RAMP.white)
+  const tsh = table(WHITE, RAMP.blueLight)
+  const tb = table(RED, RAMP.white)
+  const base = recolor(raw, look, { nearest })
+  const q = base.clone()
+  // Repères calculés sur l'image : le maillot (bleus) borne la tête au-dessus et le short au-dessous.
+  const skinSet = new Set(SKIN)
+  let jerseyTop = raw.h, jerseyBottom = -1
+  for (let y = 0; y < raw.h; y++) for (let x = 0; x < raw.w; x++) if (tj[raw.get(x, y)]) { jerseyTop = Math.min(jerseyTop, y); jerseyBottom = Math.max(jerseyBottom, y) }
+  let faceTop = -1, chin = -1, hx0 = raw.w, hx1 = -1
+  for (let y = 0; y <= jerseyTop; y++) for (let x = 0; x < raw.w; x++) {
+    const c = raw.get(x, y)
+    if (skinSet.has(c)) { if (faceTop < 0) faceTop = y; chin = y }
+    if (HAIR.includes(c) || skinSet.has(c)) { hx0 = Math.min(hx0, x); hx1 = Math.max(hx1, x) }
+  }
+  for (let y = 0; y < raw.h; y++)
+    for (let x = 0; x < raw.w; x++) {
+      const c = raw.get(x, y)
+      if (!c) continue
+      if (tj[c]) q.px(x, y, Math.floor((x - raw.ax + 30) / 3) % 2 ? tw[c] : tj[c])
+      else if (tsh[c] && y > jerseyTop + 2) q.px(x, y, tsh[c]) // short et chaussettes bleu clair (les yeux sont au-dessus du maillot)
+      else if (tb[c] && y > jerseyBottom) q.px(x, y, tb[c]) // crampons blancs
+      // Bandeau : deux rangées sur le front, sur toute la largeur de la tête.
+      if (y >= faceTop && y <= faceTop + 1 && x >= hx0 && x <= hx1 && (HAIR.includes(c) || skinSet.has(c))) q.px(x, y, lum(c) > 120 ? P.red : P.redD)
+      // Barbe : la peau des quatre dernières rangées du visage, sauf la bouche.
+      if (skinSet.has(c) && y >= chin - 3 && y <= chin && y <= jerseyTop && !(Math.abs(x - raw.ax) <= 1 && y >= chin - 3 && y <= chin - 2)) q.px(x, y, lum(c) > 190 ? P.slate : P.slateD)
+    }
+  return q
+}
