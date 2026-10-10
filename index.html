@@ -188,6 +188,15 @@
   </div>
 
   <div class="row">
+    <a class="card art" href="cons-de-mime/">
+      <img src="assets/cons-de-mime.webp" alt="" width="1600" height="450" loading="lazy">
+      <div class="t"><h3 class="big">Cons de mime</h3><span class="l">Vous êtes à Cannes. Lui aussi.</span></div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="cons-de-mime"></div>
+  </div>
+
+  <div class="row">
     <a class="card art" href="francis-hero/">
       <img src="assets/francis-hero.webp" alt="" width="1600" height="450" loading="lazy">
       <div class="t"><h3 class="big">Francis Hero</h3><span class="l">Grattez la légende.</span></div>
@@ -263,6 +272,7 @@
   const games = {
     'barricasse':            { name: 'BARRICASSE',             unit: '',  read: () => num(json(get('barricasse.record'))?.score) },
     'siuuuu-simulator':      { name: 'SIUUUU SIMULATOR',       unit: '',  read: () => num(json(get('siuuuuSimulator:best'))) },
+    'cons-de-mime':          { name: 'CONS DE MIME',           unit: '',  read: () => num(get('consDeMime:best')) },
     'francis-hero':          { name: 'FRANCIS HERO',           unit: '',  read: () => num(get('francisHero:best')) },
     'attention-a-la-mousse': { name: 'ATTENTION À LA MOUSSE',  unit: '',  read: () => num(json(get('attentionALaMousse2:best'))) },
     'la-verite-si-je-vends': { name: 'LA VÉRITÉ SI JE VENDS',  unit: '€', read: () => num(json(get('laVeriteSiJeVends:best'))) },

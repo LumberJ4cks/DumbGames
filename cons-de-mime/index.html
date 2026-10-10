@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#101010">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>CONS DE MIME !</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #101010; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; touch-action: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  #stage.rotated canvas { transform: rotate(90deg); transform-origin: center center; }
+  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #333; background: #181818; white-space: nowrap; overflow: auto; font-size: 12px; }
+  #shell b { color: #f4f4f4; }
+  @media (pointer: coarse), (max-width: 760px) { #shell { display: none; } }
+  @media (pointer: fine) and (min-width: 761px) { #stage { inset: 0 0 40px 0; } }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="shell">
+  <span><b>CONS DE MIME !</b> · v1</span>
+  <span>↑↓ couloir · →← avancer/reculer · <b>ESPACE</b> prout · <b>R</b> regarder · <b>Entrée</b> rejouer</span>
+  <span><code>?seed=42</code> rejoue la même partie · <code>?debug=1</code> hitboxes</span>
+</div>
+<script type="module">
+  import { create, GW, GH } from './game.js'
+  const canvas = document.getElementById('c')
+  const stage = document.getElementById('stage')
+  const game = create(canvas)
+  window.__g = game
+
+  let rotated = false
+  function fit() {
+    const sw = stage.clientWidth, sh = stage.clientHeight
+    rotated = sh > sw && sw < 700
+    stage.classList.toggle('rotated', rotated)
+    const availW = rotated ? sh : sw, availH = rotated ? sw : sh
+    let scale = Math.min(availW / GW, availH / GH)
+    scale = scale >= 2 ? Math.floor(scale * 2) / 2 : Math.max(1, scale)
+    canvas.style.width = GW * scale + 'px'
+    canvas.style.height = GH * scale + 'px'
+  }
+  addEventListener('resize', fit)
+  if (screen.orientation) screen.orientation.addEventListener('change', fit)
+  fit()
+
+  function toInternal(e) {
+    const r = canvas.getBoundingClientRect()
+    if (!rotated) return { x: ((e.clientX - r.left) / r.width) * GW, y: ((e.clientY - r.top) / r.height) * GH }
+    return { x: ((e.clientY - r.top) / r.height) * GW, y: ((r.right - e.clientX) / r.width) * GH }
+  }
+
+  /* Keyboard */
+  const keymap = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    KeyW: 'up', KeyZ: 'up', KeyS: 'down', KeyA: 'left', KeyQ: 'left', KeyD: 'right',
+    Space: 'fart', KeyR: 'look', Enter: 'start', ShiftLeft: 'look', ShiftRight: 'look',
+  }
+  addEventListener('keydown', (e) => {
+    const a = keymap[e.code]
+    if (!a) return
+    e.preventDefault()
+    if (!e.repeat) game.press(a)
+  })
+  addEventListener('keyup', (e) => { const a = keymap[e.code]; if (a) game.release(a) })
+
+  /* Touch / pointer: left half = vertical drag (lane) + tap (look), right half = tap (fart). */
+  const touches = new Map()
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId)
+    const p = toInternal(e)
+    const side = p.x < GW / 2 ? 'L' : 'R'
+    touches.set(e.pointerId, { x0: p.x, y0: p.y, y: p.y, t: performance.now(), side, moved: false })
+    game.tap(side)
+  })
+  canvas.addEventListener('pointermove', (e) => {
+    const t = touches.get(e.pointerId); if (!t) return
+    const p = toInternal(e)
+    if (Math.abs(p.y - t.y0) > 6 || Math.abs(p.x - t.x0) > 6) t.moved = true
+    if (t.side === 'L') game.touchLane(p.y)
+  })
+  const end = (e) => {
+    const t = touches.get(e.pointerId); if (!t) return
+    touches.delete(e.pointerId)
+    if (t.side === 'L') { game.touchLane(null); if (!t.moved && performance.now() - t.t < 250) game.press('look') }
+  }
+  canvas.addEventListener('pointerup', end)
+  canvas.addEventListener('pointercancel', end)
+</script>
+</body>
+</html>
