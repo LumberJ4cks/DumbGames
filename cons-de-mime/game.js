@@ -1,13 +1,18 @@
 /*
- * CONS DE MIME ! — prototype gris v0.
+ * CONS DE MIME ! — v1, pixel art.
  *
  * Vue de dessus, la Croisette défile de gauche à droite. Serge court après un tueur qu'il ne
  * rattrape jamais ; le joueur gagne des points en frôlant les Cannois sans les toucher, et pète
  * dessus pour les envoyer exploser sur la plage. 90 secondes, un saut en longueur final.
  *
- * Tout est en rectangles étiquetés : on teste le gameplay, pas l'art. Aucune dépendance.
+ * La simulation (en haut) ne connaît que des rectangles ; le dessin (en bas) pose les sprites de
+ * sprites.js dessus. Aucune dépendance.
  *   ?seed=42   rejoue la même partie       ?debug=1   hitboxes et chiffres
  */
+import { Pix, PAL as P, toCanvas } from './pixel.js'
+import { mirror, buildSprites, TILE_W } from './sprites.js'
+import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js'
+import { drawText, drawTextC, textWidth } from './font.js'
 
 export const GW = 480
 export const GH = 270
@@ -24,7 +29,7 @@ export const CFG = {
   slideSpeed: 160,         // px/s pour avancer/reculer dans le cadre
   sergeMinX: 70, sergeMaxX: 200, sergeHomeX: 120,
   sidewalkTop: 78, sidewalkBottom: 196,   // zone jouable (y des pieds)
-  roadTop: 0, roadBottom: 70, beachTop: 204,
+  roadTop: 16, roadBottom: 70, beachTop: 204, seaTop: 246, GH,
   fartRecharge: 0.10,      // jauge/s
   fartNearMiss: 0.18,      // jauge par esquive
   fartCost: 1,
@@ -80,6 +85,7 @@ export function create(canvas) {
 
   const held = { up: false, down: false, left: false, right: false }
   let laneTarget = null
+  let pointerTouch = false
   let S
 
   function reset() {
@@ -89,7 +95,7 @@ export function create(canvas) {
       seed, r, mode: 'intro', t: 0, introT: 0,
       camX: 0, speedMul: 1, boostT: 0, tripT: 0,
       serge: { x: CFG.sergeHomeX, y: 137, w: 12, h: 18, face: 1 },
-      killer: { y: 137, taunt: 0 },
+      killer: { y: 137, taunt: 0, tauntT: 0 },
       fart: 1, farts: [], gas: [],
       combo: 0, bestCombo: 0, score: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
@@ -131,10 +137,10 @@ export function create(canvas) {
         const p = pick(r, PEOPLE)
         const y = CFG.sidewalkTop + 6 + r() * (CFG.sidewalkBottom - CFG.sidewalkTop - 12)
         const dir = r() < 0.6 ? -1 : 1
-        const e = { type: 'ped', k: p.k, x, y, w: p.w, h: p.h, col: p.col, vx: dir * p.spd * (0.6 + r() * 0.8), vy: (r() - 0.5) * 12, state: 'walk', solid: true, dog: p.dog }
+        const e = { type: 'ped', k: p.k, x, y, w: p.w, h: p.h, col: p.col, vx: dir * p.spd * (0.6 + r() * 0.8), vy: (r() - 0.5) * 12, state: 'walk', solid: true, dog: p.dog, variant: (r() * 3) | 0, phase: r() * 2 }
         S.ents.push(e)
-        if (p.dog) S.ents.push({ type: 'ped', k: 'chien', x: x + 14, y: y + 2, w: 7, h: 5, col: '#d0c090', vx: e.vx, vy: e.vy, state: 'walk', solid: true, leash: e })
-        if (p.group) for (let g = 0; g < 2; g++) S.ents.push({ type: 'ped', k: 'jeune', x: x + 12 + g * 12, y: y + (r() - 0.5) * 16, w: p.w, h: p.h, col: p.col, vx: e.vx, vy: e.vy, state: 'walk', solid: true })
+        if (p.dog) S.ents.push({ type: 'ped', k: 'chien', x: x + 14, y: y + 2, w: 7, h: 5, col: '#d0c090', vx: e.vx, vy: e.vy, state: 'walk', solid: true, leash: e, phase: r() * 2 })
+        if (p.group) for (let g = 0; g < 2; g++) S.ents.push({ type: 'ped', k: 'jeune', x: x + 12 + g * 12, y: y + (r() - 0.5) * 16, w: p.w, h: p.h, col: p.col, vx: e.vx, vy: e.vy, state: 'walk', solid: true, variant: (r() * 3) | 0, phase: r() * 2 })
       }
     }
     // mimes : à partir de 50 s, un mur mimé toutes les ~150 px puis de plus en plus
@@ -202,6 +208,7 @@ export function create(canvas) {
   }
   /** Tactile : un doigt posé. Côté droit = prout, les écrans d'intro et de fin réagissent aux deux. */
   function tap(side) {
+    pointerTouch = true
     if (S.mode === 'intro') { if (S.introT > 0.8) startRun(); return }
     if (S.mode === 'over') { if (S.overT > 1.5) reset(); return }
     if (side === 'R') doFart()
@@ -234,7 +241,7 @@ export function create(canvas) {
     }
     // La mamie et son caddie : à 40 s, zigzague en haut du trottoir ; le camion l'écrase après.
     if (!S.mamie && S.t >= CFG.mamieAt) {
-      S.mamie = { type: 'ped', k: 'MAMIE + CADDIE', x: S.camX + GW + 20, y: CFG.sidewalkTop + 12, w: 22, h: 16, col: '#e0e0e0', vx: -12, vy: 40, state: 'walk', solid: true, mamie: true }
+      S.mamie = { type: 'ped', k: 'MAMIE + CADDIE', x: S.camX + GW + 20, y: CFG.sidewalkTop + 12, w: 26, h: 16, phase: 0, col: '#e0e0e0', vx: -12, vy: 40, state: 'walk', solid: true, mamie: true }
       S.ents.push(S.mamie)
     }
     if (S.mamie && S.mamie.state === 'walk') {
@@ -242,7 +249,7 @@ export function create(canvas) {
       m.vy += (S.serge.y - m.y) * 0.9 * dt
       m.vy = Math.max(-45, Math.min(45, m.vy))
       // Camion : part quand Serge l'a dépassée ou qu'elle est trop à gauche
-      if (!S.truck && m.x < S.serge.x - 10) {
+      if (!S.truck && m.x < S.serge.x + 90) {
         S.truck = { x: m.x + 10, y: CFG.roadTop - 30, w: 54, h: 26, vy: 170, t: 0, target: m }
         pop(m.x, CFG.roadBottom, 'TUUUT', '#ffffff', true)
       }
@@ -312,7 +319,8 @@ export function create(canvas) {
     S.killer.y += (sg.y + Math.sin(S.t * 0.7) * 30 - S.killer.y) * dt * 0.8
     S.killer.y = Math.max(CFG.sidewalkTop, Math.min(CFG.sidewalkBottom, S.killer.y))
     S.killer.taunt -= dt
-    if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; pop(S.camX + 440, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
+    S.killer.tauntT = Math.max(0, S.killer.tauntT - dt)
+    if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; S.killer.tauntT = 1.1; pop(S.camX + 440, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
 
     updateScripts(dt)
 
@@ -324,6 +332,12 @@ export function create(canvas) {
       const e = S.ents[i]
       if (e.type === 'boom') { e.t += dt; if (e.t > 0.6) S.ents.splice(i, 1); continue }
       if (e.x < S.camX - 120) { S.ents.splice(i, 1); continue }
+      if (e.type === 'scorch') continue
+      if (e.type === 'debris') {
+        e.t += dt
+        if (e.z > 0 || e.vz > 0) { e.x += e.vx * dt; e.y += e.vy * dt; e.vz -= 320 * dt; e.z = Math.max(0, e.z + e.vz * dt); if (e.z === 0) e.vz = 0 }
+        continue
+      }
       if (e.type === 'ped' && e.state === 'walk') {
         if (e.leash) { e.x += (e.leash.x + 14 - e.x) * 3 * dt; e.y += (e.leash.y + 3 - e.y) * 3 * dt; if (e.leash.state !== 'walk') e.leash = null }
         else {
@@ -341,6 +355,8 @@ export function create(canvas) {
           if (e.y >= CFG.beachTop) {
             e.state = 'gone'; S.ents.splice(i, 1)
             S.ents.push({ type: 'boom', x: e.x, y: e.y, t: 0 })
+            S.ents.push({ type: 'scorch', x: e.x, y: e.y })
+            for (let d = 0; d < 4; d++) S.ents.push({ type: 'debris', kind: (S.r() * 5) | 0, x: e.x, y: e.y, z: 2, vx: (S.r() - 0.5) * 120, vy: (S.r() - 0.5) * 60, vz: 60 + S.r() * 90, t: 0 })
             addScore(CFG.score.explode, e.x, e.y, 'PLAGE')
             S.shake = Math.max(S.shake, 0.2)
           } else {
@@ -419,23 +435,75 @@ export function create(canvas) {
   }
 
   /* ---------- dessin ---------- */
-  const F = (px) => `${px}px ui-monospace, Menlo, monospace`
-  function text(t, x, y, col = '#fff', size = 8, align = 'left', bold = false) {
-    ctx.font = (bold ? 'bold ' : '') + F(size)
-    ctx.textAlign = align
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = '#000'
-    ctx.fillText(t, Math.round(x) + 1, Math.round(y) + 1)
-    ctx.fillStyle = col
-    ctx.fillText(t, Math.round(x), Math.round(y))
+  const SPR = cacheSprites(buildSprites(CFG))
+  const LOGO = toCanvas(logoLine('CONS DE MIME !'))
+  const LOGO2 = toCanvas(logoLine('J\'AI DU PAPIER', [P.redD, P.red, P.red, P.pink, P.white]))
+
+  /** Pix → canvas, récursivement ; chaque canvas garde son miroir dans .m. */
+  function cacheSprites(node) {
+    if (node instanceof Pix) {
+      const c = toCanvas(node)
+      c.m = toCanvas(mirror(node))
+      return c
+    }
+    if (Array.isArray(node)) return node.map(cacheSprites)
+    const out = {}
+    for (const k of Object.keys(node)) out[k] = cacheSprites(node[k])
+    return out
   }
-  function box(x, y, w, h, col, label, lcol = '#fff') {
-    ctx.fillStyle = col
-    ctx.fillRect(Math.round(x), Math.round(y), w, h)
-    ctx.strokeStyle = '#000'
-    ctx.lineWidth = 1
-    ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, w - 1, h - 1)
-    if (label) text(label, x + w / 2, y - 2, lcol, 6, 'center')
+  function blit(c, x, y, flip = false) {
+    const img = flip ? c.m : c
+    ctx.drawImage(img, Math.round(x) - img.ax, Math.round(y) - img.ay)
+  }
+  function blitRot(c, x, y, angle) {
+    ctx.save()
+    ctx.translate(Math.round(x), Math.round(y))
+    ctx.rotate(angle)
+    ctx.drawImage(c, -c.ax, -c.ay)
+    ctx.restore()
+  }
+  const text5 = (t, x, y, col = P.white, style = { shadow: P.ink }) => drawText5(ctx, t, x, y, col, style)
+  const text5C = (t, cx, y, col = P.white, style = { shadow: P.ink }) => drawText5C(ctx, t, cx, y, col, style)
+  const text3 = (t, x, y, col = P.white) => drawText(ctx, t, x, y, col)
+  const text3C = (t, cx, y, col = P.white) => drawTextC(ctx, t, cx, y, col)
+  const lookKey = (k) => (k === 'vieux+chien' ? 'vieux' : k)
+  const walkFrame = (e) => Math.floor(S.t * 6 + (e.phase || 0)) % 2
+  const mod = (a, n) => ((a % n) + n) % n
+
+  function drawGround(cam) {
+    // La tuile de sol, répétée.
+    const off = -(((cam % TILE_W) + TILE_W) % TILE_W)
+    for (let x = off - TILE_W; x < GW + TILE_W; x += TILE_W) ctx.drawImage(SPR.tile, Math.round(x), 0)
+    // Les façades au-dessus de la route : un bâtiment tous les 160 px, le Palais au départ.
+    const k0 = Math.floor(cam / 160) - 1
+    for (let k = k0; k <= k0 + 4; k++) {
+      const x = k * 160 - cam
+      let c
+      if (k <= 0) c = SPR.facade.palais
+      else if (mod(k, 10) === 9) c = SPR.facade.carlton
+      else if (mod(k, 3) === 2) c = SPR.facade.boutique
+      else c = SPR.facade.hotel[mod(k, 3)]
+      blit(c, x, CFG.roadTop)
+    }
+    // Serviettes et parasols sur la plage, un bateau au large.
+    const o60 = Math.floor(cam / 60) - 1
+    for (let k = o60; k <= o60 + 9; k++) {
+      const x = k * 60 - cam + 28
+      blit(SPR.serviette[mod(k * 7, 4)], x + mod(k * 13, 20) - 10, CFG.beachTop + 36 + mod(k * 5, 6))
+      blit(SPR.parasol[mod(k * 3, 4)], x, CFG.beachTop + 22 + mod(k * 11, 5))
+    }
+    const bx = ((S.t * 6 + 300) % 1200) - 100
+    blit(SPR.bateau, bx, CFG.seaTop + 16)
+  }
+  function drawPalmsBack(cam) {
+    // Rangée de palmiers derrière la haie (dessinés avant le monde, ils sont derrière).
+    const k0 = Math.floor(cam / 80) - 1
+    for (let k = k0; k <= k0 + 7; k++) blit(SPR.palm[mod(k, 2)], k * 80 - cam + 20, CFG.roadBottom + 8)
+  }
+  function drawPalmsFront(cam) {
+    // Palmiers du muret côté plage : au-dessus du trottoir, ils cachent un peu les pieds.
+    const k0 = Math.floor(cam / 80) - 1
+    for (let k = k0; k <= k0 + 7; k++) blit(SPR.palm[mod(k + 1, 2)], k * 80 - cam + 60, CFG.beachTop + 2)
   }
 
   function drawWorld() {
@@ -444,230 +512,282 @@ export function create(canvas) {
     const shy = S.shake > 0 ? (Math.random() - 0.5) * S.shake * 14 : 0
     ctx.save()
     ctx.translate(Math.round(shx), Math.round(shy))
+    drawGround(cam)
+    drawPalmsBack(cam)
 
-    // bandes : route, trottoir, plage, mer
-    ctx.fillStyle = '#3a3a3a'; ctx.fillRect(-10, -10, GW + 20, CFG.roadBottom + 10)
-    ctx.fillStyle = '#6a6a6a'; ctx.fillRect(-10, CFG.roadBottom, GW + 20, CFG.beachTop - CFG.roadBottom)
-    ctx.fillStyle = '#8a8070'; ctx.fillRect(-10, CFG.beachTop, GW + 20, 42)
-    ctx.fillStyle = '#4a5a6a'; ctx.fillRect(-10, CFG.beachTop + 42, GW + 20, 40)
-    // repères défilants : pointillés de la route, dalles du trottoir, parasols
-    const off = -(cam % 40)
-    ctx.fillStyle = '#c0c0c0'
-    for (let x = off - 40; x < GW + 40; x += 40) ctx.fillRect(x, 34, 20, 2)
-    ctx.fillStyle = '#5e5e5e'
-    for (let x = off - 40; x < GW + 40; x += 40) { ctx.fillRect(x, CFG.roadBottom, 1, CFG.beachTop - CFG.roadBottom) }
-    ctx.fillStyle = '#404040'
-    for (let x = off - 40; x < GW + 40; x += 40) ctx.fillRect(x + 20, CFG.beachTop - 8, 2, 8) // pied de palmier
-    const off2 = -(cam % 60)
-    for (let x = off2 - 60; x < GW + 60; x += 60) { ctx.fillStyle = '#b0b0b0'; ctx.fillRect(x + 10, CFG.beachTop + 12, 14, 3); ctx.fillStyle = '#404040'; ctx.fillRect(x + 16, CFG.beachTop + 15, 2, 8) }
-    // bordure végétation
-    ctx.fillStyle = '#4e5e4e'; ctx.fillRect(-10, CFG.roadBottom, GW + 20, 6); ctx.fillRect(-10, CFG.beachTop - 6, GW + 20, 6)
-    text('ROUTE', 4, 10, '#999', 7)
-    text('CROISETTE', 4, CFG.roadBottom + 16, '#bbb', 7)
-    text('PLAGE', 4, CFG.beachTop + 12, '#ddd', 7)
-    // distance : repères "Palais" / "Carlton" tous les 1000 px
-    const km = Math.floor(cam / 1000)
-    for (let k = km; k <= km + 1; k++) {
-      const x = k * 1000 - cam + 200
-      if (x > -60 && x < GW + 60) { box(x, 8, 50, 22, '#2a2a2a', null); text(k === 0 ? 'PALAIS' : k >= 9 ? 'CARLTON' : 'HÔTEL ' + k, x + 25, 22, '#ddd', 7, 'center') }
+    // Marques au sol d'abord.
+    for (const e of S.ents) if (e.type === 'scorch') blit(SPR.scorch, e.x - cam, e.y)
+
+    // Tout ce qui a des pieds, trié par profondeur (y), Serge et le tueur compris.
+    const list = S.ents.filter((e) => e.type !== 'scorch').map((e) => ({ y: e.y, e }))
+    list.push({ y: S.serge.y, serge: true })
+    list.push({ y: S.killer.y, killer: true })
+    if (S.roller && !S.roller.gone) list.push({ y: S.roller.y, roller: true })
+    if (S.truck) list.push({ y: S.truck.y, truck: true })
+    list.sort((a, b) => a.y - b.y)
+    for (const it of list) {
+      if (it.serge) drawSerge(cam)
+      else if (it.killer) drawKiller(cam)
+      else if (it.roller) {
+        const ro = S.roller
+        blit(SPR.shadow.m, ro.x - cam, ro.y)
+        blit(SPR.roller[Math.floor(S.t * 8) % 2], ro.x - cam, ro.y)
+      } else if (it.truck) blit(SPR.truck, S.truck.x - cam, S.truck.y)
+      else drawEntity(it.e, cam)
     }
 
-    // entités triées par y (profondeur)
-    const list = S.ents.slice().sort((a, b) => a.y - b.y)
-    for (const e of list) {
-      const x = e.x - cam
-      if (x < -60 || x > GW + 60) continue
-      if (e.type === 'boom') {
-        const r = 6 + e.t * (e.big ? 60 : 36)
-        ctx.fillStyle = e.t < 0.3 ? '#ffffff' : '#ff8030'
-        ctx.beginPath(); ctx.arc(x, e.y, r, 0, Math.PI * 2); ctx.fill()
-        text(e.big ? 'BOUM !!!' : 'BOUM', x, e.y - r - 2, '#fff', 7, 'center', true)
-        continue
-      }
-      if (e.type === 'furn') {
-        box(x - e.w / 2, e.y - e.h, e.w, e.h, '#505050', e.k)
-        continue
-      }
-      if (e.type === 'mime') {
-        // le mur mimé : un contour pointillé bien réel
-        ctx.strokeStyle = '#ffffff'; ctx.setLineDash([2, 2])
-        ctx.strokeRect(x - 4.5, e.y - e.wallH / 2 + 0.5, 9, e.wallH)
-        ctx.setLineDash([])
-        const hand = Math.sin(e.pose * 4) * 3
-        box(x - e.w / 2, e.y - e.h, e.w, e.h, '#f0f0f0')
-        ctx.fillStyle = '#000'; ctx.fillRect(x - e.w / 2, e.y - e.h + 6, e.w, 2); ctx.fillRect(x - e.w / 2, e.y - e.h + 11, e.w, 2)
-        ctx.fillStyle = '#f0f0f0'; ctx.fillRect(x - 8, e.y - 12 + hand, 3, 3); ctx.fillRect(x + 5, e.y - 12 - hand, 3, 3)
-        text('CON DE MIME', x, e.y - e.h - 2, '#fff', 6, 'center')
-        continue
-      }
-      // piéton
-      const z = e.z || 0
-      if (e.state === 'down' || e.state === 'splat' || e.state === 'road') {
-        box(x - e.h / 2, e.y - e.w, e.h, e.w, e.state === 'splat' ? '#703030' : e.col, null)
-        if (e.state === 'splat') text('x_x', x, e.y - e.w - 2, '#fff', 6, 'center')
-      } else {
-        if (z > 0) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x - 4, e.y - 2, 8, 3) }
-        ctx.save()
-        if (z > 0) { ctx.translate(x, e.y - z); ctx.rotate(e.spin * e.z * 0.02); ctx.translate(-x, -(e.y - z)) }
-        box(x - e.w / 2, e.y - e.h - z, e.w, e.h, e.k === 'chien' ? e.col : e.col, z > 0 ? null : e.k)
-        if (e.mamie) { box(x - e.w / 2 - 10, e.y - 12, 10, 10, '#a0a0c0', 'caddie') }
-        ctx.restore()
-      }
-    }
-
-    // la fille en roller en jaune
-    if (S.roller && !S.roller.gone) {
-      const ro = S.roller, x = ro.x - cam
-      box(x - 5, ro.y - 18, 10, 18, '#ffe000', 'ROLLER', '#ffe000')
-      ctx.fillStyle = '#000'; ctx.fillRect(x - 5, ro.y - 1, 3, 2); ctx.fillRect(x + 2, ro.y - 1, 3, 2)
-    }
-
-    // gaz
+    // Gaz par-dessus.
     for (const g of S.gas) {
-      const x = g.x - cam - g.t * 60
-      ctx.fillStyle = `rgba(140,220,120,${0.6 - g.t * 0.8})`
-      for (let k = 0; k < 4; k++) { const r = 5 + g.t * 30 + k * 3; ctx.beginPath(); ctx.arc(x - k * 10, g.y - 8 + Math.sin(k + g.t * 9) * 4, r, 0, Math.PI * 2); ctx.fill() }
+      const f = Math.min(3, Math.floor((g.t / 0.7) * 4))
+      for (let k = 0; k < 3; k++) blit(SPR.gas[f], g.x - cam - g.t * 50 - k * 9, g.y - 8 + Math.sin(k + g.t * 9) * 3)
     }
-
-    // camion
-    if (S.truck) {
-      const tr = S.truck
-      box(tr.x - cam - tr.w / 2, tr.y - tr.h, tr.w, tr.h, '#8a2a2a', 'CAMION')
-    }
-
-    // le tueur, toujours en bord droit
-    const kx = 440
-    const ky = S.killer.y
-    box(kx - 6, ky - 20, 12, 20, '#101010', 'LE TUEUR', '#ff8080')
-    ctx.fillStyle = '#e0e0e0'; ctx.fillRect(kx + 6, ky - 14, 2, 8) // le couteau
-    ctx.fillStyle = '#ff0000'; ctx.fillRect(kx - 3, ky - 16, 2, 2); ctx.fillRect(kx + 1, ky - 16, 2, 2)
-
-    // Serge
-    const sg = S.serge
-    const sx = sg.x - cam
-    const jz = S.mode === 'jump' && S.jump.z ? S.jump.z : 0
-    const bob = S.mode === 'run' && S.tripT <= 0 ? Math.abs(Math.sin(S.t * 14 * S.speedMul)) * 2 : 0
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(sx - 6, sg.y - 2, 12, 3)
-    if (S.tripT > 0) {
-      box(sx - 10, sg.y - 10, 20, 10, '#c05030', 'SERGE (aïe)')
-    } else {
-      box(sx - sg.w / 2, sg.y - sg.h - bob - jz, sg.w, sg.h, S.boostT > 0 ? '#ff9050' : '#b05030', 'SERGE')
-      // cheveux longs + moustache, pour la ressemblance de prototype
-      ctx.fillStyle = '#3a2010'; ctx.fillRect(sx - 7, sg.y - sg.h - bob - jz - 1, 14, 5)
-      ctx.fillStyle = '#3a2010'; ctx.fillRect(sx - 3 + (sg.face < 0 ? -2 : 0), sg.y - sg.h - bob - jz + 8, 6, 1)
-      if (sg.face < 0) text('?!', sx + 8, sg.y - sg.h - 4, '#ffe060', 7)
-    }
+    drawPalmsFront(cam)
 
     if (debug) {
-      ctx.strokeStyle = '#0f0'; ctx.strokeRect(sx - sg.w / 2 + 0.5, sg.y - 5 + 0.5, sg.w - 1, 10)
+      const sg = S.serge
+      const sx = sg.x - cam
+      ctx.strokeStyle = '#0f0'
+      ctx.strokeRect(sx - sg.w / 2 + 0.5, sg.y - 5 + 0.5, sg.w - 1, 10)
       for (const e of S.ents) {
         if (!e.solid) continue
         const x = e.x - cam
-        const hw = e.type === 'mime' ? 4 : e.w / 2, hh = e.type === 'mime' ? e.wallH / 2 : Math.max(5, e.h * 0.35)
-        ctx.strokeStyle = '#f0f'; ctx.strokeRect(x - hw + 0.5, e.y - hh + 0.5, hw * 2, hh * 2)
+        const hw = e.type === 'mime' ? 4 : e.w / 2
+        const hh = e.type === 'mime' ? e.wallH / 2 : Math.max(5, e.h * 0.35)
+        ctx.strokeStyle = '#f0f'
+        ctx.strokeRect(x - hw + 0.5, e.y - hh + 0.5, hw * 2, hh * 2)
       }
-      ctx.strokeStyle = '#0ff'; ctx.strokeRect(sx - CFG.fartCone.back + 0.5, sg.y - CFG.fartCone.half + 0.5, CFG.fartCone.back + CFG.fartCone.front, CFG.fartCone.half * 2)
+      ctx.strokeStyle = '#0ff'
+      ctx.strokeRect(sx - CFG.fartCone.back + 0.5, sg.y - CFG.fartCone.half + 0.5, CFG.fartCone.back + CFG.fartCone.front, CFG.fartCone.half * 2)
     }
 
-    // popups
+    // Popups.
     for (const p of S.pops) {
       const a = Math.min(1, (1.2 - p.t) * 3)
       ctx.globalAlpha = Math.max(0, a)
-      text(p.text, p.x - cam, p.y, p.col, p.big ? 10 : 7, 'center', p.big)
+      if (p.big) text5C(p.text, p.x - cam, p.y - 8, p.col, { outline: P.ink })
+      else text3C(p.text, p.x - cam, p.y - 4, p.col)
       ctx.globalAlpha = 1
     }
     ctx.restore()
   }
 
+  function drawSerge(cam) {
+    const sg = S.serge
+    const sx = sg.x - cam
+    const jz = S.mode === 'jump' && S.jump.z ? S.jump.z : 0
+    blit(SPR.shadow.m, sx, sg.y)
+    if (S.tripT > 0) {
+      blit(SPR.sergeTrip, sx, sg.y)
+      if (Math.floor(S.t * 8) % 2) text3C('AÏE', sx, sg.y - 18, P.yellow)
+      return
+    }
+    const f = Math.floor(S.t * 12 * Math.max(0.5, S.speedMul)) % 4
+    const set = S.boostT > 0 ? SPR.sergeBoost : sg.face < 0 ? SPR.sergeLook : SPR.serge
+    blit(set[f], sx, sg.y - jz)
+  }
+  function drawKiller(cam) {
+    const kx = S.camX + 440 - cam
+    const ky = S.killer.y
+    blit(SPR.shadow.m, kx, ky)
+    if (S.killer.tauntT > 0) blit(SPR.killerTaunt, kx, ky)
+    else blit(SPR.killer[Math.floor(S.t * 12) % 4], kx, ky)
+  }
+  function drawEntity(e, cam) {
+    const x = e.x - cam
+    if (x < -60 || x > GW + 60) return
+    if (e.type === 'boom') {
+      const f = Math.min(3, Math.floor((e.t / 0.6) * 4))
+      blit(e.big ? SPR.boomBig[f] : SPR.boom[f], x, e.y - 6)
+      return
+    }
+    if (e.type === 'debris') {
+      blit(SPR.debris[e.kind], x, e.y - e.z)
+      return
+    }
+    if (e.type === 'furn') {
+      blit(SPR.furn[e.k], x, e.y)
+      return
+    }
+    if (e.type === 'mime') {
+      // Le mur mimé : une vitre à peine visible, bien réelle.
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'
+      ctx.fillRect(Math.round(x) - 4, Math.round(e.y - e.wallH / 2), 9, e.wallH)
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      for (let yy = -e.wallH / 2; yy < e.wallH / 2; yy += 4) {
+        ctx.fillRect(Math.round(x) - 4, Math.round(e.y + yy), 1, 2)
+        ctx.fillRect(Math.round(x) + 4, Math.round(e.y + yy + 2), 1, 2)
+      }
+      blit(SPR.shadow.m, x, e.y)
+      blit(SPR.mime[Math.floor(e.pose * 3) % 2], x, e.y)
+      return
+    }
+    // Piétons.
+    if (e.k === 'chien') {
+      if (e.state === 'walk') {
+        if (e.leash && e.leash.state === 'walk') {
+          ctx.strokeStyle = P.plum
+          ctx.beginPath()
+          ctx.moveTo(Math.round(e.leash.x - cam) + 0.5, Math.round(e.leash.y) - 8.5)
+          ctx.lineTo(Math.round(x) + 0.5, Math.round(e.y) - 6.5)
+          ctx.stroke()
+        }
+        blit(SPR.chien[walkFrame(e)], x, e.y, e.vx < 0)
+      } else if (e.state === 'fly') blitRot(SPR.chien[0], x, e.y - e.z, e.spin * e.z * 0.02)
+      else blit(SPR.chienLying, x, e.y)
+      return
+    }
+    if (e.mamie) {
+      if (e.state === 'walk') blit(SPR.mamie[walkFrame(e)], x, e.y, true)
+      else if (e.state === 'splat') blit(SPR.mamieSplat, x, e.y)
+      else if (e.state === 'fly') blitRot(SPR.mamie[0], x, e.y - e.z, e.spin * e.z * 0.02)
+      else blit(SPR.mamieLying, x, e.y)
+      return
+    }
+    const set = SPR.ped[lookKey(e.k)]
+    const v = (e.variant || 0) % set.length
+    if (e.state === 'walk') {
+      blit(SPR.shadow.s, x, e.y)
+      blit(set[v][walkFrame(e)], x, e.y, e.vx < 0)
+    } else if (e.state === 'fly') {
+      blit(SPR.shadow.s, x, e.y)
+      blitRot(set[v][1], x, e.y - e.z, e.spin * e.z * 0.02)
+    } else blit(SPR.pedLying[lookKey(e.k)][v], x, e.y)
+  }
+
+  function drawGauge(x, y, w, v, ready) {
+    ctx.fillStyle = P.ink
+    ctx.fillRect(x - 1, y - 1, w + 2, 8)
+    ctx.fillStyle = P.slateD
+    ctx.fillRect(x, y, w, 6)
+    const fill = Math.round(w * v)
+    ctx.fillStyle = ready ? P.green : P.greenM
+    ctx.fillRect(x, y, fill, 6)
+    ctx.fillStyle = ready ? P.yellow : P.green
+    ctx.fillRect(x, y, fill, 1)
+    if (ready && Math.floor(S.t * 6) % 2) {
+      ctx.fillStyle = P.white
+      ctx.fillRect(x, y, w, 1)
+    }
+  }
   function drawHud() {
-    // chrono
     const left = Math.max(0, CFG.duration - S.t)
-    text(left.toFixed(1).replace('.', ',') + ' s', GW / 2, 14, left < 10 ? '#ff6060' : '#fff', 12, 'center', true)
-    // score
-    text(String(S.score).padStart(6, '0'), GW - 6, 14, '#ffe060', 12, 'right', true)
-    // combo
+    // Bandeau sombre en haut pour la lisibilité, par-dessus les façades.
+    ctx.fillStyle = 'rgba(24,20,37,0.55)'
+    ctx.fillRect(0, 0, GW, 12)
+    text5('SCORE ' + String(S.score).padStart(6, '0'), 3, 1, P.yellow, {})
+    const clock = left.toFixed(1).replace('.', ',')
+    text5C(clock, GW / 2, 1, left < 10 && Math.floor(S.t * 4) % 2 ? P.red : P.white, {})
     const m = mult()
-    if (S.combo > 0) text('COMBO ' + S.combo + '  ×' + m, GW - 6, 26, m >= 3 ? '#80e0ff' : '#ccc', 8, 'right', m >= 3)
-    // jauge de prout
-    const gw = 90
-    box(6, GH - 14, gw, 8, '#202020', null)
-    ctx.fillStyle = S.fart >= 1 ? '#80ff80' : '#4a8a4a'
-    ctx.fillRect(7, GH - 13, Math.round((gw - 2) * S.fart), 6)
-    text(S.fart >= 1 ? 'PROUT PRÊT  [ESPACE]' : 'PROUT ' + Math.round(S.fart * 100) + '%', 6, GH - 17, '#ccc', 7)
-    // distance au tueur (immuable, c'est le gag)
-    text('TUEUR : 320 m  (toujours)', GW - 6, GH - 6, '#ff8080', 7, 'right')
-    if (S.invertT > 0) text('CONTRÔLES INVERSÉS', GW / 2, 30, '#ffe060', 8, 'center', true)
-    if (debug) text(`seed ${S.seed} · ents ${S.ents.length} · densité ${density().toFixed(1)} · cam ${S.camX | 0}`, 6, GH - 24, '#0f0', 6)
+    if (S.combo > 0) text5('COMBO ' + S.combo + ' ×' + m, GW - 3 - textWidth5('COMBO ' + S.combo + ' ×' + m), 1, m >= 3 ? P.cyan : P.white, {})
+    else text5('RECORD ' + String(best).padStart(6, '0'), GW - 3 - textWidth5('RECORD ' + String(best).padStart(6, '0')), 1, P.grey1, {})
+    // Jauge de prout en bas à gauche, sur la mer.
+    drawGauge(4, GH - 10, 80, S.fart, S.fart >= 1)
+    text3(S.fart >= 1 ? (pointerTouch ? 'PROUT PRÊT  TAP À DROITE' : 'PROUT PRÊT  ESPACE') : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : P.grey1)
+    text3('TUEUR : 320 M  (TOUJOURS)', GW - 4 - textWidth('TUEUR : 320 M  (TOUJOURS)'), GH - 12, P.pink)
+    if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 16, P.yellow, { outline: P.ink })
+    if (S.lookWindow > 0) text5C(pointerTouch ? 'TAP À GAUCHE : LA REGARDER ?' : 'R : LA REGARDER ?', GW / 2, 16, P.yellow, { outline: P.ink })
+    if (debug) text3(`SEED ${S.seed} · ENTS ${S.ents.length} · DENS ${density().toFixed(1)} · CAM ${S.camX | 0}`, 4, GH - 30, P.green)
   }
 
   function drawIntro() {
-    ctx.fillStyle = '#101010'; ctx.fillRect(0, 0, GW, GH)
-    text('CONS DE MIME !', GW / 2, 50, '#fff', 26, 'center', true)
-    text('Prototype gris v0 — Vous êtes à Cannes. Lui aussi.', GW / 2, 68, '#888', 8, 'center')
-    // la scène d'intro : la fille, Serge, le tueur qui passe
-    box(190, 150, 12, 20, '#e0a0d0', 'LA FILLE')
-    box(240, 150, 12, 20, '#b05030', 'SERGE')
-    ctx.fillStyle = '#3a2010'; ctx.fillRect(239, 149, 14, 5)
     const t = S.introT
-    if (t > 0.6) text('« Je suis séropositive. »', 196, 126, '#e0a0d0', 8, 'center')
-    if (t > 1.8) text('« ... »', 262, 116, '#fff', 8, 'center')
-    if (t > 2.6) { const kx = 300 + ((t - 2.6) * 120) % 220; box(kx, 150, 12, 20, '#101010', 'LE TUEUR', '#ff8080') }
-    if (t > 3.2) text('« Au revoir ! »', 262, 106, '#fff', 8, 'center', true)
-    if (t > 0.8 && Math.floor(t * 2) % 2 === 0) text('ESPACE / toucher : COURIR', GW / 2, 220, '#ffe060', 10, 'center', true)
-    text('↑↓ couloir · ← → reculer / avancer · ESPACE prout (boost + dégommage) · R regarder', GW / 2, 246, '#aaa', 7, 'center')
-    text('Esquive de près pour le combo, pète sur les gens pour les envoyer exploser sur la plage. 90 s.', GW / 2, 258, '#777', 7, 'center')
-    if (best) text('Record : ' + best, GW / 2, 90, '#ffe060', 8, 'center')
+    // Le décor derrière, figé, et la scène au milieu du trottoir.
+    S.camX = 0
+    drawGround(0)
+    drawPalmsBack(0)
+    ctx.fillStyle = 'rgba(24,20,37,0.45)'
+    ctx.fillRect(0, 0, GW, GH)
+    ctx.drawImage(LOGO, Math.round(GW / 2 - LOGO.width / 2), 24)
+    text3C('VOUS ÊTES À CANNES. LUI AUSSI.', GW / 2, 56, P.grey1)
+    // La scène : la fille, Serge, le tueur qui passe au fond.
+    const fy = 150
+    blit(SPR.shadow.s, 200, fy)
+    blit(SPR.ped.jeune[1][0], 200, fy, false)
+    blit(SPR.shadow.m, 240, fy)
+    blit(SPR.serge[0], 240, fy - (t > 3.4 ? Math.abs(Math.sin(t * 14)) * 2 : 0), t > 1.8 && t < 3.4)
+    if (t > 2.6) {
+      const kx = 290 + ((t - 2.6) * 120) % 260
+      blit(SPR.shadow.m, kx, 100)
+      blit(SPR.killer[Math.floor(t * 12) % 4], kx, 100)
+    }
+    if (t > 0.6) text5C('« JE SUIS SÉROPOSITIVE. »', 200, 112, P.pink, { outline: P.ink })
+    if (t > 1.8) text5C(t > 3.2 ? '« AU REVOIR ! »' : '« ... »', 250, 98, P.white, { outline: P.ink })
+    if (t > 0.8 && Math.floor(t * 2) % 2 === 0) text5C(pointerTouch ? 'TAPOTE POUR COURIR' : 'ESPACE POUR COURIR', GW / 2, 186, P.yellow, { outline: P.ink })
+    text3C(pointerTouch ? 'GLISSE À GAUCHE : COULOIR · TAP À DROITE : PROUT · TAP À GAUCHE : REGARDER' : '↑↓ COULOIR · ←→ RECULER / AVANCER · ESPACE : PROUT · R : REGARDER', GW / 2, 220, P.grey1)
+    text3C('FRÔLE LES CANNOIS POUR LE COMBO. PÈTE DESSUS POUR LES ENVOYER SUR LA PLAGE. 90 SECONDES.', GW / 2, 232, P.grey2)
+    if (best) text3C('RECORD ' + best, GW / 2, 246, P.yellow)
+    text3('V1', GW - 12, GH - 10, P.grey3)
   }
 
   function drawOver() {
     const t = S.overT
-    ctx.fillStyle = 'rgba(0,0,0,' + Math.min(0.8, t * 2) + ')'; ctx.fillRect(0, 0, GW, GH)
+    ctx.fillStyle = 'rgba(24,20,37,' + Math.min(0.75, t * 2) + ')'
+    ctx.fillRect(0, 0, GW, GH)
     if (t < 0.3) return
     const j = S.jump
-    box(80, 40, 320, 190, '#1a1a1a', null)
-    text('RÉSULTATS', GW / 2, 62, '#fff', 14, 'center', true)
+    const px = 84
+    const py = 34
+    const pw = 312
+    const ph = 204
+    ctx.fillStyle = P.ink
+    ctx.fillRect(px - 2, py - 2, pw + 4, ph + 4)
+    ctx.fillStyle = P.slateD
+    ctx.fillRect(px, py, pw, ph)
+    ctx.fillStyle = P.slate
+    ctx.fillRect(px, py, pw, 1)
+    ctx.fillRect(px, py, 1, ph)
+    text5C('RÉSULTATS', GW / 2, py + 6, P.white, { shadow: P.ink })
     const rows = [
-      ['Saut en longueur', j.meters.toFixed(2) + ' m', '+' + j.bonus],
-      ['Meilleur combo', '×' + (S.bestCombo >= 20 ? 5 : S.bestCombo >= 15 ? 4 : S.bestCombo >= 10 ? 3 : S.bestCombo >= 5 ? 2 : 1), S.bestCombo + ' esquives'],
-      ['La fille en jaune', S.looked ? 'regardée' : 'ratée', ''],
-      ['La mamie', S.mamieDone && S.mamie.state === 'splat' ? 'écrasée' : 'épargnée', ''],
-      ['Le tueur', 'toujours à 320 m', ''],
+      ['SAUT EN LONGUEUR', j.meters.toFixed(2).replace('.', ',') + ' M', '+' + j.bonus],
+      ['MEILLEUR COMBO', '×' + (S.bestCombo >= 20 ? 5 : S.bestCombo >= 15 ? 4 : S.bestCombo >= 10 ? 3 : S.bestCombo >= 5 ? 2 : 1), S.bestCombo + ' ESQUIVES'],
+      ['LA FILLE EN JAUNE', S.looked ? 'REGARDÉE' : 'RATÉE', ''],
+      ['LA MAMIE', S.mamieDone && S.mamie.state === 'splat' ? 'ÉCRASÉE' : 'ÉPARGNÉE', ''],
+      ['LE TUEUR', 'TOUJOURS À 320 M', ''],
     ]
     rows.forEach((r, i) => {
-      const y = 86 + i * 16
-      if (t > 0.4 + i * 0.15) { text(r[0], 96, y, '#bbb', 8); text(r[1], 300, y, '#fff', 8, 'right'); text(r[2], 384, y, '#ffe060', 8, 'right') }
+      const y = py + 26 + i * 14
+      if (t > 0.4 + i * 0.15) {
+        text5(r[0], px + 12, y, P.grey1, {})
+        text5(r[1], px + 212 - textWidth5(r[1]), y, P.white, {})
+        text5(r[2], px + pw - 12 - textWidth5(r[2]), y, P.yellow, {})
+      }
     })
     if (t > 1.3) {
-      text('SCORE  ' + S.score, GW / 2, 182, '#ffe060', 16, 'center', true)
-      if (S.score >= best && S.score > 0) text('RECORD !', GW / 2, 196, '#80ff80', 8, 'center', true)
+      text5C('SCORE ' + S.score, GW / 2, py + 104, P.yellow, { outline: P.ink })
+      if (S.score >= best && S.score > 0) text5C('RECORD !', GW / 2, py + 118, P.green, {})
     }
     if (t > 1.8) {
-      // le tampon
+      // Le tampon : il tombe, rebondit, reste de travers.
+      const s = Math.max(1, 1.8 - (t - 1.8) * 5)
       ctx.save()
-      ctx.translate(GW / 2, 212)
-      ctx.rotate(-0.08)
-      const s = Math.max(1, 1.6 - (t - 1.8) * 4)
+      ctx.translate(GW / 2, py + 152)
+      ctx.rotate(-0.06)
       ctx.scale(s, s)
-      ctx.strokeStyle = '#ff4040'; ctx.lineWidth = 2; ctx.strokeRect(-120, -10, 240, 18)
-      text('C\'EST BON, J\'AI DU PAPIER', 0, 4, '#ff4040', 11, 'center', true)
+      ctx.globalAlpha = Math.min(1, (t - 1.8) * 6)
+      ctx.strokeStyle = P.red
+      ctx.lineWidth = 2
+      ctx.strokeRect(-LOGO2.width / 2 - 8, -22, LOGO2.width + 16, 44)
+      text5C("C'EST BON,", 0, -16, P.red, {})
+      ctx.drawImage(LOGO2, Math.round(-LOGO2.width / 2), -6)
       ctx.restore()
     }
-    if (t > 2.5 && Math.floor(t * 2) % 2 === 0) text('ENTRÉE / toucher : rejouer', GW / 2, 246, '#aaa', 8, 'center')
-    text('seed ' + S.seed, 8, GH - 6, '#555', 6)
+    if (t > 2.5 && Math.floor(t * 2) % 2 === 0) text3C(pointerTouch ? 'TAPOTE POUR REJOUER' : 'ENTRÉE POUR REJOUER', GW / 2, py + ph - 10, P.grey1)
+    text3('SEED ' + S.seed, 4, GH - 10, P.grey3)
   }
 
   function draw() {
     ctx.imageSmoothingEnabled = false
+    ctx.fillStyle = P.ink
+    ctx.fillRect(0, 0, GW, GH)
     if (S.mode === 'intro') { drawIntro(); return }
     drawWorld()
     if (S.mode === 'run' || S.mode === 'jump') drawHud()
     if (S.mode === 'jump') {
-      text('SAUT EN LONGUEUR', GW / 2, 40, '#fff', 14, 'center', true)
-      if (S.jump.phase === 'land') text(S.jump.meters.toFixed(2) + ' m', GW / 2, 60, '#ffe060', 20, 'center', true)
+      text5C('SAUT EN LONGUEUR', GW / 2, 24, P.white, { outline: P.ink })
+      if (S.jump.phase === 'land') text5C(S.jump.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 38, P.yellow, { outline: P.ink })
     }
     if (S.mode === 'over') drawOver()
   }
-
   /* ---------- boucle ---------- */
   let last = performance.now()
   function frame(now) {
