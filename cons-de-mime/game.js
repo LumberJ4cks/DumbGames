@@ -38,6 +38,7 @@ export const CFG = {
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 34,        // px vertical pour compter une esquive
   score: { nearMiss: 50, knock: 100, explode: 300, look: 500, lookGag: 400, lookMamie: 350, mamie: 1000, meter: 100, blast: 75 },
+  comboLook: { roller: 3, gag: 2 },   // crans de combo gagnés par un regard
   lookRange: { behind: -10, ahead: 120 },
   rollerAt: 12, mamieAt: 26, mimesFrom: 33, acteurAt: 19, odileAt: 40, bialesAt: 47,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
@@ -110,7 +111,8 @@ export function create(canvas) {
       killer: { x: -80, y: 112, taunt: 5, tauntT: 0 },
       martine: null,
       fart: 1, farts: [], gas: [],
-      combo: 0, bestCombo: 0, score: 0, scoreShown: 0, scoreBump: 0, scoreGain: 0, scoreGainT: 0, comboBump: 0, comboShown: 0,
+      combo: 0, bestCombo: 0, score: 0, scoreShown: 0, scoreBump: 0, scoreGain: 0, scoreGainT: 0, comboBump: 0, comboShown: 0, tierT: 0, tierM: 1,
+      tuto: null,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
       roller: null, lookWindow: 0, lookTarget: null, invertT: 0, looked: false, lookedGags: {},
       mamie: null, truck: null, mamieDone: false, acteur: null, odile: false, odileEnt: null, biales: null,
@@ -177,6 +179,16 @@ export function create(canvas) {
     S.pops.push({ x, y, text, col, big, t: 0 })
   }
 
+  /** Monte le combo de n crans ; annonce le palier franchi. */
+  function bumpCombo(n = 1) {
+    const before = mult()
+    S.combo += n
+    S.comboBump = 1
+    S.bestCombo = Math.max(S.bestCombo, S.combo)
+    const after = mult()
+    if (after > before) { S.tierT = 0.9; S.tierM = after; audio.combo(after) }
+    if (S.tuto && S.tuto.step === 1 && S.tuto.waiting) tutoDone()
+  }
   function addScore(n, x, y, label) {
     const v = n * mult()
     S.score += v
@@ -192,7 +204,7 @@ export function create(canvas) {
     S.boostT = 0
     audio.trip(e && e.type === 'mime' ? 'mime' : 'ped')
     if (S.combo >= 5) audio.comboLost()
-    if (S.combo >= 5) pop(S.serge.x, S.serge.y - 30, 'COMBO ÷2', '#ff5050', true)
+    if (S.combo >= 5) pop(S.serge.x, S.serge.y - 48, 'COMBO ÷2', '#ff5050', true)
     S.combo = Math.floor(S.combo / 2)
     S.shake = 0.3
     if (e && e.type === 'ped') { e.state = 'down'; e.vx = e.vy = 0; e.solid = false; e.downT = 0 }
@@ -219,7 +231,7 @@ export function create(canvas) {
       e.state = 'fly'; e.solid = false; e.passed = true
       e.farted = true
       // Chaque personne soufflée rapporte, et part dans un petit éclat.
-      addScore(CFG.score.blast, e.x, e.y - 10, 'PROUT')
+      addScore(CFG.score.blast, e.x, e.y - 10, 'SOUFFLÉ')
       S.ents.push({ type: 'boom', x: e.x, y: e.y - 8, t: 0.1, small: true })
       e.z = 0
       e.vz = 120 + S.r() * 40
@@ -227,7 +239,8 @@ export function create(canvas) {
       e.vy = (dy >= 0 ? 1 : -1) * (90 + Math.abs(dy) * 1.2) // vers la plage si en bas, vers la route si en haut
       e.spin = (S.r() - 0.5) * 20
     }
-    if (hit >= 1) { S.combo++; S.comboBump = 1; S.bestCombo = Math.max(S.bestCombo, S.combo) } // un prout qui touche vaut une esquive
+    if (hit >= 1) bumpCombo(1) // un prout qui touche vaut une esquive
+    if (S.tuto && S.tuto.step === 2 && S.tuto.waiting) tutoDone()
     if (hit >= 2) pop(sx, sy - 34, 'PROUT ×' + hit, '#80ff80', true)
     if (hit >= 3) audio.combo(Math.min(4, hit))
   }
@@ -248,9 +261,74 @@ export function create(canvas) {
     audio.click()
     audio.talk(DIALOG[it.line].who, DIALOG[it.line].text)
   }
+  /*
+   * Le tutoriel : trois gestes, montrés dans la course elle-même. À chaque étape le temps ralentit,
+   * le chrono gèle, un panneau dit quoi faire et attend que ce soit fait. Une fois par appareil.
+   */
+  let tutoWanted = true
+  try { tutoWanted = localStorage.getItem('consDeMime:tuto') !== 'done' } catch {}
+  if (q.get('tuto') === '0') tutoWanted = false
+  if (q.get('tuto') === '1') tutoWanted = true
+  function tutoStart(step) {
+    const tu = S.tuto
+    tu.step = step
+    tu.waiting = true
+    tu.t = 0
+    if (step === 2) {
+      // Trois passants groupés devant Serge, et la jauge pleine.
+      S.fart = 1
+      const x0 = S.serge.x + 150
+      for (let k = 0; k < 3; k++) S.ents.push({ type: 'ped', k: 'touriste', x: x0 + k * 14, y: S.serge.y + (k - 1) * 16, w: 12, h: 16, col: '', vx: -12, vy: 0, state: 'walk', solid: true, variant: k % 2, phase: k, tuto: true })
+    }
+    audio.click()
+  }
+  function tutoDone() {
+    const tu = S.tuto
+    if (!tu || !tu.waiting) return
+    tu.waiting = false
+    tu.doneT = 1.1
+    audio.fanfare()
+    if (tu.step === 3) tutoFinish()
+  }
+  function tutoFinish() {
+    if (!S.tuto) return
+    S.tuto = null
+    tutoWanted = false
+    try { localStorage.setItem('consDeMime:tuto', 'done') } catch {}
+  }
+  function updateTuto(dt) {
+    const tu = S.tuto
+    if (!tu) return
+    tu.t += dt
+    if (tu.doneT > 0) tu.doneT = Math.max(0, tu.doneT - dt)
+    if (tu.waiting) {
+      tu.waitT = (tu.waitT || 0) + dt
+      if (tu.step === 1 && tu.target && (tu.target.x < S.serge.x - 6 || tu.target.state !== 'walk' || !tu.target.solid)) {
+        // Raté ou renversé : on remet un passant devant.
+        const cand = S.ents.filter((e) => e.type === 'ped' && e.state === 'walk' && e.solid && !e.leash && e.x > S.serge.x + 60 && e.x < S.serge.x + 200)
+        if (cand.length) tu.target = cand[0]
+        else { tu.target = { type: 'ped', k: 'touriste', x: S.serge.x + 170, y: S.serge.y, w: 12, h: 16, col: '', vx: -10, vy: 0, state: 'walk', solid: true, variant: 1, phase: 0 }; S.ents.push(tu.target) }
+      }
+      if (tu.waitT > 16) { tu.missed = tu.step === 3; tutoDone() }
+      return
+    }
+    tu.waitT = 0
+    // Déclenchement de chaque étape.
+    if (tu.step === 0 && S.t >= 2.2) {
+      // Le premier passant solide devant Serge, à hauteur raisonnable.
+      const cand = S.ents.filter((e) => e.type === 'ped' && e.state === 'walk' && e.solid && !e.leash && e.x > S.serge.x + 40 && e.x < S.serge.x + 170)
+      if (cand.length) { tu.target = cand[0]; tutoStart(1) }
+      else if (S.t > 4) { S.ents.push({ type: 'ped', k: 'touriste', x: S.serge.x + 150, y: S.serge.y, w: 12, h: 16, col: '', vx: -10, vy: 0, state: 'walk', solid: true, variant: 0, phase: 0 }); }
+    } else if (tu.step === 1 && tu.doneT === 0 && S.t >= 5.5) tutoStart(2)
+    else if (tu.step === 2 && tu.doneT === 0 && S.lookTarget && S.lookTarget.id === 'roller') tutoStart(3)
+    else if (tu.step === 3 && tu.doneT === 0) tutoFinish()
+  }
+  const tutoSlow = () => (S.tuto && S.tuto.waiting ? 0.3 : 1)
+
   function startRun() {
     S.mode = 'run'
     S.t = 0
+    S.tuto = tutoWanted ? { step: 0, waiting: false, t: 0, doneT: 0, target: null } : null
     S.intro.started = true
     audio.alarm()
     audio.music(true)
@@ -266,6 +344,8 @@ export function create(canvas) {
     audio.resume()
     if (a in held) held[a] = true
     if (S.mode === 'intro' && (a === 'start' || a === 'fart' || a === 'look')) { nextLine(); return }
+    if (S.mode === 'run' && a === 'start' && S.tuto) { tutoFinish(); return }
+    if (S.mode === 'intro' && a === 'tuto') { tutoWanted = true; try { localStorage.removeItem('consDeMime:tuto') } catch {}; audio.click(); return }
     if (S.mode === 'over' && a === 'start') { reset(); return }
     if (S.mode === 'over' && (a === 'fart' || a === 'look') && S.overT > 1.5) { reset(); return }
     if (a === 'fart') doFart()
@@ -281,6 +361,32 @@ export function create(canvas) {
   }
   function release(a) { if (a in held) held[a] = false }
   function touchLane(y) { laneTarget = y }
+  /* Le joystick flottant : origine là où le pouce se pose, vecteur jusqu'au pouce, null au relâcher. */
+  let joy = null
+  function joystick(ox, oy, x, y) {
+    if (ox == null) { joy = null; return }
+    joy = { ox, oy, x, y }
+  }
+  function joyAxis() {
+    if (!joy) return null
+    const dx = joy.x - joy.ox
+    const dy = joy.y - joy.oy
+    const dead = 5
+    const max = 26
+    const ax = Math.abs(dx) < dead ? 0 : Math.max(-1, Math.min(1, (dx - Math.sign(dx) * dead) / (max - dead)))
+    const ay = Math.abs(dy) < dead ? 0 : Math.max(-1, Math.min(1, (dy - Math.sign(dy) * dead) / (max - dead)))
+    return { ax, ay }
+  }
+  /** Le bouton « regarder » tactile : vrai si (x, y) tombe dessus. */
+  const LOOK_BTN = { x: GW - 100, y: GH - 104, r: 18 }
+  function tapAt(x, y) {
+    pointerTouch = true
+    audio.resume()
+    if (S.mode === 'intro') { nextLine(); return }
+    if (S.mode === 'over') { if (S.overT > 1.5) reset(); return }
+    if (S.lookTarget && Math.hypot(x - LOOK_BTN.x, y - LOOK_BTN.y) < LOOK_BTN.r + 8) { doLook(); return }
+    if (x >= GW * 0.4) doFart()
+  }
 
   /*
    * Regarder : la fille en roller, Simon et la femme au chapeau, les lettres au sol, Bialès et
@@ -289,11 +395,11 @@ export function create(canvas) {
    */
   function lookCandidates() {
     const list = []
-    if (S.roller && !S.roller.gone && !S.looked) list.push({ id: 'roller', x: S.roller.x, y: S.roller.y, pts: CFG.score.look, label: 'LA FILLE EN JAUNE', hint: 'LA' })
-    if (S.acteur && S.acteur.state === 'walk') list.push({ id: 'simon', x: S.acteur.x, y: S.acteur.y, pts: CFG.score.lookGag, label: 'HOUHOU ! KARA !', hint: 'SIMON' })
-    if (S.odileEnt) list.push({ id: 'odile', x: S.odileEnt.x, y: S.odileEnt.y, pts: CFG.score.lookGag, label: 'O.D.I.L.E', hint: 'LES LETTRES' })
-    if (S.biales && S.biales.state === 'walk') list.push({ id: 'biales', x: S.biales.x, y: S.biales.y, pts: CFG.score.lookGag, label: 'UN WHISKY ?', hint: 'BIALÈS' })
-    if (S.mamie && S.mamie.state === 'walk') list.push({ id: 'mamie', x: S.mamie.x, y: S.mamie.y, pts: CFG.score.lookMamie, label: 'LA MAMIE', hint: 'LA MAMIE' })
+    if (S.roller && !S.roller.gone && !S.looked) list.push({ id: 'roller', x: S.roller.x, y: S.roller.y, pts: CFG.score.look, label: 'REGARDÉE', hint: 'LA FILLE', gain: CFG.comboLook.roller })
+    if (S.acteur && S.acteur.state === 'walk') list.push({ id: 'simon', x: S.acteur.x, y: S.acteur.y, pts: CFG.score.lookGag, label: 'REGARDÉ SIMON', hint: 'SIMON', gain: CFG.comboLook.gag })
+    if (S.odileEnt) list.push({ id: 'odile', x: S.odileEnt.x, y: S.odileEnt.y, pts: CFG.score.lookGag, label: 'LU : ODILE', hint: 'LES LETTRES', gain: CFG.comboLook.gag })
+    if (S.biales && S.biales.state === 'walk') list.push({ id: 'biales', x: S.biales.x, y: S.biales.y, pts: CFG.score.lookGag, label: 'REGARDÉ BIALÈS', hint: 'BIALÈS', gain: CFG.comboLook.gag })
+    if (S.mamie && S.mamie.state === 'walk') list.push({ id: 'mamie', x: S.mamie.x, y: S.mamie.y, pts: CFG.score.lookMamie, label: 'REGARDÉE LA MAMIE', hint: 'LA MAMIE', gain: CFG.comboLook.gag })
     return list.filter((c) => !S.lookedGags[c.id])
   }
   function updateLook() {
@@ -305,7 +411,6 @@ export function create(canvas) {
     }
     S.lookTarget = best
     S.lookWindow = best ? 1 : 0
-    if (best && !S.lookedGags[best.id + ':hint']) { S.lookedGags[best.id + ':hint'] = true; pop(best.x, best.y - 30, 'R : REGARDER ?', '#ffe060') }
   }
   function doLook() {
     if (S.mode !== 'run' || !S.lookTarget) return
@@ -318,7 +423,10 @@ export function create(canvas) {
     audio.whistle()
     setTimeout(() => audio.wobble(), 450)
     S.serge.face = -1
+    bumpCombo(t.gain)
     addScore(t.pts, S.serge.x, S.serge.y, t.label)
+    pop(S.serge.x, S.serge.y - 44, '+' + t.gain + ' COMBO', '#80e0ff', true)
+    if (S.tuto && S.tuto.step === 3 && S.tuto.waiting) tutoDone()
   }
 
   /* ---------- scripts ---------- */
@@ -331,7 +439,7 @@ export function create(canvas) {
       const ro = S.roller
       ro.x += ro.vx * dt
       ro.y += (S.serge.y + 18 - ro.y) * 0.5 * dt
-      if (ro.x - S.camX > GW + 40 || ro.x - S.camX < -60) S.roller = { gone: true, x: 1e9, y: 0 }
+      if (ro.x - S.camX > GW + 40 || ro.x - S.camX < -60) { S.roller = { gone: true, x: 1e9, y: 0 }; if (S.tuto && S.tuto.step === 3 && S.tuto.waiting) { S.tuto.missed = true; tutoDone() } }
     }
     // L'acteur non accompagné : une seule fois, planté en haut du trottoir avec son ballon.
     if (!S.acteur && S.t >= CFG.acteurAt) {
@@ -430,7 +538,10 @@ export function create(canvas) {
 
     if (S.mode === 'jump') { updateJump(dt); return }
 
-    S.t += dt
+    updateTuto(dt)
+    const frozen = S.tuto && S.tuto.waiting
+    dt *= tutoSlow()
+    if (!frozen) S.t += dt
     if (S.t >= CFG.duration) { beginJump(); return }
     const left = Math.ceil(CFG.duration - S.t)
     if (left <= 10 && left !== S.lastTick) { S.lastTick = left; audio.tick(left <= 3) }
@@ -450,6 +561,8 @@ export function create(canvas) {
     let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0)
     let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0)
     if (laneTarget != null) { const d = laneTarget - sg.y; dy = Math.abs(d) < 3 ? 0 : Math.sign(d) }
+    const ja = joyAxis()
+    if (ja) { dy = ja.ay; dx = ja.ax }
     if (S.invertT > 0) { dy = -dy; dx = -dx }
     if (S.tripT > 0) { dy *= 0.3; dx = 0 }
     sg.y = Math.max(CFG.sidewalkTop, Math.min(CFG.sidewalkBottom, sg.y + dy * CFG.laneSpeed * dt))
@@ -508,7 +621,7 @@ export function create(canvas) {
             S.ents.push({ type: 'boom', x: e.x, y: e.y, t: 0 })
             S.ents.push({ type: 'scorch', x: e.x, y: e.y })
             for (let d = 0; d < 4; d++) S.ents.push({ type: 'debris', kind: (S.r() * 5) | 0, x: e.x, y: e.y, z: 2, vx: (S.r() - 0.5) * 120, vy: (S.r() - 0.5) * 60, vz: 60 + S.r() * 90, t: 0 })
-            addScore(CFG.score.explode, e.x, e.y, 'PLAGE')
+            addScore(CFG.score.explode, e.x, e.y, 'EXPLOSÉ')
             audio.explode()
             S.shake = Math.max(S.shake, 0.2)
           } else {
@@ -550,13 +663,10 @@ export function create(canvas) {
           const d = Math.abs(e.y - sg.y)
           const near = e.type === 'mime' ? e.wallH / 2 + 14 : CFG.nearMissDist
           if (d < near) {
-            S.combo++
-            S.comboBump = 1
+            bumpCombo(1)
             audio.nearMiss(S.combo)
-            S.bestCombo = Math.max(S.bestCombo, S.combo)
             S.fart = Math.min(1, S.fart + CFG.fartNearMiss)
-            addScore(CFG.score.nearMiss, sg.x, sg.y, e.type === 'mime' ? 'MUR ÉVITÉ' : null)
-            if (S.combo % 5 === 0) audio.combo(mult())
+            addScore(CFG.score.nearMiss, sg.x, sg.y, e.type === 'mime' ? 'MUR ÉVITÉ' : 'FRÔLÉ')
             if (S.combo % 5 === 0) pop(sg.x, sg.y - 40, 'COMBO ' + S.combo + '  ×' + mult(), '#80e0ff', true)
           }
         }
@@ -573,6 +683,7 @@ export function create(canvas) {
     S.comboBump = Math.max(0, S.comboBump - dt * 3)
     S.scoreGainT = Math.max(0, S.scoreGainT - dt)
     if (S.scoreGainT === 0) S.scoreGain = 0
+    S.tierT = Math.max(0, S.tierT - dt)
     S.shake = Math.max(0, S.shake - dt)
   }
 
@@ -831,7 +942,7 @@ export function create(canvas) {
       ctx.globalAlpha = Math.max(0, a)
       if (p.big) {
         const sc = 1 + Math.max(0, 0.3 - p.t) // il tape en apparaissant
-        text5Scaled(p.text, p.x - cam, p.y - 10, p.col, 2 * sc, { outline: P.ink })
+        text5Scaled(p.text, p.x - cam, p.y - 10, p.col, 1.7 * sc, { outline: P.ink })
       } else text5C(p.text, p.x - cam, p.y - 6, p.col, { outline: P.ink })
       ctx.globalAlpha = 1
     }
@@ -1028,36 +1139,117 @@ export function create(canvas) {
   }
   function drawHud() {
     const left = Math.max(0, CFG.duration - S.t)
-    // Bandeau sombre en haut pour la lisibilité, par-dessus les façades.
     ctx.fillStyle = 'rgba(24,20,37,0.6)'
-    ctx.fillRect(0, 0, GW, 24)
-    // Le score, en gros, qui pulse à chaque gain ; le gain en cours flotte à côté.
-    const sc = 2 + S.scoreBump * 0.5
+    ctx.fillRect(0, 0, GW, 26)
+    // Le score à gauche, la conséquence ; le gain en cours flotte à côté.
     const shown = String(Math.round(S.scoreShown)).padStart(6, '0')
     text5('SCORE', 4, 2, P.grey1, {})
-    text5Scaled(shown, 4 + textWidth5(shown) + 2 + (sc - 2) * 12, 11 - (sc - 2) * 6, S.scoreBump > 0.5 ? P.white : P.yellow, sc, { shadow: P.ink })
-    if (S.scoreGain > 0) text5('+' + S.scoreGain, 4 + textWidth5(shown) * 2 + 10, 12, P.green, { outline: P.ink })
-    const clock = left.toFixed(1).replace('.', ',')
-    text5Scaled(clock, GW / 2, 2, left < 10 && Math.floor(S.t * 4) % 2 ? P.red : P.white, 2, { shadow: P.ink })
-    // Le combo : le multiplicateur en géant à droite, la série dessous, le tout qui pulse.
+    const sc = 1.5 + S.scoreBump * 0.3
+    text5Scaled(shown, 4 + textWidth5(shown) * 0.75, 10, S.scoreBump > 0.5 ? P.white : P.yellow, sc, { shadow: P.ink })
+    if (S.scoreGain > 0) text5('+' + S.scoreGain, 8 + textWidth5(shown) * 1.5 + 6, 12, P.green, { outline: P.ink })
+    // Le combo au centre : le chiffre, le multiplicateur, les crans et la promesse du prochain palier.
     const m = mult()
-    if (S.combo > 0) {
-      const cs = 2.2 + S.comboBump * 0.8
-      const col = m >= 5 ? P.hot : m >= 4 ? P.orange : m >= 3 ? P.cyan : m >= 2 ? P.yellow : P.white
-      text5Scaled('×' + m, GW - 24, 1 - (cs - 2.2) * 5, col, cs, { outline: P.ink })
-      text5('COMBO ' + S.combo, GW - 44 - textWidth5('COMBO ' + S.combo), 7, S.comboBump > 0.5 ? P.white : P.grey1, {})
-      // Les crans jusqu'au prochain palier.
-      const next = S.combo >= 20 ? 20 : Math.ceil((S.combo + 1) / 5) * 5
-      const from = next - 5
-      for (let i = 0; i < 5; i++) { ctx.fillStyle = S.combo - from > i ? col : P.slateD; ctx.fillRect(GW - 44 - 30 + i * 6, 18, 4, 3) }
-    } else text5('RECORD ' + String(best).padStart(6, '0'), GW - 4 - textWidth5('RECORD ' + String(best).padStart(6, '0')), 2, P.grey1, {})
-    // Jauge de prout en bas à gauche, sur la mer.
-    drawGauge(4, GH - 10, 80, S.fart, S.fart >= CFG.fartMin)
-    text3(S.fart >= 1 ? (pointerTouch ? 'PROUT MAX  TAP À DROITE' : 'PROUT MAX  ESPACE') : S.fart >= CFG.fartMin ? 'PROUT ' + Math.round(S.fart * 100) + '%  (PETIT)' : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : S.fart >= CFG.fartMin ? P.green : P.grey1)
+    const col = m >= 5 ? P.hot : m >= 4 ? P.orange : m >= 3 ? P.cyan : m >= 2 ? P.yellow : P.white
+    const cs = 1.6 + S.comboBump * 0.5
+    text5Scaled('COMBO ' + S.combo + '  ×' + m, GW / 2, 2 - (cs - 1.6) * 4, col, cs, { outline: P.ink })
+    const next = S.combo >= 20 ? 20 : Math.ceil((S.combo + 1) / 5) * 5
+    const from = next - 5
+    for (let i = 0; i < 5; i++) { ctx.fillStyle = S.combo - from > i ? col : P.slate; ctx.fillRect(GW / 2 - 17 + i * 7, 19, 5, 4) }
+    if (S.combo < 20) text3('ENCORE ' + (next - S.combo) + ' : ×' + (m + 1), GW / 2 + 24, 17, P.grey1)
+    else text3('MAX', GW / 2 + 24, 17, P.hot)
+    // Le chrono à droite, discret, rouge sous dix secondes.
+    const clock = left.toFixed(1).replace('.', ',')
+    text5Scaled(clock, GW - 6 - textWidth5(clock) * 0.75, 4, left < 10 && Math.floor(S.t * 4) % 2 ? P.red : P.white, 1.5, { shadow: P.ink })
+    // Le bandeau de palier.
+    if (S.tierT > 0) {
+      const a = Math.min(1, S.tierT * 3)
+      ctx.globalAlpha = a
+      ctx.fillStyle = col
+      ctx.fillRect(0, 100, GW, 30)
+      ctx.fillStyle = P.ink
+      ctx.fillRect(0, 100, GW, 2); ctx.fillRect(0, 128, GW, 2)
+      text5Scaled('×' + S.tierM + ' !', GW / 2, 104, P.ink, 2.2, {})
+      ctx.globalAlpha = 1
+    }
+    if (pointerTouch) drawTouchControls()
+    else {
+      drawGauge(4, GH - 10, 80, S.fart, S.fart >= CFG.fartMin)
+      text3(S.fart >= 1 ? 'PROUT MAX  ESPACE' : S.fart >= CFG.fartMin ? 'PROUT ' + Math.round(S.fart * 100) + '%  (PETIT)' : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : S.fart >= CFG.fartMin ? P.green : P.grey1)
+      if (S.lookTarget && !(S.tuto && S.tuto.waiting)) text5C('R : REGARDER ' + S.lookTarget.hint + ' ?', GW / 2, 30, P.yellow, { outline: P.ink })
+    }
     if (S.mode === 'run') text3('TUEUR : 320 M  (TOUJOURS)', GW - 4 - textWidth('TUEUR : 320 M  (TOUJOURS)'), GH - 12, P.pink)
-    if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 28, P.yellow, { outline: P.ink })
-    if (S.lookTarget) text5C((pointerTouch ? 'TAP À GAUCHE : REGARDER ' : 'R : REGARDER ') + S.lookTarget.hint + ' ?', GW / 2, 28, P.yellow, { outline: P.ink })
+    if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 42, P.yellow, { outline: P.ink })
+    if (S.tuto && S.mode === 'run') drawTuto()
     if (debug) text3(`SEED ${S.seed} · ENTS ${S.ents.length} · DENS ${density().toFixed(1)} · CAM ${S.camX | 0}`, 4, GH - 30, P.green)
+  }
+  /** Les commandes tactiles : joystick flottant à gauche, bouton de prout à droite, l'œil quand il y a une cible. */
+  function drawTouchControls() {
+    const ring = (x, y, r, fill, stroke, lw = 2) => {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2)
+      if (fill) { ctx.fillStyle = fill; ctx.fill() }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke() }
+    }
+    // Joystick : à sa position si le pouce est posé, sinon le rappel discret les premières secondes.
+    if (joy) {
+      const dx = Math.max(-26, Math.min(26, joy.x - joy.ox))
+      const dy = Math.max(-26, Math.min(26, joy.y - joy.oy))
+      ring(joy.ox, joy.oy, 40, 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.45)')
+      ring(joy.ox + dx, joy.oy + dy, 16, 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.85)')
+    } else if (S.t < 6 && S.mode === 'run') {
+      ring(62, 200, 40, 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.35)')
+      ring(62, 200, 16, 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.7)')
+      if (Math.floor(S.clock * 2) % 2) text3C('GLISSE, SANS LÂCHER', 62, 248, P.white)
+    }
+    // Le bouton de prout : blanc translucide, l'anneau de jauge en vert.
+    const bx = GW - 56, by = GH - 64
+    ring(bx, by, 27, null, 'rgba(255,255,255,0.25)', 5)
+    ctx.beginPath(); ctx.arc(bx, by, 27, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.fart); ctx.strokeStyle = S.fart >= 1 && Math.floor(S.clock * 6) % 2 ? P.yellow : S.fart >= CFG.fartMin ? P.green : P.greenM; ctx.lineWidth = 5; ctx.stroke()
+    const grow = S.fart >= 1 ? 2 : 0
+    ring(bx, by, 21 + grow, 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.85)')
+    text5C('PROUT', bx, by - 6, P.white, { outline: P.ink })
+    text3C(Math.round(S.fart * 100) + ' %', bx, by + 6, P.white)
+    // L'œil « regarder », seulement quand il y a une cible.
+    if (S.lookTarget) {
+      ring(LOOK_BTN.x, LOOK_BTN.y, LOOK_BTN.r, 'rgba(254,231,97,0.4)', 'rgba(254,231,97,0.9)')
+      ctx.fillStyle = P.ink; ctx.beginPath(); ctx.ellipse(LOOK_BTN.x, LOOK_BTN.y - 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = P.yellow; ctx.beginPath(); ctx.arc(LOOK_BTN.x, LOOK_BTN.y - 2, 2.5, 0, Math.PI * 2); ctx.fill()
+      text3C('REGARDER ' + S.lookTarget.hint, LOOK_BTN.x, LOOK_BTN.y + 22, P.yellow)
+    }
+  }
+  /** Le panneau du tutoriel, avec sa flèche et la zone surlignée. */
+  function drawTuto() {
+    const tu = S.tuto
+    const cam = S.camX
+    const callout = (title, l1, l2, col = P.yellow) => {
+      const w = 220
+      ctx.fillStyle = P.ink; ctx.fillRect(GW / 2 - w / 2 - 2, 34, w + 4, 44)
+      ctx.fillStyle = P.slateD; ctx.fillRect(GW / 2 - w / 2, 36, w, 40)
+      text5C(title, GW / 2, 40, col, {})
+      text3C(l1, GW / 2, 56, P.grey1)
+      if (l2) text3C(l2, GW / 2, 66, P.grey2)
+    }
+    const arrow = (x, y0, y1) => { ctx.fillStyle = P.yellow; ctx.fillRect(x - 1, y0, 3, y1 - y0); ctx.fillRect(x - 7, y1 - 6, 15, 3); ctx.fillRect(x - 4, y1 - 3, 9, 3); ctx.fillRect(x - 1, y1, 3, 2) }
+    if (tu.waiting) {
+      if (tu.step === 1 && tu.target) {
+        const tx = tu.target.x - cam
+        ctx.fillStyle = 'rgba(254,231,97,0.22)'; ctx.fillRect(tx - 30, tu.target.y - 36, 60, 70)
+        ctx.fillStyle = P.yellow; ctx.fillRect(tx - 30, tu.target.y - 36, 60, 1); ctx.fillRect(tx - 30, tu.target.y + 33, 60, 1)
+        callout('FRÔLE-LE SANS LE TOUCHER', pointerTouch ? 'GLISSE LE JOYSTICK POUR PASSER DANS LA ZONE JAUNE' : 'PASSE DANS LA ZONE JAUNE AVEC HAUT / BAS', 'LE JEU RALENTIT POUR TON PREMIER FRÔLAGE')
+        arrow(Math.max(40, Math.min(GW - 40, tx)), 80, tu.target.y - 40)
+      } else if (tu.step === 2) {
+        callout('TROIS DEVANT TOI : PÈTE !', pointerTouch ? 'APPUIE SUR LE BOUTON PROUT' : 'ESPACE  ·  ÇA PROPULSE ET ÇA SOUFFLE', 'CHAQUE PERSONNE SOUFFLÉE RAPPORTE', P.green)
+        if (pointerTouch) arrow(GW - 56, 82, GH - 100)
+        else { ctx.fillStyle = P.yellow; ctx.fillRect(0, GH - 26, 100, 1); ctx.fillRect(0, GH - 26, 1, 26); ctx.fillRect(99, GH - 26, 1, 26); arrow(50, 82, GH - 30) }
+      } else if (tu.step === 3) {
+        callout('REGARDE-LA !', pointerTouch ? 'APPUIE SUR L\'ŒIL JAUNE' : 'APPUIE SUR R PENDANT QU\'ELLE EST DEVANT', 'ÇA RAPPORTE GROS, MAIS LES CONTRÔLES S\'INVERSENT')
+        if (S.roller && !S.roller.gone) arrow(Math.max(40, Math.min(GW - 40, S.roller.x - cam)), 80, S.roller.y - 36)
+      }
+      text3C(pointerTouch ? 'TAP LONG : PASSER LE TUTORIEL' : 'ENTRÉE : PASSER LE TUTORIEL', GW / 2, GH - 8, P.grey2)
+      text3('RALENTI', 6, 36, P.cyan)
+    } else if (tu.doneT > 0) {
+      const msg = tu.step === 1 ? '+1 COMBO !' : tu.step === 2 ? 'ET VOILÀ !' : tu.missed ? 'RATÉ, CE SERA POUR LA PROCHAINE' : 'BONUS !'
+      text5Scaled(msg, GW / 2, 44, tu.missed ? P.grey1 : P.green, 2, { outline: P.ink })
+    }
   }
 
   /** Une bulle de dialogue en pixel, la pointe vers le bas, centrée en (cx, y bas). */
@@ -1081,21 +1273,48 @@ export function create(canvas) {
     text3(text, x + 4, top + 3, P.ink)
   }
 
+  /** L'écran titre : une idée, trois gestes, un bouton. */
+  function drawTitle() {
+    ctx.fillStyle = 'rgba(24,20,37,0.6)'
+    ctx.fillRect(0, 0, GW, GH)
+    ctx.drawImage(LOGO, Math.round(GW / 2 - LOGO.width / 2), 8)
+    text3C('VOUS INCARNEZ SERGE KARAMAZOV. AUCUN LIEN, FILS UNIQUE.', GW / 2, 40, P.grey1)
+    const panel = (x, y, w, h, fill = P.slateD) => { ctx.fillStyle = P.ink; ctx.fillRect(x - 2, y - 2, w + 4, h + 4); ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); ctx.fillStyle = P.slate; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y, 1, h) }
+    panel(20, 56, 440, 112)
+    text5C("LE COMBO, C'EST TOUT LE JEU", GW / 2, 60, P.yellow, {})
+    const f = Math.floor(S.clock * 8) % 4
+    const cards = [
+      { x: 30, title: 'FRÔLE', key: pointerTouch ? 'JOYSTICK' : 'HAUT / BAS', what: 'PASSE TOUT PRÈS', bonus: '+1 COMBO', draw: (cx, cy) => { blit(SPR.ped.jeune[0][Math.floor(S.clock * 6) % 2], cx - 6, cy, true); blit(SPR.serge[f], cx + 12, cy + 2); ctx.fillStyle = P.yellow; ctx.fillRect(cx + 2, cy - 24, 2, 26) } },
+      { x: 176, title: 'PÈTE', key: pointerTouch ? 'BOUTON' : 'ESPACE', what: 'SOUFFLE LA FOULE', bonus: '+1 COMBO  +POINTS', draw: (cx, cy) => { blit(SPR.gas[Math.floor(S.clock * 4) % 4], cx - 18, cy - 10); blit(SPR.sergeBoost[f], cx + 4, cy + 2); blitRot(SPR.ped.touriste[1][1], cx - 10, cy - 22 - Math.abs(Math.sin(S.clock * 3)) * 6, -0.8 + Math.sin(S.clock * 3) * 0.3) } },
+      { x: 322, title: 'REGARDE', key: pointerTouch ? "L'ŒIL" : 'R', what: 'LES STARS QUI PASSENT', bonus: '+2 COMBO  BONUS ×', draw: (cx, cy) => { blit(SPR.roller[Math.floor(S.clock * 8) % 2], cx + 14, cy + 2); blit(SPR.sergeLook[1], cx - 10, cy + 2); if (Math.floor(S.clock * 2) % 2) text3('?!', cx - 2, cy - 30, P.yellow) } },
+    ]
+    for (const c of cards) {
+      panel(c.x, 74, 128, 88, P.ink)
+      c.draw(c.x + 64, 118)
+      text5C(c.title, c.x + 64, 77, P.white, {})
+      ctx.fillStyle = P.yellow; ctx.fillRect(c.x + 64 - textWidth5(c.key) / 2 - 3, 126, textWidth5(c.key) + 6, 11)
+      text5C(c.key, c.x + 64, 127, P.ink, {})
+      text3C(c.what, c.x + 64, 142, P.grey1)
+      text3C(c.bonus, c.x + 64, 152, P.green)
+    }
+    panel(20, 176, 440, 30)
+    text5('COMBO', 30, 184, P.grey1, {})
+    const tiers = [['×1', 0, P.white], ['×2', 5, P.yellow], ['×3', 10, P.cyan], ['×4', 15, P.orange], ['×5', 20, P.hot]]
+    tiers.forEach(([lab, n, col], i) => { const x = 80 + i * 76; text5(lab, x, 180, col, {}); text3(n + ' ESQUIVES', x, 194, P.grey2); for (let j = 0; j < 5; j++) { ctx.fillStyle = P.slate; ctx.fillRect(x + 22 + j * 7, 183, 5, 4) } })
+    text3C('UN CONTACT DIVISE LE COMBO PAR DEUX. 60 SECONDES, PUIS LE GRAND SAUT. SERGE COURT TOUT SEUL.', GW / 2, 212, P.grey1)
+    const on = Math.floor(S.introT * 2) % 2 === 0
+    ctx.fillStyle = on ? P.yellow : P.amber; ctx.fillRect(130, 226, 220, 24); ctx.fillStyle = P.ink; ctx.fillRect(130, 248, 220, 2); ctx.fillRect(348, 226, 2, 24)
+    text5Scaled(pointerTouch ? 'TAPOTE : COMMENCER' : 'ESPACE : COMMENCER', GW / 2, 230, P.ink, 1.6, {})
+    text3(audio.muted ? 'M : SON COUPÉ' : 'M : SON', 6, GH - 10, P.grey2)
+    text3(tutoWanted ? 'TUTORIEL AU DÉPART' : 'T : REVOIR LE TUTORIEL', 60, GH - 10, P.grey2)
+    if (best) text3('RECORD ' + best, GW - 10 - textWidth('RECORD ' + best), GH - 10, P.yellow)
+    text3('V2', GW - 12, GH - 20, P.grey3)
+  }
   function drawIntro() {
     const it = S.intro
     drawWorld()
     if (it.line < 0) {
-      // L'écran titre, par-dessus la scène figée.
-      ctx.fillStyle = 'rgba(24,20,37,0.45)'
-      ctx.fillRect(0, 0, GW, GH)
-      ctx.drawImage(LOGO, Math.round(GW / 2 - LOGO.width / 2), 24)
-      text3C('VOUS INCARNEZ SERGE KARAMAZOV. AUCUN LIEN, FILS UNIQUE.', GW / 2, 56, P.grey1)
-      if (S.introT > 0.5 && Math.floor(S.introT * 2) % 2 === 0) text5C(pointerTouch ? 'TAPOTE POUR COMMENCER' : 'ESPACE POUR COMMENCER', GW / 2, 186, P.yellow, { outline: P.ink })
-      text3C(pointerTouch ? 'GLISSE À GAUCHE : COULOIR · TAP À DROITE : PROUT · TAP À GAUCHE : REGARDER' : '↑↓ COULOIR · ←→ RECULER / AVANCER · ESPACE : PROUT · R : REGARDER', GW / 2, 220, P.grey1)
-      text3C('FRÔLE LES CANNOIS POUR LE COMBO. PÈTE DESSUS POUR LES ENVOYER SUR LA PLAGE. 90 SECONDES.', GW / 2, 232, P.grey2)
-      if (best) text3C('RECORD ' + best, GW / 2, 246, P.yellow)
-      text3('V1', GW - 12, GH - 10, P.grey3)
-      text3(audio.muted ? 'M : SON COUPÉ' : 'M : COUPER LE SON', 4, GH - 10, P.grey2)
+      drawTitle()
       return
     }
     // Le dialogue : une bulle au-dessus de celui qui parle.
@@ -1204,5 +1423,5 @@ export function create(canvas) {
   reset()
   requestAnimationFrame(frame)
 
-  return { press, release, tap, touchLane, get state() { return S }, reset, audio }
+  return { press, release, tap, tapAt, touchLane, joystick, get state() { return S }, reset, audio }
 }
