@@ -8,6 +8,7 @@
  */
 import { Pix, PAL, RAMPS, darker, shade, bayer } from './pixel.js'
 import { glyph3 } from './font.js'
+import { glyph5 } from './font5.js'
 
 const P = PAL
 const R = RAMPS
@@ -408,6 +409,40 @@ export function acteurSprite(frame) {
     a.ell(7, -33 + by, 4.5, 5.5, R.red, 0.1)
     a.px(5, -35 + by, P.pink)
     a.px(7, -27 + by, P.redD)
+  })
+}
+
+/* ---------- la femme au chapeau de paille, à côté de Simon ---------- */
+/*
+ * Chapeau de paille, cheveux bruns à frange, haut blanc à manches longues, gilet rayé marron,
+ * grand sac marron à l'épaule, collier, sourire. Elle regarde à droite.
+ */
+export function femmeChapeauSprite(frame) {
+  const STRAW = [P.clay, P.tan, P.sand, P.cream]
+  const lg = legend({ s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], M: [P.red], G: [R.hairBrown, 2], g: [R.hairBrown, 1], W: [P.white], w: [P.grey1], V: [R.wood, 2], v: [R.wood, 1], u: [P.plum], B: [R.wood, 2], b: [R.wood, 1], N: [P.yellow], C: [STRAW, 3], c: [STRAW, 2], d: [STRAW, 1] })
+  return sprite(20, 28, 10, 26, (a) => {
+    // Jupe longue beige, sandales.
+    a.shaded(-3, -8, 6, 7, STRAW)
+    a.rect(-3, -1, 2, 1, P.clay)
+    a.rect(1, -1, 2, 1, P.clay)
+    // Haut blanc à manches longues, gilet rayé marron par-dessus.
+    a.map(['WVvWvW', 'WVvWvW', 'WVvWvW', 'WVvWvW', 'WvvWvW', 'wvvwvw'], lg, -3, -14)
+    a.rect(-2, -14, 1, 1, P.yellow) // le collier
+    a.rect(1, -14, 1, 1, P.yellow)
+    a.shaded(-5, -13, 1, 5, R.white)
+    a.shaded(4, -13, 1, 3, R.white)
+    a.px(4, -10, R.skinPale[2])
+    a.px(-5, -8, R.skinPale[2])
+    // Le grand sac à l'épaule gauche.
+    a.rect(-8, -11, 4, 6, R.wood[1])
+    a.rect(-8, -11, 4, 1, R.wood[2])
+    a.rect(-7, -14, 1, 3, R.wood[1])
+    // Tête : frange brune, sourire, et le chapeau de paille à large bord.
+    a.map(['.GGGg.', 'GsSSzg', 'GsEsz.', 'gzMMzg', '.zssz.'], lg, -3, -20 + (frame ? 0 : 0))
+    a.map(['...cCCc...', '..cCCCCc..', 'dcccccccdd'], lg, -5, -24)
+    a.rect(-5, -21, 10, 1, STRAW[1])
+    a.px(-2, -22, P.brown) // le ruban
+    a.px(3, -22, P.brown)
   })
 }
 
@@ -838,6 +873,36 @@ export function tapetteSprite() {
   })
 }
 
+/* ---------- O D I L E, peint sur le trottoir ---------- */
+export function odileSprite() {
+  // Les cinq lettres, en police 5×7 agrandie ×4, espacées, en peinture rouge qui bave un peu.
+  const letters = ['O', 'D', 'I', 'L', 'E']
+  const scale = 4
+  const gap = 14
+  const glyphs = letters.map((ch) => glyph5(ch))
+  const w = glyphs.reduce((a, g) => a + g.w * scale, 0) + gap * (letters.length - 1)
+  const h = 7 * scale
+  return sprite(w + 4, h + 4, Math.round(w / 2) + 2, h + 2, (a) => {
+    let x = -Math.round(w / 2)
+    glyphs.forEach((g) => {
+      g.rows.slice(2, 9).forEach((row, j) => {
+        for (let i = 0; i < row.length; i++) {
+          if (row[i] !== '#') continue
+          for (let dy = 0; dy < scale; dy++)
+            for (let dx = 0; dx < scale; dx++) {
+              const px = x + i * scale + dx
+              const py = -h + j * scale + dy
+              a.px(px, py, bayer(px, py) < 0.15 ? P.redD : (dx === 0 || dy === 0) ? P.red : P.redD)
+            }
+          // La peinture qui coule sous les traits horizontaux.
+          if (j === 6 && (i + x) % 3 === 0) a.px(x + i * scale + 1, 2, P.redD)
+        }
+      })
+      x += g.w * scale + gap
+    })
+  }, { outline: false })
+}
+
 /* ---------- effets ---------- */
 export function boomSprite(frame, big = false) {
   const r = (big ? 10 : 6) + frame * (big ? 5 : 3)
@@ -948,10 +1013,12 @@ export function buildSprites(C) {
   S.mimeShocked = mimeSprite(0, { shocked: true })
   S.cascades = cascadesSprite()
   S.tapette = tapetteSprite()
+  S.odile = odileSprite()
   S.banderole = banderoleSprite('MIMES EN COLÈRE')
   S.roller = [0, 1].map(rollerSprite)
   S.martine = [0, 1].map(martineSprite)
   S.acteur = [0, 1].map(acteurSprite)
+  S.femme = [0, 1].map(femmeChapeauSprite)
   S.mamie = [0, 1].map(mamieSprite)
   S.mamieLying = lying(mamieSprite(0))
   S.mamieSplat = mamieSplatSprite()

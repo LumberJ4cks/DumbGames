@@ -37,7 +37,7 @@ export const CFG = {
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 24,        // px vertical pour compter une esquive
   score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100 },
-  rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30,
+  rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30, odileAt: 62,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
 }
 
@@ -111,7 +111,7 @@ export function create(canvas) {
       combo: 0, bestCombo: 0, score: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
       roller: null, lookWindow: 0, invertT: 0, looked: false,
-      mamie: null, truck: null, mamieDone: false, acteur: null,
+      mamie: null, truck: null, mamieDone: false, acteur: null, odile: false,
       shake: 0, flash: 0,
       jump: null, result: null,
     }
@@ -292,6 +292,8 @@ export function create(canvas) {
     if (!S.acteur && S.t >= CFG.acteurAt) {
       S.acteur = { type: 'acteur', k: 'ACTEUR', x: S.camX + GW + 30, y: CFG.sidewalkTop + 6, w: 10, h: 18, solid: true, state: 'walk', vx: 0, vy: 0, phase: 0, bubbleT: 0, bubble: '', hailed: false }
       S.ents.push(S.acteur)
+      // La femme au chapeau de paille, à côté de lui.
+      S.ents.push({ type: 'femme', k: 'FEMME', x: S.acteur.x - 18, y: S.acteur.y + 2, w: 10, h: 18, solid: true, state: 'walk', vx: 0, vy: 0, phase: 0 })
     }
     if (S.acteur && !S.acteur.hailed && S.acteur.x - S.serge.x < 70) {
       S.acteur.hailed = true
@@ -299,6 +301,11 @@ export function create(canvas) {
       S.acteur.bubbleT = 2.5
     }
     if (S.acteur) S.acteur.bubbleT = Math.max(0, S.acteur.bubbleT - dt)
+    // O D I L E, peint sur les dalles.
+    if (!S.odile && S.t >= CFG.odileAt) {
+      S.odile = true
+      S.ents.push({ type: 'odile', x: S.camX + GW + 120, y: 150 })
+    }
     // La mamie et son caddie : à 40 s, zigzague en haut du trottoir ; le camion l'écrase après.
     if (!S.mamie && S.t >= CFG.mamieAt) {
       S.mamie = { type: 'ped', k: 'MAMIE + CADDIE', x: S.camX + GW + 20, y: CFG.sidewalkTop + 12, w: 26, h: 16, phase: 0, col: '#e0e0e0', vx: -12, vy: 40, state: 'walk', solid: true, mamie: true }
@@ -418,7 +425,7 @@ export function create(canvas) {
       const e = S.ents[i]
       if (e.type === 'boom') { e.t += dt; if (e.t > 0.6) S.ents.splice(i, 1); continue }
       if (e.x < S.camX - 120) { S.ents.splice(i, 1); continue }
-      if (e.type === 'scorch') continue
+      if (e.type === 'scorch' || e.type === 'odile') continue
       if (e.type === 'debris') {
         e.t += dt
         if (e.z > 0 || e.vz > 0) { e.x += e.vx * dt; e.y += e.vy * dt; e.vz -= 320 * dt; e.z = Math.max(0, e.z + e.vz * dt); if (e.z === 0) e.vz = 0 }
@@ -657,9 +664,10 @@ export function create(canvas) {
 
     // Marques au sol d'abord.
     for (const e of S.ents) if (e.type === 'scorch') blit(SPR.scorch, e.x - cam, e.y)
+    for (const e of S.ents) if (e.type === 'odile') blit(SPR.odile, e.x - cam, e.y)
 
     // Tout ce qui a des pieds, trié par profondeur (y), Serge et le tueur compris.
-    const list = S.ents.filter((e) => e.type !== 'scorch').map((e) => ({ y: e.y, e }))
+    const list = S.ents.filter((e) => e.type !== 'scorch' && e.type !== 'odile').map((e) => ({ y: e.y, e }))
     list.push({ y: S.serge.y, serge: true })
     if (S.mode !== 'jump' && S.killer.x > cam - 40) list.push({ y: S.killer.y, killer: true })
     if (S.roller && !S.roller.gone) list.push({ y: S.roller.y, roller: true })
@@ -762,6 +770,14 @@ export function create(canvas) {
     }
     if (e.type === 'furn') {
       blit(SPR.furn[e.k], x, e.y)
+      return
+    }
+    if (e.type === 'femme') {
+      if (e.state === 'walk') {
+        blit(SPR.shadow.m, x, e.y)
+        blit(SPR.femme[0], x, e.y)
+      } else if (e.state === 'fly') blitRot(SPR.femme[0], x, e.y - e.z, e.spin * e.z * 0.02)
+      else blit(SPR.pedLying.vieux[2], x, e.y)
       return
     }
     if (e.type === 'acteur') {
