@@ -343,7 +343,7 @@ export function create(canvas) {
     if (a in held) held[a] = true
     if (S.mode === 'intro' && (a === 'start' || a === 'fart' || a === 'look')) { nextLine(); return }
     if (S.mode === 'run' && a === 'start' && S.tuto) { tutoFinish(); return }
-    if (S.mode === 'intro' && a === 'tuto') { tutoWanted = true; try { localStorage.removeItem('consDeMime:tuto') } catch {}; audio.click(); return }
+    if (S.mode === 'intro' && a === 'tuto') { if (S.intro.line < 0) { tutoWanted = true; nextLine() } return }
     if (S.mode === 'over' && a === 'start') { reset(); return }
     if (S.mode === 'over' && (a === 'fart' || a === 'look') && S.overT > 1.5) { reset(); return }
     if (a === 'fart') doFart()
@@ -377,10 +377,15 @@ export function create(canvas) {
   }
   /** Le bouton « regarder » tactile : vrai si (x, y) tombe dessus. */
   const LOOK_BTN = { x: GW - 100, y: GH - 104, r: 18 }
+  const TUTO_BTN = { x: 318, y: 226, w: 132, h: 24 }
   function tapAt(x, y) {
     pointerTouch = true
     audio.resume()
-    if (S.mode === 'intro') { nextLine(); return }
+    if (S.mode === 'intro') {
+      if (S.intro.line < 0 && x >= TUTO_BTN.x && x <= TUTO_BTN.x + TUTO_BTN.w && y >= TUTO_BTN.y && y <= TUTO_BTN.y + TUTO_BTN.h) tutoWanted = true
+      nextLine()
+      return
+    }
     if (S.mode === 'over') { if (S.overT > 1.5) reset(); return }
     if (S.lookTarget && Math.hypot(x - LOOK_BTN.x, y - LOOK_BTN.y) < LOOK_BTN.r + 8) { doLook(); return }
     if (x >= GW * 0.4) doFart()
@@ -1300,11 +1305,17 @@ export function create(canvas) {
     const tiers = [['×1', 0, P.white], ['×2', 5, P.yellow], ['×3', 10, P.cyan], ['×4', 15, P.orange], ['×5', 20, P.hot]]
     tiers.forEach(([lab, n, col], i) => { const x = 80 + i * 76; text5(lab, x, 180, col, {}); text3(n + ' ESQUIVES', x, 194, P.grey2); for (let j = 0; j < 5; j++) { ctx.fillStyle = P.slate; ctx.fillRect(x + 22 + j * 7, 183, 5, 4) } })
     text3C('UN CONTACT DIVISE LE COMBO PAR DEUX. 60 SECONDES, PUIS LE GRAND SAUT. SERGE COURT TOUT SEUL.', GW / 2, 212, P.grey1)
+    // Deux boutons : le gros pour jouer tout de suite, le petit pour jouer avec le tutoriel.
     const on = Math.floor(S.introT * 2) % 2 === 0
-    ctx.fillStyle = on ? P.yellow : P.amber; ctx.fillRect(130, 226, 220, 24); ctx.fillStyle = P.ink; ctx.fillRect(130, 248, 220, 2); ctx.fillRect(348, 226, 2, 24)
-    text5Scaled(pointerTouch ? 'TAPOTE : COMMENCER' : 'ESPACE : COMMENCER', GW / 2, 230, P.ink, 1.6, {})
+    ctx.fillStyle = on ? P.yellow : P.amber; ctx.fillRect(30, 226, 280, 24); ctx.fillStyle = P.ink; ctx.fillRect(30, 248, 280, 2); ctx.fillRect(308, 226, 2, 24)
+    text5Scaled(pointerTouch ? 'TAPOTE : COMMENCER' : 'ESPACE : COMMENCER', 170, 230, P.ink, 1.6, {})
+    const tb = TUTO_BTN
+    ctx.fillStyle = P.ink; ctx.fillRect(tb.x - 2, tb.y - 2, tb.w + 4, tb.h + 4)
+    ctx.fillStyle = P.slateD; ctx.fillRect(tb.x, tb.y, tb.w, tb.h)
+    ctx.fillStyle = P.slate; ctx.fillRect(tb.x, tb.y, tb.w, 1); ctx.fillRect(tb.x, tb.y, 1, tb.h)
+    text5C(pointerTouch ? 'TUTORIEL' : 'T : TUTORIEL', tb.x + tb.w / 2, tb.y + 3, P.white, {})
+    text3C('3 GESTES, 20 SECONDES', tb.x + tb.w / 2, tb.y + 15, P.grey1)
     text3(audio.muted ? 'M : SON COUPÉ' : 'M : SON', 6, GH - 10, P.grey2)
-    if (tutoWanted) text3('TUTORIEL AU DÉPART', 60, GH - 10, P.grey2)
     if (best) text3('RECORD ' + best, GW - 10 - textWidth('RECORD ' + best), GH - 10, P.yellow)
     text3('V2', GW - 12, GH - 20, P.grey3)
   }
