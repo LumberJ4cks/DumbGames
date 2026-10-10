@@ -31,6 +31,26 @@ Observé sur une capture de jeu et dans `barricasse/sprites.js` :
 8. **Lecture d'abord** : les silhouettes sont simples, les aplats larges, un seul détail par
    objet (l'autocollant du frigo, la rayure du canapé).
 
+### Le CRS, modèle de construction des joueurs
+
+Le CRS de Barricasse est le personnage qui marche le mieux, et sa recette est simple :
+
+- **Une carte de pixels écrite à la main**, 20 × 23, une lettre par pixel, légende lettre →
+  couleur. Chaque pixel est voulu. Rien n'est calculé.
+- **Deux tons par matière, plus un point de lumière** : casque `slateD`/`slate` avec deux
+  pixels `grey2` en haut à gauche, corps `slateD`/`slate`, visage `skinL`/`skin`. La rampe de
+  4 existe, mais sur une zone on en pose deux ; le troisième fait l'arête, le quatrième le
+  reflet. C'est ça qui donne le côté net et massif.
+- **Une silhouette rectangulaire** : casque en dalle, épaules carrées, jambes en deux colonnes,
+  bouclier en boîte. Les seuls arrondis sont des coins coupés d'un pixel.
+- **Un accent par personnage** : la visière `cyan`/`blue`, la bande blanche sur le torse, la
+  boucle `amber` de la ceinture. Trois points de couleur vive sur un personnage sombre : il se
+  lit de loin.
+- **Le bob d'un pixel** pour l'animation d'attente, les jambes redessinées pour la marche.
+
+Les joueurs de Carton Plein suivent cette recette, à 32 px au lieu de 23, avec les maillots à
+la place de l'accent.
+
 Ce qu'on **ne reprend pas** : la taille des personnages (16×22, tête de 6 px). Pour ce jeu il
 faut lire les visages et les cartons : 32 px, tête Kunio.
 
@@ -127,17 +147,20 @@ foncé, à droite et en dessous de la brique de devant.
 
 ---
 
-## 4. Méthode d'écriture : carte de matières + éclairage automatique
+## 4. Méthode d'écriture : deux calques écrits à la main
 
-C'est le cœur de la méthode. On sépare **ce qui est dessiné à la main** (la silhouette, pose
-par pose) de **ce qui est calculé** (les tons), pour que les onze Français, le gardien,
-l'arbitre et les remplaçants de fortune partagent les mêmes poses sans redessin.
+C'est le cœur de la méthode, calée sur le CRS : **chaque pixel est décidé à la main**. Ce qu'on
+ajoute au CRS, c'est la possibilité de changer de maillot et de peau sans redessiner, parce
+qu'il y a onze Français, un gardien, un arbitre, un Paraguayen et des remplaçants de fortune
+qui partagent les mêmes poses.
 
-### 4.1 La carte de matières
+Pour ça, une pose n'est pas une carte mais **deux calques alignés**, de même taille
+(28 × 36 : 24 × 32 plus marges) :
 
-Chaque pose est une **carte ASCII** de 28 × 36 (24 × 32 plus marges), une lettre par matière,
-comme le CRS de Barricasse, mais la lettre ne désigne pas une couleur : elle désigne une
-**matière** résolue au moment du rendu par le look et le kit du joueur.
+### 4.1 Calque A : les matières
+
+Une lettre par pixel, qui dit **de quoi** est fait le pixel, pas sa couleur. La couleur est
+résolue au rendu par le look (peau, cheveux) et le kit (maillot, short, chaussettes).
 
 | Lettre | Matière | Résolue par |
 |---|---|---|
@@ -152,40 +175,45 @@ comme le CRS de Barricasse, mais la lettre ne désigne pas une couleur : elle d�
 | `M` | bouche | fixe |
 | `.` | transparent | |
 
-Exemple, la tête de face (14 px, rangées 31 à 21), sans ombrage :
+### 4.2 Calque B : les tons
+
+Un chiffre par pixel, de `1` (ombre) à `4` (lumière), qui dit **quel ton de la rampe** de sa
+matière prend ce pixel. C'est le calque qui fait le CRS : deux tons dominants, les arêtes en
+`1`, les points de lumière en `4`, et c'est l'auteur qui les place.
+
+Le code **propose** un calque B de départ en appliquant la règle de la brique (§3) à chaque
+zone du calque A : rangée du haut `4`, colonne gauche `3`, droite et bas `1`, intérieur `2`.
+L'auteur **corrige** ensuite à la main, pixel par pixel, et c'est le calque corrigé qui est
+versionné. Le code ne recalcule jamais un calque B existant.
+
+Exemple, la tête de face (14 px, rangées 31 à 21), les deux calques côte à côte :
 
 ```
-..HHHHHHHHHHHH..
-.HHHHHHHHHHHHHH.
-.HHHHHHHHHHHHHH.
-.HHHHHHHHHHHHHH.
-.HSHSHSHSHSHSHH.     <- frange en zigzag
-.HSSSSSSSSSSSSH.     <- pattes
-.HSSSSSSSSSSSSH.
-..SSEESSSSEESS..
-..SSEESSSSEESS..
-..SSSSSSSSSSSS..
-..SSSSSMMSSSSS..
-...SSSSSSSSSS...
+matières            tons
+..HHHHHHHHHHHH..    ..444444444443..
+.HHHHHHHHHHHHHH.    .32222222222221.
+.HHHHHHHHHHHHHH.    .32222222222221.
+.HHHHHHHHHHHHHH.    .32222222222221.
+.HSHSHSHSHSHSHH.    .33333333333331.    <- frange en zigzag, peau ton 3
+.HSSSSSSSSSSSSH.    .23333333333221.    <- pattes
+.HSSSSSSSSSSSSH.    .23333333333221.
+..SSEESSSSEESS..    ..331133331132..
+..SSEESSSSEESS..    ..331133331132..
+..SSSSSSSSSSSS..    ..333333333322..
+..SSSSSMMSSSSS..    ..333321123322..
+...SSSSSSSSSS...    ...2222222221...
 ```
 
-### 4.2 L'éclairage automatique
+Sur la peau, deux tons (`3` aplat, `2` côté droit et menton) et des `1` seulement sous les
+yeux et à l'arête : exactement le visage du CRS.
 
-Le rendu parcourt la carte et, **pour chaque zone connexe d'une même matière**, applique la
-règle de la brique (§3) : il trouve pour chaque pixel s'il est sur le bord haut, gauche,
-droit ou bas de sa zone, et choisit le ton. Les coins sont coupés par la carte elle-même
-(on y met des `.`), pas par le code.
+### 4.3 Calque C : les détails
 
-Résultat : on dessine des silhouettes plates, on obtient des briques éclairées. Changer le
-kit, c'est changer la rampe derrière `J`, `R`, `C`. Changer la pose, c'est écrire une carte.
-
-### 4.3 La couche de détails
-
-Certains pixels doivent être décidés à la main et échapper à l'éclairage : rayures du
+Certains pixels ont une couleur fixe quel que soit le kit : rayures du
 maillot Paraguay, numéro, bandeau, col de l'arbitre, reflets. Ils vont dans une **seconde
 carte** de même taille, avec des lettres explicites `ton` : `j1`…`j4` n'étant pas écrivables
 en une lettre, on utilise une légende locale par carte (`a`, `b`, `c`… → couleur précise),
-exactement comme Barricasse. Cette couche est posée après l'éclairage, avant le contour.
+exactement comme Barricasse. Ce calque est posé après la résolution des deux premiers, avant le contour.
 
 ### 4.4 Le contour
 
@@ -330,7 +358,7 @@ avec la capture de Barricasse. On ne passe à l'étape suivante que si la préc�
 | Étape | Planche | Ce qu'on valide | Critère |
 |---|---|---|---|
 | 1 | `01-palette.png` | Les rampes du §2 en pavés, plus la version en gris | Les trois maillots distincts en gris |
-| 2 | `02-brique.png` | Un seul Français, idle de face, par la méthode §4 | « On dirait un meuble de Barricasse avec une tête » |
+| 2 | `02-brique.png` | Un seul Français, idle de face, calques A/B/C écrits à la main, avec le CRS à côté | Posé à côté du CRS de Barricasse, même famille |
 | 3 | `03-kits.png` | Le même, en France, Paraguay, arbitre, gardien, staff | Lecture à 1:1 sur `greenD` |
 | 4 | `04-looks.png` | Onze Français différents, idle | Reconnaissables sans numéro |
 | 5 | `05-orientations.png` | Face, dos, profil, un look | Le numéro dans le dos se lit |

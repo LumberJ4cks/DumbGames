@@ -468,9 +468,10 @@ avant de produire des images. Résumé des décisions prises à ce stade :
 - **Palette** : Endesga 32, **4 tons par matière** (ombre, base, aplat clair, lumière), le
   ton 1 réservé aux arêtes et au contour, le ton 4 aux faces du dessus. Six tons pour le feu,
   seule exception.
-- **Méthode d'écriture** : une carte ASCII de matières par pose (lettre = matière, pas
-  couleur), l'éclairage de brique calculé automatiquement par zone, une couche de détails à la
-  main (rayures, numéro, bandeau), puis le contour. Les onze Français, le n°4, l'arbitre et les
+- **Méthode d'écriture**, calée sur le CRS de Barricasse : chaque pixel décidé à la main, en
+  deux calques alignés par pose (matières en lettres, tons en chiffres de 1 à 4), le code ne
+  proposant qu'un premier calque de tons que l'auteur corrige ; un calque de détails (rayures,
+  numéro, bandeau), puis le contour. Les onze Français, le n°4, l'arbitre et les
   remplaçants partagent les mêmes cartes.
 - **Pelouse** sombre (`greenD`/`greenM`), lignes en gris clair, pour que les maillots portent.
 - **FUEGO** : une vraie flamme derrière le joueur, façon aura Dragon Ball Z, goutte renversée
