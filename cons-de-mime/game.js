@@ -309,7 +309,7 @@ export function create(canvas) {
   function doLook() {
     if (S.mode !== 'run' || !S.lookTarget) return
     const t = S.lookTarget
-    S.lookedGags[t.id] = true
+    S.lookedGags[t.id] = t.pts * mult()
     if (t.id === 'roller') S.looked = true
     S.lookTarget = null
     S.lookWindow = 0
@@ -572,8 +572,8 @@ export function create(canvas) {
    * de mimes avec banderole. Serge grimpe sur le kiosque, hurle « Barrez-vous, cons de mime ! »,
    * et saute par-dessus. Plus le score est haut, plus il va loin.
    */
-  const KIOSK_W = 102 // kiosque + roue + rampe
-  const KIOSK_BODY = 62
+  const KIOSK_W = 102 // rampe + roue, puis kiosque
+  const KIOSK_RAMP = 40
   const KIOSK_H = 42
   function jumpMeters() {
     const m = 2 + S.score / 1000 + S.bestCombo * 0.08 + S.fart * 0.5
@@ -613,11 +613,18 @@ export function create(canvas) {
       sg.x += 170 * dt
       sg.y += (j.ky - sg.y) * Math.min(1, dt * 4)
       follow(sg.x - CFG.sergeHomeX, 8)
-      if (sg.x >= j.kx + KIOSK_BODY) { j.phase = 'climb'; j.t = 0; sg.y = j.ky; audio.climb() }
+      if (sg.x >= j.kx) { j.phase = 'climb'; j.t = 0; sg.y = j.ky; audio.climb() }
     } else if (j.phase === 'climb') {
-      const p = Math.min(1, j.t / 0.6)
-      sg.x = j.kx + KIOSK_BODY + p * (KIOSK_W - KIOSK_BODY - 6)
+      // La rampe : il monte sur la roue, puis traverse le toit du kiosque jusqu'au bout droit.
+      const p = Math.min(1, j.t / 0.5)
+      sg.x = j.kx + p * KIOSK_RAMP
       j.z = p * KIOSK_H
+      follow(sg.x - 160, 8)
+      if (p >= 1) { j.phase = 'roof'; j.t = 0 }
+    } else if (j.phase === 'roof') {
+      const p = Math.min(1, j.t / 0.45)
+      sg.x = j.kx + KIOSK_RAMP + p * (KIOSK_W - KIOSK_RAMP - 8)
+      j.z = KIOSK_H
       follow(sg.x - 160, 8)
       if (p >= 1) { j.phase = 'shout'; j.t = 0; S.shake = 0.15; audio.duck(0.35); audio.shout() }
     } else if (j.phase === 'shout') {
@@ -1095,9 +1102,9 @@ export function create(canvas) {
     if (t < 0.3) return
     const j = S.jump
     const px = 84
-    const py = 34
+    const py = 20
     const pw = 312
-    const ph = 204
+    const ph = 232
     ctx.fillStyle = P.ink
     ctx.fillRect(px - 2, py - 2, pw + 4, ph + 4)
     ctx.fillStyle = P.slateD
@@ -1109,28 +1116,30 @@ export function create(canvas) {
     const rows = [
       ['SAUT EN LONGUEUR', j.meters.toFixed(2).replace('.', ',') + ' M', '+' + j.bonus],
       ['MEILLEUR COMBO', '×' + (S.bestCombo >= 20 ? 5 : S.bestCombo >= 15 ? 4 : S.bestCombo >= 10 ? 3 : S.bestCombo >= 5 ? 2 : 1), S.bestCombo + ' ESQUIVES'],
-      ['LA FILLE EN JAUNE', S.looked ? 'REGARDÉE' : 'RATÉE', ''],
-      ['REGARDS', ['simon', 'odile', 'biales', 'mamie'].filter((k) => S.lookedGags[k]).length + ' / 4', ''],
-      ['LA MAMIE', S.mamieDone && S.mamie.state === 'splat' ? 'ÉCRASÉE' : 'ÉPARGNÉE', ''],
+      ['LA JOLIE FILLE EN ROLLER', S.lookedGags.roller ? 'REGARDÉE' : 'RATÉE', S.lookedGags.roller ? '+' + S.lookedGags.roller : ''],
+      ['SIMON ET ODILE', S.lookedGags.simon ? 'REGARDÉ' : 'RATÉ', S.lookedGags.simon ? '+' + S.lookedGags.simon : ''],
+      ['O.D.I.L.E, UN MUSICIEN ?', S.lookedGags.odile ? 'LUES' : 'RATÉES', S.lookedGags.odile ? '+' + S.lookedGags.odile : ''],
+      ['COMMISSAIRE BIALÈS', S.lookedGags.biales ? 'REGARDÉ' : 'RATÉ', S.lookedGags.biales ? '+' + S.lookedGags.biales : ''],
+      ['LA MAMIE ET SON CADDIE', (S.lookedGags.mamie ? 'REGARDÉE, ' : '') + (S.mamieDone && S.mamie.state === 'splat' ? 'ÉCRASÉE' : 'ÉPARGNÉE'), S.lookedGags.mamie ? '+' + S.lookedGags.mamie : ''],
       ['LE TUEUR', 'DANS LA TAPETTE', ''],
     ]
     rows.forEach((r, i) => {
-      const y = py + 24 + i * 12
-      if (t > 0.4 + i * 0.15) {
+      const y = py + 22 + i * 11
+      if (t > 0.3 + i * 0.12) {
         text5(r[0], px + 12, y, P.grey1, {})
         text5(r[1], px + 212 - textWidth5(r[1]), y, P.white, {})
         text5(r[2], px + pw - 12 - textWidth5(r[2]), y, P.yellow, {})
       }
     })
     if (t > 1.3) {
-      text5C('SCORE ' + S.score, GW / 2, py + 104, P.yellow, { outline: P.ink })
-      if (S.score >= best && S.score > 0) text5C('RECORD !', GW / 2, py + 118, P.green, {})
+      text5C('SCORE ' + S.score, GW / 2, py + 124, P.yellow, { outline: P.ink })
+      if (S.score >= best && S.score > 0) text5C('RECORD !', GW / 2, py + 136, P.green, {})
     }
     if (t > 1.8) {
       // Le tampon : il tombe, rebondit, reste de travers.
       const s = Math.max(1, 1.8 - (t - 1.8) * 5)
       ctx.save()
-      ctx.translate(GW / 2, py + 152)
+      ctx.translate(GW / 2, py + 172)
       ctx.rotate(-0.06)
       ctx.scale(s, s)
       ctx.globalAlpha = Math.min(1, (t - 1.8) * 6)
@@ -1141,7 +1150,7 @@ export function create(canvas) {
       ctx.drawImage(LOGO2, Math.round(-LOGO2.width / 2), -6)
       ctx.restore()
     }
-    if (t > 2.5 && Math.floor(t * 2) % 2 === 0) text3C(pointerTouch ? 'TAPOTE POUR REJOUER' : 'ENTRÉE POUR REJOUER', GW / 2, py + ph - 10, P.grey1)
+    if (t > 2.5 && Math.floor(t * 2) % 2 === 0) text3C(pointerTouch ? 'TAPOTE POUR REJOUER' : 'ENTRÉE POUR REJOUER', GW / 2, py + ph - 8, P.grey1)
     text3('SEED ' + S.seed, 4, GH - 10, P.grey3)
   }
 

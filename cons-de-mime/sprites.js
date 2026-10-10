@@ -816,25 +816,36 @@ export function facadeSprite(kind, w = 150) {
 
 /* ---------- le kiosque des cascades (le tremplin de la fin) ---------- */
 export function cascadesSprite() {
-  // Le kiosque vert à lambrequins (« CASCADES / Rémy Julienne »), et à droite la grande roue de
-  // charrette couchée contre lui avec la rampe de plantes que Serge remonte. Ancre : pied gauche.
+  // Dans le sens de course : d'abord la rampe de plantes et la grande roue de charrette (à gauche),
+  // puis le kiosque vert à lambrequins (« CASCADES / Rémy Julienne ») dont Serge traverse le toit
+  // avant de sauter du bout droit. Ancre : pied gauche de la rampe.
+  const RAMP = 40
+  const KX = RAMP
   return sprite(104, 52, 0, 50, (a) => {
-    a.box(2, -36, 58, 34, 4, R.green)
-    a.rect(0, -40, 62, 3, R.wood[3])
-    a.rect(0, -37, 62, 1, R.wood[1])
-    for (let x = 1; x < 62; x += 4) a.px(x, -36, R.wood[2]) // les lambrequins
-    a.rect(4, -44, 54, 4, R.green[1])
-    a.rect(4, -44, 54, 1, R.green[3])
-    a.rect(8, -46, 46, 2, R.green[2])
-    for (let y = -30; y < -4; y += 4) a.rect(3, y, 56, 1, R.green[1]) // les planches
-    a.rect(16, -22, 30, 8, P.cream)
-    a.rect(16, -22, 30, 1, P.white)
-    a.rect(16, -15, 30, 1, P.sand)
-    a.text3('CASCADES', 16, -21, P.redD)
-    a.rect(18, -13, 26, 6, P.redD)
-    a.text3('R.JULIEN', 17, -12, P.white)
-    // La roue de charrette : jante, douze rayons, moyeu, vue de côté contre le kiosque.
-    const cx = 80
+    // Le kiosque.
+    a.box(KX + 2, -36, 58, 34, 4, R.green)
+    a.rect(KX, -40, 62, 3, R.wood[3])
+    a.rect(KX, -37, 62, 1, R.wood[1])
+    for (let x = KX + 1; x < KX + 62; x += 4) a.px(x, -36, R.wood[2]) // les lambrequins
+    a.rect(KX + 4, -44, 54, 4, R.green[1])
+    a.rect(KX + 4, -44, 54, 1, R.green[3])
+    a.rect(KX + 8, -46, 46, 2, R.green[2])
+    for (let y = -30; y < -4; y += 4) a.rect(KX + 3, y, 56, 1, R.green[1]) // les planches
+    a.rect(KX + 16, -22, 30, 8, P.cream)
+    a.rect(KX + 16, -22, 30, 1, P.white)
+    a.rect(KX + 16, -15, 30, 1, P.sand)
+    a.text3('CASCADES', KX + 16, -21, P.redD)
+    a.rect(KX + 18, -13, 26, 6, P.redD)
+    a.text3('R.JULIEN', KX + 17, -12, P.white)
+    for (let x = KX + 2; x < KX + 62; x += 6) {
+      a.rect(x, -4, 4, 4, R.grass[1])
+      a.px(x + 1, -5, [P.red, P.yellow, P.pink, P.orange][(x / 6) % 4])
+      a.px(x + 3, -3, R.grass[3])
+    }
+    a.rect(KX + 61, -30, 2, 30, R.grass[2])
+    for (const bx of [KX + 6, KX + 30, KX + 54]) { a.rect(bx, -56, 1, 12, R.grass[2]); a.rect(bx - 2, -54, 5, 1, R.grass[3]); a.rect(bx - 1, -50, 4, 1, R.grass[3]) }
+    // La roue de charrette, appuyée contre le flanc gauche du kiosque.
+    const cx = 22
     const cy = -22
     const rr = 20
     for (let t = 0; t < 360; t += 2) {
@@ -849,20 +860,12 @@ export function cascadesSprite() {
     }
     a.disc(cx, cy, 3.5, 3.5, R.wood[1])
     a.px(cx, cy, R.wood[3])
-    // La rampe de plantes qui monte du sol jusqu'au sommet de la roue, et les fleurs au pied.
-    for (let x = 62; x < 104; x++) {
-      const top = -2 - Math.round(((x - 62) / 42) * 40)
+    // La rampe de plantes qui monte de gauche à droite, du sol jusqu'au toit.
+    for (let x = 0; x < RAMP + 2; x++) {
+      const top = -2 - Math.round((x / RAMP) * 40)
       for (let y = top; y < 0; y += 1) if (bayer(x, y) < 0.55) a.px(x, y, (x + y) % 5 === 0 ? R.grass[3] : R.grass[1 + ((x * 3 + y) % 2)])
       if ((x % 7) === 3) a.px(x, top - 1, [P.red, P.yellow, P.pink, P.orange][(x / 7) % 4])
     }
-    for (let x = 2; x < 62; x += 6) {
-      a.rect(x, -4, 4, 4, R.grass[1])
-      a.px(x + 1, -5, [P.red, P.yellow, P.pink, P.orange][(x / 6) % 4])
-      a.px(x + 3, -3, R.grass[3])
-    }
-    a.rect(-1, -30, 2, 30, R.grass[2])
-    // Les bambous derrière le kiosque.
-    for (const bx of [6, 30, 54]) { a.rect(bx, -56, 1, 12, R.grass[2]); a.rect(bx - 2, -54, 5, 1, R.grass[3]); a.rect(bx - 1, -50, 4, 1, R.grass[3]) }
   })
 }
 /** La banderole de la manifestation, portée par deux mimes. */
