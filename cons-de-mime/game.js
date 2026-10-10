@@ -976,7 +976,7 @@ export function create(canvas) {
       ctx.fillStyle = 'rgba(24,20,37,0.45)'
       ctx.fillRect(0, 0, GW, GH)
       ctx.drawImage(LOGO, Math.round(GW / 2 - LOGO.width / 2), 24)
-      text3C('VOUS ÊTES À CANNES. LUI AUSSI.', GW / 2, 56, P.grey1)
+      text3C('VOUS INCARNEZ SERGE KARAMAZOV. AUCUN LIEN, FILS UNIQUE.', GW / 2, 56, P.grey1)
       if (S.introT > 0.5 && Math.floor(S.introT * 2) % 2 === 0) text5C(pointerTouch ? 'TAPOTE POUR COMMENCER' : 'ESPACE POUR COMMENCER', GW / 2, 186, P.yellow, { outline: P.ink })
       text3C(pointerTouch ? 'GLISSE À GAUCHE : COULOIR · TAP À DROITE : PROUT · TAP À GAUCHE : REGARDER' : '↑↓ COULOIR · ←→ RECULER / AVANCER · ESPACE : PROUT · R : REGARDER', GW / 2, 220, P.grey1)
       text3C('FRÔLE LES CANNOIS POUR LE COMBO. PÈTE DESSUS POUR LES ENVOYER SUR LA PLAGE. 90 SECONDES.', GW / 2, 232, P.grey2)
