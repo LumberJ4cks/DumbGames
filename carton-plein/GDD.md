@@ -1,4 +1,4 @@
-# CARTON PLEIN — pré-GDD (v0.2)
+# CARTON PLEIN — pré-GDD (v0.3)
 
 *Un Paraguayen. Onze Français. Zéro intention de jouer au ballon.*
 
@@ -10,6 +10,8 @@ Changements v0.2 : déplacement manuel (flèches ou joystick pouce gauche), bout
 séparé (Espace ou pouce droit) ; les cartons vont aux Français, jamais de rouge direct, le
 jaune reste au-dessus de la tête ; plus aucune fin de match anticipée, le Paraguay joue au MMA
 et c'est normal ; boost **EN FEU** quand le combo s'emballe.
+Changements v0.3 : chapitre 4 réécrit en direction artistique, avec la planche de validation
+`art/planche-style.png` (proportions × profondeur de palette) et la méthode de construction des joueurs.
 
 ---
 
@@ -449,12 +451,114 @@ Record en `localStorage`, bouton REJOUER, Espace relance.
 
 ---
 
-## 4. Habillage et technique (court, pour le pré-GDD)
+## 4. Direction artistique : méthode et validation
 
-- **Visuel** : pixel art 16 bits, palette Endesga 32, même boîte à outils que Cons de mime et
-  Attention à la mousse. 640×360 natif, mise à l'échelle entière. Sprites de 24 à 32 px de
-  haut, tête un peu grosse, roulades à quatre images. Cartons au-dessus des têtes en 6×8 px
-  qui tournent sur eux-mêmes ; flammes du boost en trois tons de la palette.
+Référence de game design : Nintendo World Cup (Technos, 1990). On garde ses marqueurs :
+vue de dessus en trois quarts, pelouse qui défile, têtes énormes, tacles qui envoient valser,
+joueurs qui restent au sol, quatre orientations. On ne garde **pas** sa créa : trois couleurs
+par sprite, contours noirs partout, visages à deux pixels. L'idée : **les proportions de
+Kunio, le rendu 16 bits de la maison.**
+
+Pour ne pas discuter dans le vide, une planche de validation est générée par
+`node carton-plein/art/proto.mjs > planche.png` (image de référence :
+`carton-plein/art/planche-style.png`). Elle croise trois proportions et quatre profondeurs
+de palette sur les mêmes trois personnages (Français, le n°4, l'arbitre), puis montre une
+scène à l'échelle 1:1 avec onze Français, le n°4, l'arbitre et les poses clés.
+
+### 4.1 Proportions : ce que la planche montre
+
+| Preset | Taille | Tête | Verdict |
+|---|---|---|---|
+| Réaliste | 22 px | 7×6 | Le style actuel de la collection. Visage illisible, maillot à peine lisible : **trop petit pour ce jeu**, où il faut lire qui porte un carton et qui est au sol. C'est de là que vient le « assez moyen ». |
+| **Kunio** | **32 px** | **14×12** | La tête fait 45 % de la hauteur, elle mord d'un pixel sur le buste. Yeux, bouche, coiffure, barbe, bandeau lisibles à 1:1. Treize personnages tiennent sur un demi-terrain sans se gêner. **Retenu.** |
+| Kunio+ | 36 px | 18×15 | Encore plus mignon, mais les têtes se chevauchent dès que deux joueurs se touchent, et le coup franc devient une bouillie. Réservé à l'écran titre, aux portraits et au tampon final. |
+
+Décision : **32 px de haut, 24 px de large hors bras**, ancre aux pieds, 2 px de marge pour
+le contour. Le n°4 fait la même taille que les Français : c'est le bandeau, le maillot rayé et
+le feu qui le distinguent, pas la taille.
+
+### 4.2 Profondeur de palette : ce que la planche montre
+
+Palette unique Endesga 32, comme tous les jeux de la collection. La question n'est pas
+« combien de couleurs dans le jeu » mais « combien de tons par matière sur un joueur ».
+
+| Rendu | Tons par matière | Contour | Verdict |
+|---|---|---|---|
+| NES | 1 | noir complet | Fidèle à la référence, charmant, mais plat : le volume de la tête disparaît, les joueurs ressemblent à des autocollants. Non. |
+| 3 tons | 3 (ombre, base, lumière) | sélectif (noir en bas et à droite, matière foncée en haut et à gauche) | Le volume est là, le rendu est propre. Sur la pelouse, la silhouette manque un peu de punch. |
+| 4 tons | 4 + tramage | sélectif | **Indiscernable des 3 tons à 32 px.** Le quatrième ton n'apporte rien sur un joueur, il coûte de la cohérence. |
+| **3 tons + noir** | **3** | **noir complet** | Le meilleur des deux : volume 16 bits dedans, silhouette Kunio dehors. Les joueurs se détachent de la pelouse et les uns des autres, ce qui compte quand ils sont douze au même endroit. **Retenu pour les personnages.** |
+
+Décisions :
+
+- **Personnages** : 3 tons par matière, contour noir complet (`ink`), lumière en haut à
+  gauche. Les rampes de 4 de `pixel.js` sont utilisées en gardant les tons 1-2-3 (jamais le
+  plus foncé, le contour s'en charge).
+- **Budget par joueur** : peau 3, cheveux 3, maillot 3, short 3, chaussettes 3, crampons 2,
+  noir, blanc des yeux, rouge de la bouche : **une vingtaine de couleurs**, toutes dans Endesga 32.
+- **Décor** (pelouse, tribunes, bancs, panneaux) : 3 à 4 tons, contour sélectif doux, jamais
+  de noir complet : le décor doit rester derrière les joueurs.
+- **Pelouse** : bandes de 24 px en deux verts (`green` / `greenM`), grain très léger
+  (1 pixel sur 23 un ton plus foncé), lignes en blanc pur. La pelouse est le fond de 80 % de
+  l'écran : elle doit être calme pour que les contours noirs portent.
+- **Ombres** : tache tramée un ton plus foncé sous chaque joueur. Elles décollent les
+  joueurs du sol et donnent la hauteur quand un joueur vole après un tacle.
+
+### 4.3 Méthode de construction des joueurs
+
+Un seul constructeur paramétrique, `player({ prop, mode, kit, look, pose, fire, card, number })`,
+déjà écrit dans `proto.mjs`. Aucun sprite n'est dessiné à la main pixel par pixel : tout
+Français, remplaçant de fortune, arbitre ou gardien est une combinaison de trois tables.
+
+1. **Le gabarit** (fixe) : six volumes, chacun ombré comme un cylindre ou un ellipsoïde depuis
+   la même lumière. Du bas vers le haut : crampons 2 px, chaussettes 4×4, short 12×4, buste
+   12×7, bras 3×6 le long du corps, tête ellipse 14×12 qui mord d'un pixel sur le buste.
+2. **Le look** (table `LOOKS`, une entrée par joueur) : peau (3 rampes), cheveux (5 rampes),
+   coiffure (calotte à 36 % de la tête + frange en zigzag + pattes jusqu'à 62 % ; variantes
+   longue, chauve), barbe, bandeau. Onze looks distincts pour onze Français, reconnaissables à
+   la couleur de peau et de cheveux avant tout.
+3. **Le kit** (table `KITS`) : rampes du maillot, du short, des chaussettes, rayures
+   verticales de 2 px (Paraguay), col (arbitre), numéro 3×5 sur la poitrine en blanc ou en
+   noir selon le maillot.
+4. **La pose** : décalage des jambes et des bras pour la course (4 images), bras tendu pour le
+   poing, quart de tour pour le tacle et le KO. La pose ne redessine rien, elle déplace les
+   volumes.
+
+Visage : yeux 2×2 en noir avec un reflet blanc en haut à gauche, bouche 2×1 en rouge sombre.
+C'est ce qui fait « Kunio » : les yeux ronds et serrés, la bouche minuscule.
+
+Ce que la planche a aussi appris :
+
+- Le **carton au-dessus de la tête** doit être dessiné dans une passe à part, au-dessus de
+  tous les joueurs, sinon le joueur du rang précédent le recouvre. Même ainsi, dans un tas de
+  coup franc, il se pose sur le torse du joueur de derrière : il lui faut un contour noir, un
+  petit rebond vertical, et 10 px réservés au-dessus de chaque sprite.
+- Le **feu** du boost demande son propre dessin : les flammes esquissées sur la planche
+  (rideau de trois tons dans le dos) suffisent pour valider la lisibilité, pas le style.
+- Le **tacle** par simple quart de tour fonctionne pour un placeholder, mais la vraie pose
+  (jambe tendue, bras en arrière, motte d'herbe) sera dessinée.
+
+### 4.4 Ce qui reste à valider, dans l'ordre
+
+1. **Les quatre orientations** : face, dos (numéro dans le dos), profil (miroir pour l'autre
+   côté). La planche ne montre que la face. Le dos est le plus vu dans un jeu où les Français
+   te fuient vers ton but.
+2. **Le cycle de course** à 8 images par seconde, en mouvement, dans le navigateur : la
+   planche fixe ne juge pas l'animation.
+3. **Un écran complet 640×360** : pelouse, tribunes, bancs, HUD (combo, FUEGO, patience de
+   l'arbitre, tableau d'affichage), pour vérifier que les contours noirs des joueurs ne
+   jurent pas avec le décor en contours doux.
+4. **Les poses du MMA** : poing, coude, projection, tacle, étourdi, KO, porté sur civière,
+   poignée de main. Puis le feu.
+5. **L'arbitre** : tout noir il se perd sur un Français en bleu marine ; il lui faut un
+   signe lisible de loin (brassard et sifflet jaunes, chaussettes blanches, ou le maillot
+   jaune fluo des arbitres modernes).
+
+### 4.5 Technique (court)
+
+- **Rendu** : 640×360 natif, mise à l'échelle entière, canvas 2D, zéro dépendance. Sprites
+  construits au démarrage dans des `Pix` (voir `cons-de-mime/pixel.js`, repris tel quel),
+  convertis en canvas une fois. La planche se génère en Node sans navigateur.
 - **Son** : tout synthétisé (sifflet, impacts, « oh » de la foule, speaker en langue
   inaudible, ronflement du feu). Une seule ressource enregistrée envisageable : un hymne
   détourné à l'écran titre. M pour couper.
@@ -465,7 +569,8 @@ Record en `localStorage`, bouton REJOUER, Espace relance.
 - **Paramètres d'URL** : `?seed=42` rejoue la même partie, `?run=30` raccourcit le match,
   `?debug=1` affiche hitboxes, zone des 40 px, cibles de l'IA, patience de l'arbitre et FUEGO.
 - **Tests** : simulation des règles sans rendu (`node --test`), bot qui joue une partie entière
-  dans Chromium pour caler les ordres de grandeur du score.
+  dans Chromium pour caler les ordres de grandeur du score, planche d'art régénérée à chaque
+  changement de `proto.mjs`.
 
 ## 5. Hors périmètre V1
 
