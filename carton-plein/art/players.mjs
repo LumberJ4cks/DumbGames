@@ -311,10 +311,9 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     }
     const G = 25 + slide // rangée du sol
     const ox = 4 // marge pour les mottes derrière
-    // Jambe arrière repliée sous le corps (cuisse, tibia, crampon talon vers l'arrière).
-    put(ox + 8, G - 5, 4, 2, 'S')
-    put(ox + 5, G - 3, 6, 3, 'C')
-    put(ox + 0, G - 3, 5, 3, 'B')
+    // Jambe arrière repliée : rentrée sous la hanche, on ne voit que la chaussette et le crampon.
+    put(ox + 8, G - 3, 5, 3, 'C')
+    put(ox + 4, G - 3, 4, 3, 'B')
     // Jambe avant tendue au ras du sol : cuisse, chaussette, crampon pointe en avant.
     put(ox + 17, G - 5, 5, 4, 'S')
     put(ox + 22, G - 5, 6, 4, 'C')
