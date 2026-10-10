@@ -9,10 +9,17 @@
  */
 export const TRACK_FILE = new URL('./siuuuu.mp3', import.meta.url).href
 export const TRACK_VOLUME = 0.9
+// The "SIUUU" shout recorded for the game (1.5 s): played on PERFECT, softer on GOOD.
+export const SHOUT_FILE = new URL('./siuuu-cri.mp3', import.meta.url).href
+export const SHOUT_VOLUME = 1.4
+// The crowd bed is a background texture: keep it low under the music and the shout.
+export const CROWD_BASE = 0.1
+export const CROWD_SWELL = 0.3
 
 export function createAudio() {
   let ac = null
   let trackBuffer = null
+  let shoutBuffer = null
   let trackSrc = null
   let trackWanted = false
   let trackFailed = false
@@ -50,6 +57,25 @@ export function createAudio() {
         trackFailed = true
         if (trackWanted) startMusic()
       })
+    fetch(SHOUT_FILE)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+      .then((data) => ac.decodeAudioData(data))
+      .then((buffer) => {
+        shoutBuffer = buffer
+      })
+      .catch(() => {})
+  }
+  /** Plays the recorded shout; falls back to the synthesised one when the file is missing. */
+  function playShout(vol, rate, fallback) {
+    if (!ac || !shoutBuffer) return fallback()
+    const src = ac.createBufferSource()
+    src.buffer = shoutBuffer
+    src.playbackRate.value = rate
+    const g = ac.createGain()
+    g.gain.value = vol
+    src.connect(g)
+    g.connect(master)
+    src.start()
   }
   function resume() {
     if (ac && ac.state === 'suspended') ac.resume().catch(() => {})
@@ -124,7 +150,7 @@ export function createAudio() {
     lg.connect(f.frequency)
     lfo.start()
     crowdGain = ac.createGain()
-    crowdGain.gain.value = 0.5
+    crowdGain.gain.value = CROWD_BASE
     crowd.connect(f)
     f.connect(crowdGain)
     crowdGain.connect(master)
@@ -132,7 +158,7 @@ export function createAudio() {
   }
   function setCrowd(level) {
     if (!crowdGain) return
-    crowdGain.gain.setTargetAtTime(0.35 + Math.min(1, level) * 1.4, ac.currentTime, 0.3)
+    crowdGain.gain.setTargetAtTime(CROWD_BASE + Math.min(1, level) * CROWD_SWELL, ac.currentTime, 0.3)
   }
   function roar(strength = 1, delay = 0) {
     if (!ac) return
@@ -258,14 +284,14 @@ export function createAudio() {
     vib.stop(t + len + 0.1)
   }
   function perfect() {
-    shout(1.1, 0.9, 330)
+    playShout(SHOUT_VOLUME, 1, () => shout(1.1, 0.9, 330))
     tone(880, 0.1, 'square', 0.12, null, 0)
     tone(1320, 0.12, 'square', 0.12, null, 0.08)
     tone(1760, 0.3, 'square', 0.12, null, 0.16)
     roar(1, 0.05)
   }
   function good() {
-    shout(0.55, 0.6, 290)
+    playShout(SHOUT_VOLUME * 0.55, 1.08, () => shout(0.55, 0.6, 290))
     tone(660, 0.1, 'square', 0.1, null, 0)
     tone(990, 0.2, 'square', 0.1, null, 0.08)
     roar(0.45, 0.05)
