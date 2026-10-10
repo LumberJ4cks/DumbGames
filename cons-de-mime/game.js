@@ -93,10 +93,12 @@ export function create(canvas) {
     const seed = seedParam ? +seedParam : (Math.random() * 1e9) | 0
     const r = rng(seed)
     S = {
-      seed, r, mode: 'intro', t: 0, introT: 0,
+      seed, r, mode: 'intro', t: 0, introT: 0, clock: 0,
+      intro: { line: -1, lineT: 0, started: false },
       camX: 0, speedMul: 1, boostT: 0, tripT: 0,
-      serge: { x: CFG.sergeHomeX, y: 137, w: 12, h: 18, face: 1 },
-      killer: { y: 137, taunt: 0, tauntT: 0 },
+      serge: { x: CFG.sergeHomeX, y: 150, w: 12, h: 18, face: 1 },
+      killer: { x: -80, y: 112, taunt: 5, tauntT: 0 },
+      martine: null,
       fart: 1, farts: [], gas: [],
       combo: 0, bestCombo: 0, score: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
@@ -108,6 +110,9 @@ export function create(canvas) {
     // décor bord de trottoir : palmiers/réverbères réguliers (visuel seulement)
     // premier peuplement
     while (S.spawnX < GW + 200) spawnChunk()
+    // Martine, plantée devant le Palais, face à Serge.
+    S.martine = { type: 'martine', x: CFG.sergeHomeX + 42, y: 150, w: 10, h: 18, solid: false, bubbleT: 0, bubble: '' }
+    S.ents.push(S.martine)
   }
 
   function mult() {
@@ -197,11 +202,31 @@ export function create(canvas) {
     if (hit >= 3) pop(sx, sy - 34, 'PROUT ×' + hit, '#80ff80', true)
   }
 
-  function startRun() { S.mode = 'run'; S.t = 0 }
+  /* ---------- l'intro : Serge et Martine devant le Palais ---------- */
+  const DIALOG = [
+    { who: 'serge', text: 'MARTINE !' },
+    { who: 'martine', text: 'AH ! S.E.C.U ! COMMENT ÇA VA ?' },
+    { who: 'serge', text: 'BIEN !' },
+    { who: 'serge', text: "ALORS, QU'EST-CE QUE TU DEVIENS ?" },
+    { who: 'martine', text: "OH BEN... J'SUIS SÉROPOSITIVE." },
+  ]
+  function nextLine() {
+    const it = S.intro
+    if (it.lineT < 0.25 || it.line >= DIALOG.length - 1) return
+    it.line++
+    it.lineT = 0
+  }
+  function startRun() {
+    S.mode = 'run'
+    S.t = 0
+    S.intro.started = true
+    S.martine.bubble = "MAIS NON, C'ÉTAIT POUR DÉCONNER."
+    S.martine.bubbleT = 4
+  }
 
   function press(a) {
     if (a in held) held[a] = true
-    if (S.mode === 'intro' && (a === 'start' || a === 'fart' || a === 'look')) { if (S.introT > 0.8) startRun(); return }
+    if (S.mode === 'intro' && (a === 'start' || a === 'fart' || a === 'look')) { nextLine(); return }
     if (S.mode === 'over' && a === 'start') { reset(); return }
     if (S.mode === 'over' && (a === 'fart' || a === 'look') && S.overT > 1.5) { reset(); return }
     if (a === 'fart') doFart()
@@ -210,7 +235,7 @@ export function create(canvas) {
   /** Tactile : un doigt posé. Côté droit = prout, les écrans d'intro et de fin réagissent aux deux. */
   function tap(side) {
     pointerTouch = true
-    if (S.mode === 'intro') { if (S.introT > 0.8) startRun(); return }
+    if (S.mode === 'intro') { nextLine(); return }
     if (S.mode === 'over') { if (S.overT > 1.5) reset(); return }
     if (side === 'R') doFart()
   }
@@ -277,10 +302,29 @@ export function create(canvas) {
     }
   }
 
+  function updateIntro(dt) {
+    S.introT += dt
+    const it = S.intro
+    it.lineT += dt
+    // Les passants continuent de passer pendant la discussion.
+    for (const e of S.ents) {
+      if (e.type !== 'ped' || e.state !== 'walk' || e.leash) continue
+      e.x += e.vx * dt
+      if (e.x < -40) e.x += GW + 80
+    }
+    // À « séropositive », le tueur traverse derrière eux ; Serge le voit et détale.
+    if (it.line === DIALOG.length - 1) {
+      if (it.lineT > 0.5) S.killer.x += 230 * dt
+      if (S.killer.x > S.serge.x + 50) startRun()
+    }
+  }
+
   /* ---------- mise à jour ---------- */
   function update(dt) {
-    if (S.mode === 'intro') { S.introT += dt; return }
+    S.clock += dt
+    if (S.mode === 'intro') { updateIntro(dt); return }
     if (S.mode === 'over') { S.overT += dt; return }
+    if (S.martine) { S.martine.bubbleT = Math.max(0, S.martine.bubbleT - dt) }
     const sg = S.serge
 
     if (S.mode === 'jump') { updateJump(dt); return }
@@ -317,11 +361,13 @@ export function create(canvas) {
     S.fart = Math.min(1, S.fart + CFG.fartRecharge * dt)
 
     // tueur
+    S.killer.x += (S.camX + 440 - S.killer.x) * Math.min(1, dt * 2.5) + camV * dt * 0.2
+    S.killer.x = Math.min(S.killer.x, S.camX + 440)
     S.killer.y += (sg.y + Math.sin(S.t * 0.7) * 30 - S.killer.y) * dt * 0.8
     S.killer.y = Math.max(CFG.sidewalkTop, Math.min(CFG.sidewalkBottom, S.killer.y))
     S.killer.taunt -= dt
     S.killer.tauntT = Math.max(0, S.killer.tauntT - dt)
-    if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; S.killer.tauntT = 1.1; pop(S.camX + 440, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
+    if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; S.killer.tauntT = 1.1; pop(S.killer.x, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
 
     updateScripts(dt)
 
@@ -511,9 +557,9 @@ export function create(canvas) {
   const text5C = (t, cx, y, col = P.white, style = { shadow: P.ink }) => drawText5C(ctx, t, cx, y, col, style)
   const text3 = (t, x, y, col = P.white) => drawText(ctx, t, x, y, col)
   const text3C = (t, cx, y, col = P.white) => drawTextC(ctx, t, cx, y, col)
-  const lookKey = (k) => (k === 'vieux+chien' ? 'vieux' : k)
-  const walkFrame = (e) => Math.floor(S.t * 6 + (e.phase || 0)) % 2
   const mod = (a, n) => ((a % n) + n) % n
+  const lookKey = (k) => (k === 'vieux+chien' ? 'vieux' : k)
+  const walkFrame = (e) => mod(Math.floor(S.clock * 6 + (e.phase || 0)), 2)
 
   function drawGround(cam) {
     // La tuile de sol, répétée.
@@ -566,7 +612,7 @@ export function create(canvas) {
     // Tout ce qui a des pieds, trié par profondeur (y), Serge et le tueur compris.
     const list = S.ents.filter((e) => e.type !== 'scorch').map((e) => ({ y: e.y, e }))
     list.push({ y: S.serge.y, serge: true })
-    if (S.mode !== 'jump') list.push({ y: S.killer.y, killer: true })
+    if (S.mode !== 'jump' && S.killer.x > cam - 40) list.push({ y: S.killer.y, killer: true })
     if (S.roller && !S.roller.gone) list.push({ y: S.roller.y, roller: true })
     if (S.truck) list.push({ y: S.truck.y, truck: true })
     list.sort((a, b) => a.y - b.y)
@@ -636,16 +682,22 @@ export function create(canvas) {
       blit(SPR.sergeBoost[Math.floor(S.jump.t * 10) % 2 ? 1 : 3], sx, sg.y - jz)
       return
     }
+    if (S.mode === 'intro') {
+      // Debout face à Martine ; il se retourne vers le tueur quand il passe.
+      const turned = S.intro.line === DIALOG.length - 1 && S.intro.lineT > 0.7
+      blit(SPR.serge[1], sx, sg.y, turned)
+      return
+    }
     const f = Math.floor((S.mode === 'jump' ? S.jump.t * 14 : S.t * 12 * Math.max(0.5, S.speedMul))) % 4
     const set = S.boostT > 0 ? SPR.sergeBoost : sg.face < 0 ? SPR.sergeLook : SPR.serge
     blit(set[f], sx, sg.y - jz)
   }
   function drawKiller(cam) {
-    const kx = S.camX + 440 - cam
+    const kx = S.killer.x - cam
     const ky = S.killer.y
     blit(SPR.shadow.m, kx, ky)
     if (S.killer.tauntT > 0) blit(SPR.killerTaunt, kx, ky)
-    else blit(SPR.killer[Math.floor(S.t * 12) % 4], kx, ky)
+    else blit(SPR.killer[Math.floor(S.clock * 12) % 4], kx, ky)
   }
   function drawEntity(e, cam) {
     const x = e.x - cam
@@ -661,6 +713,13 @@ export function create(canvas) {
     }
     if (e.type === 'furn') {
       blit(SPR.furn[e.k], x, e.y)
+      return
+    }
+    if (e.type === 'martine') {
+      blit(SPR.shadow.s, x, e.y)
+      const talking = S.mode === 'intro' && DIALOG[S.intro.line] && DIALOG[S.intro.line].who === 'martine' && Math.floor(S.clock * 8) % 2
+      blit(SPR.martine[talking ? 1 : 0], x, e.y, true)
+      if (e.bubbleT > 0) bubble(e.bubble, x, e.y - 30)
       return
     }
     if (e.type === 'cascades') {
@@ -760,34 +819,48 @@ export function create(canvas) {
     if (debug) text3(`SEED ${S.seed} · ENTS ${S.ents.length} · DENS ${density().toFixed(1)} · CAM ${S.camX | 0}`, 4, GH - 30, P.green)
   }
 
+  /** Une bulle de dialogue en pixel, la pointe vers le bas, centrée en (cx, y bas). */
+  function bubble(text, cx, y) {
+    const w = textWidth(text) + 8
+    const h = 13
+    let x = Math.round(cx - w / 2)
+    x = Math.max(2, Math.min(GW - w - 2, x))
+    const top = Math.round(y - h)
+    ctx.fillStyle = P.ink
+    ctx.fillRect(x - 1, top - 1, w + 2, h + 2)
+    ctx.fillStyle = P.white
+    ctx.fillRect(x, top, w, h)
+    ctx.fillStyle = P.ink
+    ctx.fillRect(Math.round(cx) - 2, top + h, 5, 1)
+    ctx.fillRect(Math.round(cx) - 1, top + h + 1, 3, 1)
+    ctx.fillRect(Math.round(cx), top + h + 2, 1, 1)
+    ctx.fillStyle = P.white
+    ctx.fillRect(Math.round(cx) - 1, top + h, 3, 1)
+    ctx.fillRect(Math.round(cx), top + h + 1, 1, 1)
+    text3(text, x + 4, top + 3, P.ink)
+  }
+
   function drawIntro() {
-    const t = S.introT
-    // Le décor derrière, figé, et la scène au milieu du trottoir.
-    S.camX = 0
-    drawGround(0)
-    drawPalmsBack(0)
-    ctx.fillStyle = 'rgba(24,20,37,0.45)'
-    ctx.fillRect(0, 0, GW, GH)
-    ctx.drawImage(LOGO, Math.round(GW / 2 - LOGO.width / 2), 24)
-    text3C('VOUS ÊTES À CANNES. LUI AUSSI.', GW / 2, 56, P.grey1)
-    // La scène : la fille, Serge, le tueur qui passe au fond.
-    const fy = 150
-    blit(SPR.shadow.s, 200, fy)
-    blit(SPR.ped.jeune[1][0], 200, fy, false)
-    blit(SPR.shadow.m, 240, fy)
-    blit(SPR.serge[0], 240, fy - (t > 3.4 ? Math.abs(Math.sin(t * 14)) * 2 : 0), t > 1.8 && t < 3.4)
-    if (t > 2.6) {
-      const kx = 290 + ((t - 2.6) * 120) % 260
-      blit(SPR.shadow.m, kx, 100)
-      blit(SPR.killer[Math.floor(t * 12) % 4], kx, 100)
+    const it = S.intro
+    drawWorld()
+    if (it.line < 0) {
+      // L'écran titre, par-dessus la scène figée.
+      ctx.fillStyle = 'rgba(24,20,37,0.45)'
+      ctx.fillRect(0, 0, GW, GH)
+      ctx.drawImage(LOGO, Math.round(GW / 2 - LOGO.width / 2), 24)
+      text3C('VOUS ÊTES À CANNES. LUI AUSSI.', GW / 2, 56, P.grey1)
+      if (S.introT > 0.5 && Math.floor(S.introT * 2) % 2 === 0) text5C(pointerTouch ? 'TAPOTE POUR COMMENCER' : 'ESPACE POUR COMMENCER', GW / 2, 186, P.yellow, { outline: P.ink })
+      text3C(pointerTouch ? 'GLISSE À GAUCHE : COULOIR · TAP À DROITE : PROUT · TAP À GAUCHE : REGARDER' : '↑↓ COULOIR · ←→ RECULER / AVANCER · ESPACE : PROUT · R : REGARDER', GW / 2, 220, P.grey1)
+      text3C('FRÔLE LES CANNOIS POUR LE COMBO. PÈTE DESSUS POUR LES ENVOYER SUR LA PLAGE. 90 SECONDES.', GW / 2, 232, P.grey2)
+      if (best) text3C('RECORD ' + best, GW / 2, 246, P.yellow)
+      text3('V1', GW - 12, GH - 10, P.grey3)
+      return
     }
-    if (t > 0.6) text5C('« JE SUIS SÉROPOSITIVE. »', 200, 112, P.pink, { outline: P.ink })
-    if (t > 1.8) text5C(t > 3.2 ? '« AU REVOIR ! »' : '« ... »', 250, 98, P.white, { outline: P.ink })
-    if (t > 0.8 && Math.floor(t * 2) % 2 === 0) text5C(pointerTouch ? 'TAPOTE POUR COURIR' : 'ESPACE POUR COURIR', GW / 2, 186, P.yellow, { outline: P.ink })
-    text3C(pointerTouch ? 'GLISSE À GAUCHE : COULOIR · TAP À DROITE : PROUT · TAP À GAUCHE : REGARDER' : '↑↓ COULOIR · ←→ RECULER / AVANCER · ESPACE : PROUT · R : REGARDER', GW / 2, 220, P.grey1)
-    text3C('FRÔLE LES CANNOIS POUR LE COMBO. PÈTE DESSUS POUR LES ENVOYER SUR LA PLAGE. 90 SECONDES.', GW / 2, 232, P.grey2)
-    if (best) text3C('RECORD ' + best, GW / 2, 246, P.yellow)
-    text3('V1', GW - 12, GH - 10, P.grey3)
+    // Le dialogue : une bulle au-dessus de celui qui parle.
+    const line = DIALOG[it.line]
+    const speaker = line.who === 'serge' ? S.serge : S.martine
+    if (it.lineT > 0.1) bubble(line.text, speaker.x - S.camX, speaker.y - 30)
+    if (it.line < DIALOG.length - 1 && it.lineT > 0.6 && Math.floor(S.introT * 2) % 2 === 0) text3C(pointerTouch ? 'TAP ▶' : 'ESPACE ▶', GW / 2, GH - 20, P.grey1)
   }
 
   function drawOver() {
@@ -875,7 +948,9 @@ export function create(canvas) {
   function frame(now) {
     let dt = (now - last) / 1000
     last = now
+    // Le premier timestamp de requestAnimationFrame peut précéder le performance.now() de départ.
     if (dt > 0.1) dt = 0.1
+    if (dt < 0) dt = 0
     update(dt)
     draw()
     requestAnimationFrame(frame)
