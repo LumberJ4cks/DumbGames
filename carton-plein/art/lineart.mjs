@@ -17,7 +17,13 @@ export class Canvas {
     this.h = h
     this.mat = Array.from({ length: h }, () => new Array(w).fill(null))
     this.id = Array.from({ length: h }, () => new Array(w).fill(0))
+    this.over = Array.from({ length: h }, () => new Array(w).fill(null))
     this.next = 1
+  }
+  /** Surcharge de couleur (yeux, bouche, rayures, numéro) : ne crée pas de contour. */
+  dot(x, y, c) {
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return
+    this.over[y][x] = c
   }
   /** Rectangle plein d'une matière, nouvelle région. */
   rect(x0, y0, w, h, m) {
@@ -68,6 +74,10 @@ export class Canvas {
         if (!me) continue
         if (line[y][x]) {
           p.px(x + pad, y + pad, ink)
+          continue
+        }
+        if (this.over[y][x]) {
+          p.px(x + pad, y + pad, this.over[y][x])
           continue
         }
         const m = mats[this.mat[y][x]]
