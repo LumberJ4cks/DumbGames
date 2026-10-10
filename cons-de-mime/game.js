@@ -38,7 +38,7 @@ export const CFG = {
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 24,        // px vertical pour compter une esquive
   score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100, blast: 75 },
-  rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30, odileAt: 62,
+  rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30, odileAt: 62, bialesAt: 72,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
 }
 
@@ -112,7 +112,7 @@ export function create(canvas) {
       combo: 0, bestCombo: 0, score: 0, scoreShown: 0, scoreBump: 0, scoreGain: 0, scoreGainT: 0, comboBump: 0, comboShown: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
       roller: null, lookWindow: 0, invertT: 0, looked: false,
-      mamie: null, truck: null, mamieDone: false, acteur: null, odile: false,
+      mamie: null, truck: null, mamieDone: false, acteur: null, odile: false, biales: null,
       shake: 0, flash: 0,
       jump: null, result: null,
     }
@@ -313,6 +313,17 @@ export function create(canvas) {
       S.acteur.bubbleT = 2.5
     }
     if (S.acteur) S.acteur.bubbleT = Math.max(0, S.acteur.bubbleT - dt)
+    // Le commissaire Bialès, une seule fois, en haut du trottoir avec son whisky.
+    if (!S.biales && S.t >= CFG.bialesAt) {
+      S.biales = { type: 'biales', k: 'BIALÈS', x: S.camX + GW + 30, y: CFG.sidewalkTop + 8, w: 10, h: 18, solid: true, state: 'walk', vx: 0, vy: 0, phase: 0, bubbleT: 0, bubble: '', hailed: false }
+      S.ents.push(S.biales)
+    }
+    if (S.biales && !S.biales.hailed && S.biales.x - S.serge.x < 80) {
+      S.biales.hailed = true
+      S.biales.bubble = "VOUS NE VOULEZ PAS UN WHISKY D'ABORD ?"
+      S.biales.bubbleT = 3
+    }
+    if (S.biales) S.biales.bubbleT = Math.max(0, S.biales.bubbleT - dt)
     // O D I L E, peint sur les dalles.
     if (!S.odile && S.t >= CFG.odileAt) {
       S.odile = true
@@ -805,6 +816,15 @@ export function create(canvas) {
     }
     if (e.type === 'furn') {
       blit(SPR.furn[e.k], x, e.y)
+      return
+    }
+    if (e.type === 'biales') {
+      if (e.state === 'walk') {
+        blit(SPR.shadow.m, x, e.y)
+        blit(SPR.biales[0], x, e.y, true)
+        if (e.bubbleT > 0) bubble(e.bubble, x, e.y - 28)
+      } else if (e.state === 'fly') blitRot(SPR.biales[0], x, e.y - e.z, e.spin * e.z * 0.02)
+      else blit(SPR.pedLying.smoking[0], x, e.y)
       return
     }
     if (e.type === 'femme') {
