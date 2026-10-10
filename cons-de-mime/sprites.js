@@ -346,6 +346,37 @@ export function mimeSprite(frame, { shocked = false } = {}) {
   })
 }
 
+/* ---------- Martine ---------- */
+/*
+ * Cheveux roux ondulés, débardeur blanc, pantalon blanc à pinces, collier, badge, le classeur
+ * sous le bras. Elle regarde à droite (le jeu la renverse pour faire face à Serge).
+ */
+export function martineSprite(frame) {
+  const lg = legend({ G: [R.hairRed, 2], g: [R.hairRed, 1], H: [R.hairRed, 3], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], M: [P.red], W: [P.white], w: [P.grey1], v: [P.grey2], B: [P.cyan], N: [P.yellow], F: [P.grey1], f: [P.blue] })
+  return sprite(18, 26, 9, 24, (a) => {
+    // Pantalon blanc, chaussures.
+    a.shaded(-3, -9, 2, 8, R.white)
+    a.shaded(0, -9, 2, 8, R.white)
+    a.rect(-3, -1, 3, 1, P.sand)
+    a.rect(0, -1, 3, 1, P.sand)
+    // Débardeur blanc, bras nus, collier, badge.
+    a.map(['sWWWws', 'sWWWws', '.WWWw.', '.WWWw.', '.WWWw.', '.wwww.'], lg, -3, -15)
+    a.rect(-2, -16, 4, 1, P.yellow) // le collier
+    a.px(1, -13, P.cyan) // le badge
+    a.shaded(-4, -14, 1, 5, R.skinPale)
+    a.shaded(3, -14, 1, 5, R.skinPale)
+    // Le classeur sous le bras gauche.
+    a.rect(-7, -12, 3, 5, P.grey1)
+    a.rect(-7, -12, 3, 1, P.white)
+    a.rect(-7, -10, 3, 1, P.blue)
+    // Tête : cheveux roux qui ondulent jusqu'aux épaules, boucles d'oreilles.
+    const hair = frame ? ['.HGGg.', 'HGGGgg', 'GGsSzg', 'GsSEzg', 'GzMMzg', 'gg..gg'] : ['.HGGg.', 'HGGGgg', 'GGsSzg', 'GsSEzg', 'GzsMzg', 'gg..gg']
+    a.map(hair, lg, -3, -21)
+    a.px(-4, -17, P.yellow)
+    a.px(3, -17, P.yellow)
+  })
+}
+
 /* ---------- la fille en roller en jaune ---------- */
 export function rollerSprite(frame) {
   const lg = legend({ Y: [R.yellow, 3], y: [R.yellow, 2], o: [R.yellow, 1], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], G: [R.hairBlond, 2], g: [R.hairBlond, 1], H: [R.hairBlond, 3], E: [P.ink], M: [P.red], K: [P.ink], w: [P.grey2] })
@@ -767,6 +798,7 @@ export function buildSprites(C) {
   S.cascades = cascadesSprite()
   S.banderole = banderoleSprite('MIMES EN COLÈRE')
   S.roller = [0, 1].map(rollerSprite)
+  S.martine = [0, 1].map(martineSprite)
   S.mamie = [0, 1].map(mamieSprite)
   S.mamieLying = lying(mamieSprite(0))
   S.mamieSplat = mamieSplatSprite()

@@ -20,9 +20,10 @@ await page.keyboard.press('Space')
 const t0 = Date.now()
 const keys = ['ArrowUp', 'ArrowDown']
 let holding = null
-while (Date.now() - t0 < 100000) {
+while (Date.now() - t0 < 130000) {
   const st = await page.evaluate(() => { const s = window.__g.state; return { mode: s.mode, fart: s.fart, look: s.lookWindow } })
   if (st.mode === 'over') break
+  if (st.mode === 'intro') { await page.keyboard.press('Space'); await page.waitForTimeout(400); continue }
   if (holding) { await page.keyboard.up(holding); holding = null }
   if (Math.random() < 0.6) { holding = keys[Math.random() < 0.5 ? 0 : 1]; await page.keyboard.down(holding) }
   if (st.fart >= 1 && Math.random() < 0.5) await page.keyboard.press('Space')
