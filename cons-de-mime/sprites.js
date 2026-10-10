@@ -377,6 +377,40 @@ export function martineSprite(frame) {
   })
 }
 
+/* ---------- l'acteur non accompagné ---------- */
+/*
+ * Crâne dégarni, grand sourire, veste moutarde sur un tee-shirt bleu marine, la pancarte
+ * « ACTEUR NON ACCOMPAGNÉ » autour du cou, et un ballon rouge au bout d'une ficelle.
+ */
+export function acteurSprite(frame) {
+  const MOU = [P.brown, P.rust, P.tan, P.amber]
+  const lg = legend({ s: [R.skinTan, 2], S: [R.skinTan, 3], z: [R.skinTan, 1], E: [P.ink], M: [P.white], m: [P.red], V: [MOU, 3], v: [MOU, 2], u: [MOU, 1], N: [R.navy, 2], n: [R.navy, 1], W: [P.white], w: [P.grey1], b: [P.blue], k: [R.hairBlack, 1] })
+  return sprite(22, 42, 11, 40, (a) => {
+    // Jambes : jean bleu, baskets.
+    a.shaded(-3, -7, 2, 6, R.blue)
+    a.shaded(1, -7, 2, 6, R.blue)
+    a.rect(-4, -1, 3, 1, P.white)
+    a.rect(1, -1, 3, 1, P.white)
+    // Veste moutarde ouverte, tee-shirt marine, la pancarte blanche devant.
+    a.map(['VVNNvu', 'VvNNvu', 'VvWWvu', 'VvWwvu', 'VvWwvu', 'vvNNuu', 'vvnnuu'], lg, -3, -14)
+    a.px(-1, -11, P.blue) // le texte de la pancarte, en bleu
+    a.px(0, -10, P.blue)
+    // Bras : le droit tient la ficelle du ballon, le gauche salue.
+    a.shaded(-5, -13, 1, 4, MOU)
+    a.px(-5, -9, R.skinTan[2])
+    a.shaded(4, -16, 1, 4, MOU)
+    a.px(4, -17, R.skinTan[2])
+    // Tête : dégarni, barbe de trois jours, grand sourire.
+    a.map(['.kkkk.', 'ksSSzk', 'sSSSzz', 'sEsEz.', 'zMMMz.', '.zmmz.', '..zz..'], lg, -3, -21)
+    // Le ballon rouge au bout de la ficelle, qui flotte (2 images).
+    const by = frame ? -1 : 0
+    a.line(4, -18, 7, -27 + by, P.grey1)
+    a.ell(7, -33 + by, 4.5, 5.5, R.red, 0.1)
+    a.px(5, -35 + by, P.pink)
+    a.px(7, -27 + by, P.redD)
+  })
+}
+
 /* ---------- la fille en roller en jaune ---------- */
 export function rollerSprite(frame) {
   const lg = legend({ Y: [R.yellow, 3], y: [R.yellow, 2], o: [R.yellow, 1], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], G: [R.hairBlond, 2], g: [R.hairBlond, 1], H: [R.hairBlond, 3], E: [P.ink], M: [P.red], K: [P.ink], w: [P.grey2] })
@@ -687,6 +721,123 @@ export function banderoleSprite(text) {
   })
 }
 
+/* ---------- le Palais des Festivals (le bâtiment, au départ) ---------- */
+/*
+ * Il occupe toute la bande au-dessus de la Croisette sur les premiers 480 px : bloc blanc, la
+ * grande façade de verre inclinée qui reflète le ciel et les palmiers, et à droite l'escalier
+ * au tapis rouge qui descend jusqu'au trottoir. La route commence après.
+ */
+export const PALAIS_W = 480
+export function palaisSprite(C) {
+  const W = PALAIS_W
+  const H = C.roadBottom
+  const p = new Pix(W, H)
+  // L'esplanade claire sous tout le bâtiment.
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) p.px(x, y, bayer(x, y) < 0.12 ? P.white : P.grey1)
+  // Le bloc blanc, en 3/4 : toit, face avant, ombre portée.
+  p.rect(0, 0, W - 30, 12, P.white)
+  p.rect(0, 12, W - 30, 1, P.grey1)
+  for (let y = 13; y < H - 12; y++) for (let x = 0; x < 70; x++) p.px(x, y, bayer(x, y) < 0.08 ? P.grey1 : P.cream)
+  p.rect(0, H - 12, 70, 1, P.grey2)
+  // La façade de verre inclinée, de x = 70 à 300 : panneaux cyan/bleu, meneaux sombres, reflets.
+  for (let y = 13; y < H - 10; y++) {
+    const lean = Math.round((y - 13) * 0.25)
+    for (let x = 70 + lean; x < 300 + lean; x++) {
+      const mull = (x - lean) % 14 === 0 || (y - 13) % 9 === 0
+      let c = mull ? P.slateD : y < 30 ? (bayer(x, y) < 0.5 ? P.cyan : P.blue) : bayer(x, y) < 0.3 ? P.blue : P.blueD
+      // Reflet des palmiers dans la vitre.
+      if (!mull && y > 32 && ((x + y * 3) % 47 < 4)) c = P.greenD
+      if (!mull && y > 30 && y < 34 && (x % 47) < 9) c = P.greenM
+      p.px(x, y, c)
+    }
+  }
+  p.rect(70, 13, 230, 1, P.white)
+  // Le mur blanc à droite de la vitre, et l'auvent.
+  for (let y = 13; y < H - 10; y++) for (let x = 310; x < W - 30; x++) p.px(x, y, bayer(x, y) < 0.08 ? P.grey1 : P.white)
+  p.rect(300, 13, 10, H - 23, P.grey1)
+  p.rect(W - 30, 0, 30, H, null)
+  // Le grand escalier : marches blanches de x = 330 à 440, tapis rouge au milieu, rampes.
+  const sx0 = 330
+  const sw = 110
+  for (let i = 0; i < 12; i++) {
+    const y = 22 + i * 4
+    const grow = i * 3
+    const x0 = sx0 - grow
+    const w = sw + grow * 2
+    p.rect(x0, y, w, 3, i % 2 ? P.grey1 : P.white)
+    p.rect(x0, y + 3, w, 1, P.grey2)
+    const cw = Math.round(w * 0.42)
+    p.rect(x0 + Math.round((w - cw) / 2), y, cw, 3, i % 2 ? P.redD : P.red)
+    p.rect(x0 + Math.round((w - cw) / 2), y + 3, cw, 1, P.plum)
+  }
+  // Les rampes.
+  p.line(sx0, 20, sx0 - 36, 70, P.grey3)
+  p.line(sx0 + sw, 20, sx0 + sw + 36, 70, P.grey3)
+  // Palmiers en pot sur l'esplanade et bambous le long de la vitre.
+  for (let x = 80; x < 290; x += 36) {
+    p.rect(x, H - 9, 10, 4, P.greenD)
+    p.rect(x + 2, H - 11, 6, 2, P.green)
+    p.rect(x + 1, H - 5, 8, 2, P.clay)
+  }
+  // L'enseigne.
+  text3(p, 'PALAIS DES', 318, 16, P.slate)
+  text3(p, 'FESTIVALS', 320, 24, P.slate)
+  // Bord droit : le bâtiment s'arrête, un muret puis la route.
+  p.rect(W - 30, 0, 2, H, P.grey2)
+  return p
+}
+
+/* ---------- la tapette géante, avec le tueur dedans ---------- */
+export function tapetteSprite() {
+  // Planche de bois vue de 3/4, ressort en cuivre à gauche, l'arceau rabattu sur le tueur
+  // couché sur le dos, la faucille et le marteau tombés à côté. Ancre : milieu du bord bas.
+  const COP = [P.brown, P.rust, P.tan, P.amber]
+  return sprite(100, 44, 50, 42, (a) => {
+    a.box(-48, -30, 96, 26, 4, R.wood)
+    for (let x = -44; x < 46; x += 12) a.rect(x, -24, 1, 18, R.wood[1]) // le fil du bois
+    // Le ressort : des anneaux de cuivre.
+    for (let i = 0; i < 5; i++) {
+      a.rect(-42 + i * 3, -27, 2, 10, i % 2 ? COP[2] : COP[3])
+      a.px(-42 + i * 3, -27, COP[3])
+      a.px(-41 + i * 3, -18, COP[1])
+    }
+    // Le tueur sur le dos : combinaison bleue, casque, les bras en croix.
+    const DEN = [P.ink, P.slateD, P.blueD, P.blue]
+    a.shaded(-24, -17, 44, 7, DEN)
+    a.shaded(-20, -20, 10, 3, DEN) // les bras
+    a.shaded(10, -20, 10, 3, DEN)
+    a.rect(-26, -13, 3, 2, R.skinTan[2])
+    a.rect(23, -13, 3, 2, R.skinTan[2])
+    a.rect(-24, -10, 8, 2, DEN[2]) // les jambes qui dépassent
+    a.rect(8, -10, 8, 2, DEN[2])
+    a.rect(-30, -9, 4, 2, P.ink)
+    a.rect(18, -9, 4, 2, P.ink)
+    // Le casque, tombé de travers, les yeux rouges qui clignotent encore.
+    a.rect(24, -22, 10, 10, P.grey2)
+    a.rect(24, -22, 10, 1, P.grey1)
+    a.rect(33, -22, 1, 10, P.grey3)
+    a.rect(26, -18, 6, 1, P.ink)
+    a.px(27, -18, P.red)
+    a.px(30, -18, P.red)
+    // L'arceau de cuivre rabattu en travers.
+    a.line(-30, -27, 30, -27, COP[2])
+    a.line(30, -27, 36, -8, COP[2])
+    a.line(-30, -27, -36, -8, COP[2])
+    a.line(-30, -26, 30, -26, COP[3])
+    a.line(-4, -27, -4, -8, COP[2])
+    a.line(6, -27, 6, -8, COP[2])
+    // Les outils, tombés sur la planche.
+    a.map(['.LL', 'L..', 'L..'], { L: P.grey1 }, 38, -14)
+    a.rect(38, -11, 1, 4, R.wood[2])
+    a.rect(-46, -9, 5, 2, P.grey3)
+    a.rect(-44, -7, 1, 4, R.wood[2])
+    // Un petit panneau « FROMAGE » cloué au bout, l'appât.
+    a.rect(38, -30, 10, 6, P.yellow)
+    a.px(40, -28, P.amber)
+    a.px(44, -27, P.amber)
+  })
+}
+
 /* ---------- effets ---------- */
 export function boomSprite(frame, big = false) {
   const r = (big ? 10 : 6) + frame * (big ? 5 : 3)
@@ -796,9 +947,11 @@ export function buildSprites(C) {
   S.mime = [0, 1].map((f) => mimeSprite(f))
   S.mimeShocked = mimeSprite(0, { shocked: true })
   S.cascades = cascadesSprite()
+  S.tapette = tapetteSprite()
   S.banderole = banderoleSprite('MIMES EN COLÈRE')
   S.roller = [0, 1].map(rollerSprite)
   S.martine = [0, 1].map(martineSprite)
+  S.acteur = [0, 1].map(acteurSprite)
   S.mamie = [0, 1].map(mamieSprite)
   S.mamieLying = lying(mamieSprite(0))
   S.mamieSplat = mamieSplatSprite()
@@ -816,5 +969,6 @@ export function buildSprites(C) {
   S.debris = ['shoe', 'glasses', 'hat', 'phone', 'bit'].map(debrisSprite)
   S.scorch = scorchSprite()
   S.tile = groundTile(C)
+  S.palais = palaisSprite(C)
   return S
 }
