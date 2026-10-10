@@ -37,7 +37,8 @@ export const CFG = {
   fartMin: 0.15,           // jauge minimale pour péter
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 24,        // px vertical pour compter une esquive
-  score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100, blast: 75 },
+  score: { nearMiss: 50, knock: 100, explode: 300, look: 500, lookGag: 400, lookMamie: 350, mamie: 1000, meter: 100, blast: 75 },
+  lookRange: { behind: -10, ahead: 120 },
   rollerAt: 12, mamieAt: 26, mimesFrom: 33, acteurAt: 19, odileAt: 40, bialesAt: 47,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
 }
@@ -111,8 +112,8 @@ export function create(canvas) {
       fart: 1, farts: [], gas: [],
       combo: 0, bestCombo: 0, score: 0, scoreShown: 0, scoreBump: 0, scoreGain: 0, scoreGainT: 0, comboBump: 0, comboShown: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
-      roller: null, lookWindow: 0, invertT: 0, looked: false,
-      mamie: null, truck: null, mamieDone: false, acteur: null, odile: false, biales: null,
+      roller: null, lookWindow: 0, lookTarget: null, invertT: 0, looked: false, lookedGags: {},
+      mamie: null, truck: null, mamieDone: false, acteur: null, odile: false, odileEnt: null, biales: null,
       shake: 0, flash: 0,
       jump: null, result: null,
     }
@@ -280,14 +281,43 @@ export function create(canvas) {
   function release(a) { if (a in held) held[a] = false }
   function touchLane(y) { laneTarget = y }
 
+  /*
+   * Regarder : la fille en roller, Simon et la femme au chapeau, les lettres au sol, Bialès et
+   * la mamie sont des cibles. Au bon moment, R rapporte un bonus ; Serge tourne la tête et les
+   * contrôles s'inversent le temps qu'il regarde. Chaque cible ne compte qu'une fois.
+   */
+  function lookCandidates() {
+    const list = []
+    if (S.roller && !S.roller.gone && !S.looked) list.push({ id: 'roller', x: S.roller.x, y: S.roller.y, pts: CFG.score.look, label: 'LA FILLE EN JAUNE', hint: 'LA' })
+    if (S.acteur && S.acteur.state === 'walk') list.push({ id: 'simon', x: S.acteur.x, y: S.acteur.y, pts: CFG.score.lookGag, label: 'HOUHOU ! KARA !', hint: 'SIMON' })
+    if (S.odileEnt) list.push({ id: 'odile', x: S.odileEnt.x, y: S.odileEnt.y, pts: CFG.score.lookGag, label: 'O.D.I.L.E', hint: 'LES LETTRES' })
+    if (S.biales && S.biales.state === 'walk') list.push({ id: 'biales', x: S.biales.x, y: S.biales.y, pts: CFG.score.lookGag, label: 'UN WHISKY ?', hint: 'BIALÈS' })
+    if (S.mamie && S.mamie.state === 'walk') list.push({ id: 'mamie', x: S.mamie.x, y: S.mamie.y, pts: CFG.score.lookMamie, label: 'LA MAMIE', hint: 'LA MAMIE' })
+    return list.filter((c) => !S.lookedGags[c.id])
+  }
+  function updateLook() {
+    let best = null
+    for (const c of lookCandidates()) {
+      const ahead = c.x - S.serge.x
+      if (ahead < CFG.lookRange.behind || ahead > CFG.lookRange.ahead) continue
+      if (!best || ahead < best.ahead) best = { ...c, ahead }
+    }
+    S.lookTarget = best
+    S.lookWindow = best ? 1 : 0
+    if (best && !S.lookedGags[best.id + ':hint']) { S.lookedGags[best.id + ':hint'] = true; pop(best.x, best.y - 30, 'R : REGARDER ?', '#ffe060') }
+  }
   function doLook() {
-    if (S.mode !== 'run' || S.lookWindow <= 0 || S.looked) return
-    S.looked = true
+    if (S.mode !== 'run' || !S.lookTarget) return
+    const t = S.lookTarget
+    S.lookedGags[t.id] = true
+    if (t.id === 'roller') S.looked = true
+    S.lookTarget = null
+    S.lookWindow = 0
     S.invertT = CFG.lookInvert
     audio.whistle()
     setTimeout(() => audio.wobble(), 450)
     S.serge.face = -1
-    addScore(CFG.score.look, S.serge.x, S.serge.y, 'LA FILLE EN JAUNE')
+    addScore(t.pts, S.serge.x, S.serge.y, t.label)
   }
 
   /* ---------- scripts ---------- */
@@ -300,10 +330,7 @@ export function create(canvas) {
       const ro = S.roller
       ro.x += ro.vx * dt
       ro.y += (S.serge.y + 18 - ro.y) * 0.5 * dt
-      const ahead = ro.x - S.serge.x
-      S.lookWindow = ahead > 0 && ahead < 110 && !S.looked ? 1 : 0
-      if (ahead > 0 && ahead < 110 && !S.looked && !ro.shown) { ro.shown = true; pop(ro.x, ro.y - 28, 'R : REGARDER ?', '#ffe060') }
-      if (ro.x - S.camX > GW + 40 || ro.x - S.camX < -60) { S.roller = { gone: true, x: 1e9, y: 0 }; S.lookWindow = 0 }
+      if (ro.x - S.camX > GW + 40 || ro.x - S.camX < -60) S.roller = { gone: true, x: 1e9, y: 0 }
     }
     // L'acteur non accompagné : une seule fois, planté en haut du trottoir avec son ballon.
     if (!S.acteur && S.t >= CFG.acteurAt) {
@@ -332,7 +359,8 @@ export function create(canvas) {
     // O D I L E, peint sur les dalles.
     if (!S.odile && S.t >= CFG.odileAt) {
       S.odile = true
-      S.ents.push({ type: 'odile', x: S.camX + GW + 120, y: 150 })
+      S.odileEnt = { type: 'odile', x: S.camX + GW + 120, y: 150 }
+      S.ents.push(S.odileEnt)
     }
     // La mamie et son caddie : à 40 s, zigzague en haut du trottoir ; le camion l'écrase après.
     if (!S.mamie && S.t >= CFG.mamieAt) {
@@ -444,6 +472,7 @@ export function create(canvas) {
     if (S.killer.taunt <= 0) { S.killer.taunt = 6 + S.r() * 6; S.killer.tauntT = 1.1; audio.taunt(); pop(S.killer.x, S.killer.y - 28, ['HÉ HÉ', 'TROP LENT', 'ALLEZ SERGE', 'À PLUS'][(S.r() * 4) | 0], '#ff8080') }
 
     updateScripts(dt)
+    updateLook()
 
     // spawn devant
     while (S.spawnX < S.camX + GW + 200) spawnChunk()
@@ -1010,7 +1039,7 @@ export function create(canvas) {
     text3(S.fart >= 1 ? (pointerTouch ? 'PROUT MAX  TAP À DROITE' : 'PROUT MAX  ESPACE') : S.fart >= CFG.fartMin ? 'PROUT ' + Math.round(S.fart * 100) + '%  (PETIT)' : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : S.fart >= CFG.fartMin ? P.green : P.grey1)
     if (S.mode === 'run') text3('TUEUR : 320 M  (TOUJOURS)', GW - 4 - textWidth('TUEUR : 320 M  (TOUJOURS)'), GH - 12, P.pink)
     if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 28, P.yellow, { outline: P.ink })
-    if (S.lookWindow > 0) text5C(pointerTouch ? 'TAP À GAUCHE : LA REGARDER ?' : 'R : LA REGARDER ?', GW / 2, 28, P.yellow, { outline: P.ink })
+    if (S.lookTarget) text5C((pointerTouch ? 'TAP À GAUCHE : REGARDER ' : 'R : REGARDER ') + S.lookTarget.hint + ' ?', GW / 2, 28, P.yellow, { outline: P.ink })
     if (debug) text3(`SEED ${S.seed} · ENTS ${S.ents.length} · DENS ${density().toFixed(1)} · CAM ${S.camX | 0}`, 4, GH - 30, P.green)
   }
 
@@ -1081,11 +1110,12 @@ export function create(canvas) {
       ['SAUT EN LONGUEUR', j.meters.toFixed(2).replace('.', ',') + ' M', '+' + j.bonus],
       ['MEILLEUR COMBO', '×' + (S.bestCombo >= 20 ? 5 : S.bestCombo >= 15 ? 4 : S.bestCombo >= 10 ? 3 : S.bestCombo >= 5 ? 2 : 1), S.bestCombo + ' ESQUIVES'],
       ['LA FILLE EN JAUNE', S.looked ? 'REGARDÉE' : 'RATÉE', ''],
+      ['REGARDS', ['simon', 'odile', 'biales', 'mamie'].filter((k) => S.lookedGags[k]).length + ' / 4', ''],
       ['LA MAMIE', S.mamieDone && S.mamie.state === 'splat' ? 'ÉCRASÉE' : 'ÉPARGNÉE', ''],
       ['LE TUEUR', 'DANS LA TAPETTE', ''],
     ]
     rows.forEach((r, i) => {
-      const y = py + 26 + i * 14
+      const y = py + 24 + i * 12
       if (t > 0.4 + i * 0.15) {
         text5(r[0], px + 12, y, P.grey1, {})
         text5(r[1], px + 212 - textWidth5(r[1]), y, P.white, {})
