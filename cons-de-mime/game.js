@@ -34,9 +34,10 @@ export const CFG = {
   fartRecharge: 0.10,      // jauge/s
   fartNearMiss: 0.18,      // jauge par esquive
   fartCost: 1,
+  fartMin: 0.15,           // jauge minimale pour péter
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 24,        // px vertical pour compter une esquive
-  score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100 },
+  score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100, blast: 75 },
   rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30, odileAt: 62,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
 }
@@ -108,7 +109,7 @@ export function create(canvas) {
       killer: { x: -80, y: 112, taunt: 5, tauntT: 0 },
       martine: null,
       fart: 1, farts: [], gas: [],
-      combo: 0, bestCombo: 0, score: 0,
+      combo: 0, bestCombo: 0, score: 0, scoreShown: 0, scoreBump: 0, scoreGain: 0, scoreGainT: 0, comboBump: 0, comboShown: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
       roller: null, lookWindow: 0, invertT: 0, looked: false,
       mamie: null, truck: null, mamieDone: false, acteur: null, odile: false,
@@ -173,6 +174,9 @@ export function create(canvas) {
   function addScore(n, x, y, label) {
     const v = n * mult()
     S.score += v
+    S.scoreBump = 1
+    S.scoreGain += v
+    S.scoreGainT = 1.4
     pop(x, y - 20, (label ? label + ' ' : '') + '+' + v, '#ffe060', v >= 500)
   }
 
@@ -189,28 +193,36 @@ export function create(canvas) {
   }
 
   function doFart() {
-    if (S.mode !== 'run' || S.fart < CFG.fartCost || S.tripT > 0) return
-    S.fart -= CFG.fartCost
+    if (S.mode !== 'run' || S.fart < CFG.fartMin || S.tripT > 0) return
+    // Le prout prend toute la jauge : plus elle est pleine, plus il dure et plus il porte loin.
+    const power = S.fart
+    S.fart = 0
     audio.fart()
-    S.boostT = CFG.boostTime
-    S.shake = 0.15
+    S.boostT = CFG.boostTime * (0.45 + 0.9 * power)
+    S.shake = 0.1 + 0.1 * power
+    const reach = 0.55 + 0.45 * power
     const sx = S.serge.x, sy = S.serge.y
     S.gas.push({ x: sx - 10, y: sy, t: 0 })
     let hit = 0
     for (const e of S.ents) {
       if (e.type === 'furn' || e.state !== 'walk' && e.state !== 'mime') continue
       const dx = e.x - sx, dy = e.y - sy
-      if (dx < -CFG.fartCone.back || dx > CFG.fartCone.front || Math.abs(dy) > CFG.fartCone.half) continue
+      if (dx < -CFG.fartCone.back * reach || dx > CFG.fartCone.front * reach || Math.abs(dy) > CFG.fartCone.half * reach) continue
       if (e.type === 'mime') { pop(e.x, e.y - 24, 'IMMUNISÉ', '#ffffff'); audio.immune(); continue }
       hit++
       e.state = 'fly'; e.solid = false
+      e.farted = true
+      // Chaque personne soufflée rapporte, et part dans un petit éclat.
+      addScore(CFG.score.blast, e.x, e.y - 10, 'PROUT')
+      S.ents.push({ type: 'boom', x: e.x, y: e.y - 8, t: 0.1, small: true })
       e.z = 0
       e.vz = 120 + S.r() * 40
       e.vx = -60 + dx * 0.8 + S.r() * 40
       e.vy = (dy >= 0 ? 1 : -1) * (90 + Math.abs(dy) * 1.2) // vers la plage si en bas, vers la route si en haut
       e.spin = (S.r() - 0.5) * 20
     }
-    if (hit >= 3) pop(sx, sy - 34, 'PROUT ×' + hit, '#80ff80', true)
+    if (hit >= 2) pop(sx, sy - 34, 'PROUT ×' + hit, '#80ff80', true)
+    if (hit >= 3) audio.combo(Math.min(4, hit))
   }
 
   /* ---------- l'intro : Serge et Martine devant le Palais ---------- */
@@ -456,7 +468,10 @@ export function create(canvas) {
           } else {
             e.state = e.y <= CFG.roadBottom ? 'road' : 'down'; e.downT = 0
             addScore(CFG.score.knock, e.x, e.y, e.state === 'road' ? 'ROUTE' : 'À PLAT')
+            S.ents.push({ type: 'boom', x: e.x, y: e.y - 4, t: 0, small: true })
+            S.shake = Math.max(S.shake, 0.1)
             audio.knock()
+            audio.explode()
           }
         }
       } else if (e.state === 'down' || e.state === 'splat' || e.state === 'road') {
@@ -481,6 +496,7 @@ export function create(canvas) {
           const near = e.type === 'mime' ? e.wallH / 2 + 14 : CFG.nearMissDist
           if (d < near) {
             S.combo++
+            S.comboBump = 1
             audio.nearMiss(S.combo)
             S.bestCombo = Math.max(S.bestCombo, S.combo)
             S.fart = Math.min(1, S.fart + CFG.fartNearMiss)
@@ -494,7 +510,14 @@ export function create(canvas) {
 
     // effets
     for (let i = S.gas.length - 1; i >= 0; i--) { S.gas[i].t += dt; if (S.gas[i].t > 0.7) S.gas.splice(i, 1) }
-    for (let i = S.pops.length - 1; i >= 0; i--) { const p = S.pops[i]; p.t += dt; p.y -= 18 * dt; if (p.t > 1.2) S.pops.splice(i, 1) }
+    for (let i = S.pops.length - 1; i >= 0; i--) { const p = S.pops[i]; p.t += dt; p.y -= (p.big ? 14 : 22) * dt; if (p.t > (p.big ? 1.6 : 1.2)) S.pops.splice(i, 1) }
+    // Le score affiché rattrape le vrai, et pulse à chaque gain.
+    S.scoreShown += (S.score - S.scoreShown) * Math.min(1, dt * 8)
+    if (S.score - S.scoreShown < 1) S.scoreShown = S.score
+    S.scoreBump = Math.max(0, S.scoreBump - dt * 3)
+    S.comboBump = Math.max(0, S.comboBump - dt * 3)
+    S.scoreGainT = Math.max(0, S.scoreGainT - dt)
+    if (S.scoreGainT === 0) S.scoreGain = 0
     S.shake = Math.max(0, S.shake - dt)
   }
 
@@ -514,10 +537,10 @@ export function create(canvas) {
     S.mode = 'jump'
     const sg = S.serge
     S.boostT = 0; S.tripT = 0; S.invertT = 0; sg.face = 1
-    const kx = sg.x + 170
+    const kx = S.camX + GW + 60 // hors champ : il arrive en défilant, comme le reste
     const ky = 150
-    // On dégage le trottoir devant, on pose le kiosque et la foule des mimes.
-    S.ents = S.ents.filter((e) => e.x < sg.x + 40 || e.type === 'scorch')
+    // Rien ne disparaît à l'écran ; seul ce qui est déjà au-delà du kiosque est retiré.
+    S.ents = S.ents.filter((e) => e.x < kx - 40 || e.type === 'scorch' || e.type === 'odile')
     S.ents.push({ type: 'cascades', x: kx, y: ky - 0.5 })
     const r = S.r
     for (let i = 0; i < 16; i++) {
@@ -575,6 +598,7 @@ export function create(canvas) {
       }
     }
     for (const e of S.ents) if (e.type === 'mime') e.pose += dt
+    for (const e of S.ents) if (e.type === 'ped' && e.state === 'walk' && !e.leash) { e.x += e.vx * dt; e.y += e.vy * dt }
     for (let i = S.gas.length - 1; i >= 0; i--) { S.gas[i].t += dt; if (S.gas[i].t > 0.7) S.gas.splice(i, 1) }
     for (let i = S.pops.length - 1; i >= 0; i--) { const p = S.pops[i]; p.t += dt; p.y -= 10 * dt; if (p.t > 2) S.pops.splice(i, 1) }
     S.shake = Math.max(0, S.shake - dt)
@@ -612,6 +636,14 @@ export function create(canvas) {
   const text5C = (t, cx, y, col = P.white, style = { shadow: P.ink }) => drawText5C(ctx, t, cx, y, col, style)
   const text3 = (t, x, y, col = P.white) => drawText(ctx, t, x, y, col)
   const text3C = (t, cx, y, col = P.white) => drawTextC(ctx, t, cx, y, col)
+  /** Police 5×7 agrandie (entier ou non) autour de (cx, y haut), nette grâce au nearest. */
+  function text5Scaled(t, cx, y, col, scale, style = { outline: P.ink }) {
+    ctx.save()
+    ctx.translate(Math.round(cx), Math.round(y))
+    ctx.scale(scale, scale)
+    drawText5C(ctx, t, 0, 0, col, style)
+    ctx.restore()
+  }
   const mod = (a, n) => ((a % n) + n) % n
   const lookKey = (k) => (k === 'vieux+chien' ? 'vieux' : k)
   const walkFrame = (e) => mod(Math.floor(S.clock * 6 + (e.phase || 0)), 2)
@@ -713,8 +745,10 @@ export function create(canvas) {
     for (const p of S.pops) {
       const a = Math.min(1, (1.2 - p.t) * 3)
       ctx.globalAlpha = Math.max(0, a)
-      if (p.big) text5C(p.text, p.x - cam, p.y - 8, p.col, { outline: P.ink })
-      else text3C(p.text, p.x - cam, p.y - 4, p.col)
+      if (p.big) {
+        const sc = 1 + Math.max(0, 0.3 - p.t) // il tape en apparaissant
+        text5Scaled(p.text, p.x - cam, p.y - 10, p.col, 2 * sc, { outline: P.ink })
+      } else text5C(p.text, p.x - cam, p.y - 6, p.col, { outline: P.ink })
       ctx.globalAlpha = 1
     }
     ctx.restore()
@@ -761,6 +795,7 @@ export function create(canvas) {
     if (x < -60 || x > GW + 60) return
     if (e.type === 'boom') {
       const f = Math.min(3, Math.floor((e.t / 0.6) * 4))
+      if (e.small) { blit(SPR.boomSmall[f], x, e.y - 6); return }
       blit(e.big ? SPR.boomBig[f] : SPR.boom[f], x, e.y - 6)
       return
     }
@@ -881,20 +916,34 @@ export function create(canvas) {
   function drawHud() {
     const left = Math.max(0, CFG.duration - S.t)
     // Bandeau sombre en haut pour la lisibilité, par-dessus les façades.
-    ctx.fillStyle = 'rgba(24,20,37,0.55)'
-    ctx.fillRect(0, 0, GW, 12)
-    text5('SCORE ' + String(S.score).padStart(6, '0'), 3, 1, P.yellow, {})
+    ctx.fillStyle = 'rgba(24,20,37,0.6)'
+    ctx.fillRect(0, 0, GW, 24)
+    // Le score, en gros, qui pulse à chaque gain ; le gain en cours flotte à côté.
+    const sc = 2 + S.scoreBump * 0.5
+    const shown = String(Math.round(S.scoreShown)).padStart(6, '0')
+    text5('SCORE', 4, 2, P.grey1, {})
+    text5Scaled(shown, 4 + textWidth5(shown) + 2 + (sc - 2) * 12, 11 - (sc - 2) * 6, S.scoreBump > 0.5 ? P.white : P.yellow, sc, { shadow: P.ink })
+    if (S.scoreGain > 0) text5('+' + S.scoreGain, 4 + textWidth5(shown) * 2 + 10, 12, P.green, { outline: P.ink })
     const clock = left.toFixed(1).replace('.', ',')
-    text5C(clock, GW / 2, 1, left < 10 && Math.floor(S.t * 4) % 2 ? P.red : P.white, {})
+    text5Scaled(clock, GW / 2, 2, left < 10 && Math.floor(S.t * 4) % 2 ? P.red : P.white, 2, { shadow: P.ink })
+    // Le combo : le multiplicateur en géant à droite, la série dessous, le tout qui pulse.
     const m = mult()
-    if (S.combo > 0) text5('COMBO ' + S.combo + ' ×' + m, GW - 3 - textWidth5('COMBO ' + S.combo + ' ×' + m), 1, m >= 3 ? P.cyan : P.white, {})
-    else text5('RECORD ' + String(best).padStart(6, '0'), GW - 3 - textWidth5('RECORD ' + String(best).padStart(6, '0')), 1, P.grey1, {})
+    if (S.combo > 0) {
+      const cs = 2.2 + S.comboBump * 0.8
+      const col = m >= 5 ? P.hot : m >= 4 ? P.orange : m >= 3 ? P.cyan : m >= 2 ? P.yellow : P.white
+      text5Scaled('×' + m, GW - 24, 1 - (cs - 2.2) * 5, col, cs, { outline: P.ink })
+      text5('COMBO ' + S.combo, GW - 44 - textWidth5('COMBO ' + S.combo), 7, S.comboBump > 0.5 ? P.white : P.grey1, {})
+      // Les crans jusqu'au prochain palier.
+      const next = S.combo >= 20 ? 20 : Math.ceil((S.combo + 1) / 5) * 5
+      const from = next - 5
+      for (let i = 0; i < 5; i++) { ctx.fillStyle = S.combo - from > i ? col : P.slateD; ctx.fillRect(GW - 44 - 30 + i * 6, 18, 4, 3) }
+    } else text5('RECORD ' + String(best).padStart(6, '0'), GW - 4 - textWidth5('RECORD ' + String(best).padStart(6, '0')), 2, P.grey1, {})
     // Jauge de prout en bas à gauche, sur la mer.
-    drawGauge(4, GH - 10, 80, S.fart, S.fart >= 1)
-    text3(S.fart >= 1 ? (pointerTouch ? 'PROUT PRÊT  TAP À DROITE' : 'PROUT PRÊT  ESPACE') : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : P.grey1)
+    drawGauge(4, GH - 10, 80, S.fart, S.fart >= CFG.fartMin)
+    text3(S.fart >= 1 ? (pointerTouch ? 'PROUT MAX  TAP À DROITE' : 'PROUT MAX  ESPACE') : S.fart >= CFG.fartMin ? 'PROUT ' + Math.round(S.fart * 100) + '%  (PETIT)' : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : S.fart >= CFG.fartMin ? P.green : P.grey1)
     if (S.mode === 'run') text3('TUEUR : 320 M  (TOUJOURS)', GW - 4 - textWidth('TUEUR : 320 M  (TOUJOURS)'), GH - 12, P.pink)
-    if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 16, P.yellow, { outline: P.ink })
-    if (S.lookWindow > 0) text5C(pointerTouch ? 'TAP À GAUCHE : LA REGARDER ?' : 'R : LA REGARDER ?', GW / 2, 16, P.yellow, { outline: P.ink })
+    if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 28, P.yellow, { outline: P.ink })
+    if (S.lookWindow > 0) text5C(pointerTouch ? 'TAP À GAUCHE : LA REGARDER ?' : 'R : LA REGARDER ?', GW / 2, 28, P.yellow, { outline: P.ink })
     if (debug) text3(`SEED ${S.seed} · ENTS ${S.ents.length} · DENS ${density().toFixed(1)} · CAM ${S.camX | 0}`, 4, GH - 30, P.green)
   }
 
@@ -1012,13 +1061,13 @@ export function create(canvas) {
         const on = j.phase === 'air' || Math.floor(j.t * 6) % 4 !== 3
         if (on) {
           ctx.fillStyle = 'rgba(24,20,37,0.6)'
-          ctx.fillRect(0, 42, GW, 30)
-          text5C('BARREZ-VOUS,', GW / 2, 44, P.yellow, { outline: P.ink })
-          text5C('CONS DE MIME !', GW / 2, 56, P.yellow, { outline: P.ink })
+          ctx.fillRect(0, 40, GW, 52)
+          text5Scaled('BARREZ-VOUS,', GW / 2, 42, P.yellow, 2, { outline: P.ink })
+          text5Scaled('CONS DE MIME !', GW / 2, 66, P.yellow, 2, { outline: P.ink })
         }
       }
-      if (j.phase === 'air' || j.phase === 'land') text5C('SAUT EN LONGUEUR', GW / 2, 24, P.white, { outline: P.ink })
-      if (j.phase === 'land') text5C(j.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 38, P.yellow, { outline: P.ink })
+      if (j.phase === 'air' || j.phase === 'land') text5C('SAUT EN LONGUEUR', GW / 2, 30, P.white, { outline: P.ink })
+      if (j.phase === 'land') text5Scaled(j.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 42, P.yellow, 2, { outline: P.ink })
       if (j.phase === 'land' && j.t > 0.8) text3C('PLUS LE SCORE EST HAUT, PLUS IL VA LOIN', GW / 2, 52, P.grey1)
     }
     if (S.mode === 'over') drawOver()
