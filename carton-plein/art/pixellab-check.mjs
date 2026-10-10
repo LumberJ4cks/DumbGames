@@ -93,6 +93,7 @@ function shadow(dst, x, y, rx, ry) {
   for (let j = -ry; j <= ry; j++) for (let i = -rx; i <= rx; i++) if ((i / rx) ** 2 + (j / ry) ** 2 <= 1) { const c = dst.get(x + i, y + j); if (c) dst.px(x + i, y + j, c === P.green ? P.greenM : P.green) }
 }
 
+if (process.argv[1] && process.argv[1].endsWith('pixellab-check.mjs')) {
 const dir = process.argv[2]
 const names = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']
 const files = names.map((n) => path.join(dir, 'Idle/rotations', n + '.png')).filter((f) => fs.existsSync(f))
@@ -117,3 +118,4 @@ scr.disc(360, 200, 5, 5, P.white); scr.disc(359, 199, 3, 3, P.grey1)
 sheet.blit(scr, 0, 36 + 2 * cell)
 process.stdout.write(pixToPng(sheet, Number(process.argv[3] || 2), '#262b44'))
 console.error('ok', raw.length, 'rotations')
+}
