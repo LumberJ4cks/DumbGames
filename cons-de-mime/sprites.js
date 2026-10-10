@@ -6,9 +6,9 @@
  * mobilier, le centre pour les effets. buildSprites() rend des Pix (utilisables en Node),
  * le jeu les transforme en canvas une fois au démarrage avec cacheSprites().
  */
-import { Pix, PAL, RAMPS, darker, shade, bayer } from './pixel.js?v=3'
-import { glyph3 } from './font.js?v=3'
-import { glyph5 } from './font5.js?v=3'
+import { Pix, PAL, RAMPS, darker, shade, bayer } from './pixel.js?v=4'
+import { glyph3 } from './font.js?v=4'
+import { glyph5 } from './font5.js?v=4'
 
 const P = PAL
 const R = RAMPS
