@@ -403,27 +403,69 @@ export function create(canvas) {
   }
 
   /* ---------- le saut final ---------- */
+  /*
+   * Le chrono tombe : devant Serge, le kiosque des cascades, et derrière lui une manifestation
+   * de mimes avec banderole. Serge grimpe sur le kiosque, hurle « Barrez-vous, cons de mime ! »,
+   * et saute par-dessus. Plus le score est haut, plus il va loin.
+   */
+  const KIOSK_W = 62
+  const KIOSK_H = 44
+  function jumpMeters() {
+    const m = 2 + S.score / 1500 + S.bestCombo * 0.08 + S.fart * 0.5
+    return Math.round(Math.min(18, m) * 100) / 100
+  }
   function beginJump() {
     S.mode = 'jump'
-    const meters = 2 + S.combo * 0.35 + S.fart * 3 + S.speedMul * 0.5
-    S.jump = { t: 0, meters: Math.round(meters * 100) / 100, x0: S.serge.x, phase: 'run' }
-    pop(S.serge.x, S.serge.y - 40, 'ÉLAN !', '#ffffff', true)
+    const sg = S.serge
+    S.boostT = 0; S.tripT = 0; S.invertT = 0; sg.face = 1
+    const kx = sg.x + 170
+    const ky = 150
+    // On dégage le trottoir devant, on pose le kiosque et la foule des mimes.
+    S.ents = S.ents.filter((e) => e.x < sg.x + 40 || e.type === 'scorch')
+    S.ents.push({ type: 'cascades', x: kx, y: ky - 0.5 })
+    const r = S.r
+    for (let i = 0; i < 16; i++) {
+      const x = kx + KIOSK_W + 18 + i * 7 + r() * 6
+      const y = CFG.sidewalkTop + 8 + r() * (CFG.sidewalkBottom - CFG.sidewalkTop - 12)
+      S.ents.push({ type: 'mime', k: 'CON DE MIME', x, y, w: 10, h: 18, solid: false, wallH: 0, state: 'crowd', pose: r() * 2, shocked: false })
+    }
+    S.ents.push({ type: 'banderole', x: kx + KIOSK_W + 75, y: CFG.sidewalkTop + 4 })
+    S.roller = { gone: true, x: 1e9, y: 0 }
+    S.lookWindow = 0
+    S.jump = { t: 0, meters: jumpMeters(), phase: 'run', kx, ky, z: 0 }
   }
   function updateJump(dt) {
     const j = S.jump
     j.t += dt
     const sg = S.serge
+    const follow = (target, k) => { S.camX += (target - S.camX) * Math.min(1, dt * k) }
     if (j.phase === 'run') {
-      S.camX += 180 * dt; sg.x += 180 * dt
-      if (j.t > 1.0) { j.phase = 'air'; j.t = 0; j.xStart = sg.x }
+      // Il fonce vers le kiosque, et se recale sur sa ligne.
+      sg.x += 170 * dt
+      sg.y += (j.ky - sg.y) * Math.min(1, dt * 4)
+      follow(sg.x - CFG.sergeHomeX, 8)
+      if (sg.x >= j.kx) { j.phase = 'climb'; j.t = 0; sg.y = j.ky }
+    } else if (j.phase === 'climb') {
+      const p = Math.min(1, j.t / 0.55)
+      sg.x = j.kx + p * (KIOSK_W - 8)
+      j.z = p * KIOSK_H
+      follow(sg.x - 160, 8)
+      if (p >= 1) { j.phase = 'shout'; j.t = 0; S.shake = 0.15 }
+    } else if (j.phase === 'shout') {
+      follow(sg.x - 160, 8)
+      if (j.t > 0.3) for (const e of S.ents) if (e.type === 'mime' && e.state === 'crowd' && !e.shocked && S.r() < dt * 6) e.shocked = true
+      if (j.t > 1.6) { j.phase = 'air'; j.t = 0; j.xStart = sg.x; j.dist = 16 + j.meters * 16 }
     } else if (j.phase === 'air') {
-      const dur = 0.6 + j.meters * 0.12
+      const dur = 0.9 + j.meters * 0.07
       const p = Math.min(1, j.t / dur)
-      S.camX += 180 * dt; sg.x += 180 * dt
-      j.z = Math.sin(p * Math.PI) * (20 + j.meters * 4)
-      if (p >= 1) { j.phase = 'land'; j.t = 0; j.z = 0; S.shake = 0.3; pop(sg.x, sg.y - 40, j.meters.toFixed(2) + ' m', '#ffe060', true) }
+      sg.x = j.xStart + p * j.dist
+      j.z = KIOSK_H * (1 - p) + Math.sin(p * Math.PI) * (24 + j.meters * 2.5)
+      follow(sg.x - 200, 6)
+      for (const e of S.ents) if (e.type === 'mime' && e.state === 'crowd' && !e.shocked && e.x < sg.x + 10) e.shocked = true
+      if (p >= 1) { j.phase = 'land'; j.t = 0; j.z = 0; S.shake = 0.3; S.gas.push({ x: sg.x, y: sg.y, t: 0.2, dust: true }) }
     } else if (j.phase === 'land') {
-      if (j.t > 1.4) {
+      follow(sg.x - 200, 6)
+      if (j.t > 1.8) {
         const bonus = Math.round(j.meters * CFG.score.meter)
         S.score += bonus
         S.jump.bonus = bonus
@@ -431,6 +473,8 @@ export function create(canvas) {
         if (S.score > best) { best = S.score; try { localStorage.setItem('consDeMime:best', String(best)) } catch {} }
       }
     }
+    for (const e of S.ents) if (e.type === 'mime') e.pose += dt
+    for (let i = S.gas.length - 1; i >= 0; i--) { S.gas[i].t += dt; if (S.gas[i].t > 0.7) S.gas.splice(i, 1) }
     for (let i = S.pops.length - 1; i >= 0; i--) { const p = S.pops[i]; p.t += dt; p.y -= 10 * dt; if (p.t > 2) S.pops.splice(i, 1) }
     S.shake = Math.max(0, S.shake - dt)
   }
@@ -522,7 +566,7 @@ export function create(canvas) {
     // Tout ce qui a des pieds, trié par profondeur (y), Serge et le tueur compris.
     const list = S.ents.filter((e) => e.type !== 'scorch').map((e) => ({ y: e.y, e }))
     list.push({ y: S.serge.y, serge: true })
-    list.push({ y: S.killer.y, killer: true })
+    if (S.mode !== 'jump') list.push({ y: S.killer.y, killer: true })
     if (S.roller && !S.roller.gone) list.push({ y: S.roller.y, roller: true })
     if (S.truck) list.push({ y: S.truck.y, truck: true })
     list.sort((a, b) => a.y - b.y)
@@ -540,6 +584,7 @@ export function create(canvas) {
     // Gaz par-dessus.
     for (const g of S.gas) {
       const f = Math.min(3, Math.floor((g.t / 0.7) * 4))
+      if (g.dust) { ctx.globalAlpha = 0.5; for (let k = -1; k <= 1; k++) blit(SPR.shadow.l, g.x - cam + k * 10 * (1 + g.t), g.y - 2 - g.t * 6); ctx.globalAlpha = 1; continue }
       for (let k = 0; k < 3; k++) blit(SPR.gas[f], g.x - cam - g.t * 50 - k * 9, g.y - 8 + Math.sin(k + g.t * 9) * 3)
     }
     drawPalmsFront(cam)
@@ -582,7 +627,16 @@ export function create(canvas) {
       if (Math.floor(S.t * 8) % 2) text3C('AÏE', sx, sg.y - 18, P.yellow)
       return
     }
-    const f = Math.floor(S.t * 12 * Math.max(0.5, S.speedMul)) % 4
+    if (S.mode === 'jump' && (S.jump.phase === 'air' || S.jump.phase === 'land')) {
+      if (S.jump.phase === 'air') blit(SPR.sergeJump, sx, sg.y - jz)
+      else blit(SPR.serge[1], sx, sg.y)
+      return
+    }
+    if (S.mode === 'jump' && S.jump.phase === 'shout') {
+      blit(SPR.sergeBoost[Math.floor(S.jump.t * 10) % 2 ? 1 : 3], sx, sg.y - jz)
+      return
+    }
+    const f = Math.floor((S.mode === 'jump' ? S.jump.t * 14 : S.t * 12 * Math.max(0.5, S.speedMul))) % 4
     const set = S.boostT > 0 ? SPR.sergeBoost : sg.face < 0 ? SPR.sergeLook : SPR.serge
     blit(set[f], sx, sg.y - jz)
   }
@@ -607,6 +661,22 @@ export function create(canvas) {
     }
     if (e.type === 'furn') {
       blit(SPR.furn[e.k], x, e.y)
+      return
+    }
+    if (e.type === 'cascades') {
+      blit(SPR.cascades, x, e.y)
+      return
+    }
+    if (e.type === 'banderole') {
+      blit(SPR.mime[0], x - 30, e.y + 20)
+      blit(SPR.mime[1], x + 30, e.y + 20)
+      blit(SPR.banderole, x, e.y + 2)
+      return
+    }
+    if (e.type === 'mime' && e.state === 'crowd') {
+      blit(SPR.shadow.m, x, e.y)
+      blit(e.shocked ? SPR.mimeShocked : SPR.mime[Math.floor(e.pose * 3) % 2], x, e.y - (e.shocked ? Math.abs(Math.sin(e.pose * 10)) * 2 : 0))
+      if (e.shocked && Math.floor(e.pose * 4) % 3 === 0) text3C('!', x, e.y - 26, P.white)
       return
     }
     if (e.type === 'mime') {
@@ -784,8 +854,19 @@ export function create(canvas) {
     drawWorld()
     if (S.mode === 'run' || S.mode === 'jump') drawHud()
     if (S.mode === 'jump') {
-      text5C('SAUT EN LONGUEUR', GW / 2, 24, P.white, { outline: P.ink })
-      if (S.jump.phase === 'land') text5C(S.jump.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 38, P.yellow, { outline: P.ink })
+      const j = S.jump
+      if (j.phase === 'shout' || (j.phase === 'air' && j.t < 0.6)) {
+        const on = j.phase === 'air' || Math.floor(j.t * 6) % 4 !== 3
+        if (on) {
+          ctx.fillStyle = 'rgba(24,20,37,0.6)'
+          ctx.fillRect(0, 42, GW, 30)
+          text5C('BARREZ-VOUS,', GW / 2, 44, P.yellow, { outline: P.ink })
+          text5C('CONS DE MIME !', GW / 2, 56, P.yellow, { outline: P.ink })
+        }
+      }
+      if (j.phase === 'air' || j.phase === 'land') text5C('SAUT EN LONGUEUR', GW / 2, 24, P.white, { outline: P.ink })
+      if (j.phase === 'land') text5C(j.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 38, P.yellow, { outline: P.ink })
+      if (j.phase === 'land' && j.t > 0.8) text3C('PLUS LE SCORE EST HAUT, PLUS IL VA LOIN', GW / 2, 52, P.grey1)
     }
     if (S.mode === 'over') drawOver()
   }

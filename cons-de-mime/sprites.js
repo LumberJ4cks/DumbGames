@@ -117,40 +117,56 @@ function runner(a, frame, legRamp, bootRamp = R.rubber) {
 
 /* ---------- Serge Karamazov ---------- */
 /*
- * Cheveux longs bruns, moustache, blouson de cuir noir ouvert sur un tee-shirt blanc,
- * jean moulant, santiags. Pieds en (0, 0), regard à droite. 4 images de course.
+ * Costume gris, chemise blanche, cravate rayée, grosses lunettes, cheveux noirs courts, badge
+ * du festival, et le rouleau de papier à la main. Pieds en (0, 0), regard à droite.
+ * 4 images de course, plus le regard tourné, le boost, la gamelle et la pose de saut.
  */
-export function sergeSprite(frame, { look = false, trip = false, boost = false } = {}) {
-  const lg = legend({ G: [R.hairBrown, 1], g: [R.hairBrown, 0], H: [R.hairBrown, 2], s: [R.skinTan, 2], S: [R.skinTan, 3], z: [R.skinTan, 1], E: [P.ink], M: [R.hairBrown, 0], J: [R.black, 2], j: [R.black, 1], i: [R.black, 0], W: [P.white], w: [P.grey1], D: [R.blue, 1], d: [R.blue, 0] })
+export function sergeSprite(frame, { look = false, trip = false, boost = false, jump = false } = {}) {
+  const SUIT = [P.slateD, P.slate, P.grey3, P.grey2] // costume gris
+  const lg = legend({ G: [R.hairBrown, 1], g: [R.hairBrown, 0], H: [R.hairBrown, 2], s: [R.skinTan, 2], S: [R.skinTan, 3], z: [R.skinTan, 1], E: [P.ink], L: [P.grey1], J: [SUIT, 3], j: [SUIT, 2], i: [SUIT, 1], W: [P.white], w: [P.grey1], T: [P.redD], t: [P.amber], B: [P.cyan], D: [SUIT, 2], d: [SUIT, 1], M: [P.red] })
   if (trip) {
-    // À plat ventre, les bras devant, les cheveux étalés.
+    // À plat ventre, les lunettes de travers, le papier qui s'échappe.
     return sprite(22, 10, 11, 8, (a) => {
-      a.map(['..JJjjji.....', '.sJJjjjiiGGg.', 'sSJjjjiiGGGHg', '..DDddi..GGg.'], lg, -8, -7)
+      a.map(['..JJjjji.....', '.sJJjjjiiGGg.', 'sSJjjjiiGSEzL', '..DDddi..zsz.'], lg, -8, -7)
       a.rect(-10, -4, 2, 1, R.skinTan[2])
       a.rect(4, -3, 3, 1, P.plum)
-      a.px(-2, -3, P.plum)
+      a.rect(6, -9, 3, 2, P.white)
+      a.px(7, -8, P.grey1)
+    })
+  }
+  if (jump) {
+    // Le grand saut : bras en croix, jambes repliées, le papier dans la main.
+    return sprite(26, 24, 13, 22, (a) => {
+      a.map(['.........GGHg..', '........GGGGg..', '........LsSSzL.', '........GzsEz..', '.........zMsz..', 'ss.....JJWTji..', '.ssJJJJJjWtjiss', '...JjjjjjWTjjss', '......jjjWtji..', '......DDDDdi...', '.....DDdddi....', '....DDd.ddi....', '....DD...dd....', '....ii...ii....'], lg, -8, -21)
+      a.rect(11, -16, 3, 2, P.white) // le papier
+      a.px(12, -15, P.grey1)
     })
   }
   return sprite(20, 24, 10, 22, (a) => {
     const bob = frame % 2 ? 0 : -1
-    runner(a, frame, R.blue, R.rubber)
-    // Buste : blouson ouvert, tee-shirt blanc au milieu.
-    a.map(['JJWWji', 'JjWwji', 'JjWwji', 'jjWwii', 'jjwwii', 'DDDddi'], lg, -3, -14 + bob)
-    // Bras : balancier opposé aux jambes, en cuir.
+    runner(a, frame, SUIT, R.rubber)
+    // Buste : veste grise ouverte, chemise blanche, cravate rayée, badge.
+    a.map(['JJWTji', 'JjWtji', 'JjWTji', 'jjWtii', 'jjwTii', 'DDDddi'], lg, -3, -14 + bob)
+    a.px(2, -11 + bob, P.cyan) // le badge du festival
+    // Bras : balancier, manches grises, et le rouleau de papier dans la main avant.
     const arms = frame % 2 ? [[-4, -13, 1, 3], [3, -13, 1, 2], [4, -11, 1, 1]] : [[-5, -12, 2, 1], [-4, -13, 1, 1], [3, -13, 1, 3]]
-    for (const [x, y, w, h] of arms) a.shaded(x, y + bob, w, h, R.black)
+    for (const [x, y, w, h] of arms) a.shaded(x, y + bob, w, h, SUIT)
     a.px(frame % 2 ? -4 : -5, -10 + bob, R.skinTan[2])
     a.px(frame % 2 ? 4 : 3, -10 + bob, R.skinTan[2])
-    // Tête : cheveux longs qui descendent sur les épaules, moustache.
+    const px = frame % 2 ? 4 : 3
+    a.rect(px, -9 + bob, 3, 2, P.white)
+    a.px(px + 1, -8 + bob, P.grey1)
+    // Tête : cheveux noirs courts plaqués, grosses lunettes, grand sourire crispé.
     const head = look
-      ? ['.GGGHg.', 'GGGGGgg', 'GGGGGgg', 'GGGGGgg', 'gGGGgg.', '.gg.g..']
-      : ['.GGGHg.', 'GGGGGgg', 'GsSSzgg', 'GsSEzgg', 'gzMMzg.', '.gg.g..']
-    a.map(head, lg, -4, -21 + bob)
+      ? ['.GGHg.', 'GGGGgg', 'GGGGgg', 'gGGGg.', '.zssz.']
+      : ['.GGHg.', 'GGGGgg', 'LLsLLz', 'zEsEz.', '.zMMz.']
+    a.map(head, lg, -3, -20 + bob)
+    if (!look) { a.px(-2, -18 + bob, P.white); a.px(1, -18 + bob, P.white) } // les verres clairs
     if (look) a.text3('?', 4, -24 + bob, P.yellow)
     if (boost) {
-      // Les cheveux fouettent en arrière.
-      a.rect(-7, -19 + bob, 3, 1, R.hairBrown[1])
-      a.rect(-8, -17 + bob, 4, 1, R.hairBrown[0])
+      // La cravate et la veste fouettent en arrière.
+      a.rect(-7, -12 + bob, 3, 1, P.redD)
+      a.rect(-8, -14 + bob, 4, 1, SUIT[2])
     }
   })
 }
@@ -276,27 +292,34 @@ export function chienSprite(frame) {
 }
 
 /* ---------- le con de mime ---------- */
-export function mimeSprite(frame) {
-  const lg = legend({ W: [P.white], w: [P.grey1], K: [P.ink], k: [P.slateD], s: [P.white], S: [P.white], z: [P.grey1], E: [P.ink], M: [P.red], B: [P.ink], R: [P.red] })
+export function mimeSprite(frame, { shocked = false } = {}) {
+  const lg = legend({ W: [P.white], w: [P.grey1], K: [P.ink], k: [P.slateD], R: [P.red], r: [P.redD], s: [P.white], S: [P.white], z: [P.grey1], E: [P.ink], M: [P.red], O: [P.redD] })
   return sprite(20, 24, 10, 22, (a) => {
     a.rect(-3, -1, 3, 1, P.ink)
     a.rect(1, -1, 3, 1, P.ink)
     a.shaded(-3, -7, 2, 6, R.black)
     a.shaded(1, -7, 2, 6, R.black)
-    // Marinière.
-    a.map(['KKKKKK', 'WWWWWW', 'KKKKKK', 'WWWWWW', 'KKKKKK', 'WWWWWW'], lg, -3, -13)
-    // Bretelles rouges.
-    a.rect(-2, -13, 1, 6, P.red)
-    a.rect(1, -13, 1, 6, P.red)
-    // Les mains sur le mur : elles tâtent (2 images).
-    const hy = frame ? -12 : -10
-    a.shaded(-6, hy - 1, 3, 1, R.black)
-    a.rect(-8, hy - 2, 2, 2, P.white)
-    a.shaded(3, hy + 1, 3, 1, R.black)
-    a.rect(6, hy, 2, 2, P.white)
-    // Béret, visage blanc, larme, bouche rouge.
-    a.map(['.KKKKK.', 'KKKKKKk', '.sSSSz.', '.sEsEz.', '.zsMsz.', '..zzz..'], lg, -4, -19)
-    a.px(2, -19, P.ink) // la queue du béret
+    // Marinière rouge et blanche, bretelles noires.
+    a.map(['RRRRRr', 'WWWWWw', 'RRRRRr', 'WWWWWw', 'RRRRRr', 'WWWWWw'], lg, -3, -13)
+    a.rect(-2, -13, 1, 6, P.ink)
+    a.rect(1, -13, 1, 6, P.ink)
+    if (shocked) {
+      // Les deux mains sur les joues, bouche grande ouverte.
+      a.shaded(-5, -14, 2, 1, R.black)
+      a.shaded(4, -14, 2, 1, R.black)
+      a.rect(-5, -16, 2, 2, P.white)
+      a.rect(4, -16, 2, 2, P.white)
+    } else {
+      // Les mains sur le mur : elles tâtent (2 images).
+      const hy = frame ? -12 : -10
+      a.shaded(-6, hy - 1, 3, 1, R.black)
+      a.rect(-8, hy - 2, 2, 2, P.white)
+      a.shaded(3, hy + 1, 3, 1, R.black)
+      a.rect(6, hy, 2, 2, P.white)
+    }
+    // Chapeau melon, visage blanc, sourcils noirs, larme, bouche rouge.
+    const face = shocked ? ['..KKK..', '.KKKKK.', 'KKKKKKK', '.sSSSz.', '.sEsEz.', '.zOOOz.', '..zMz..'] : ['..KKK..', '.KKKKK.', 'KKKKKKK', '.sSSSz.', '.sEsEz.', '.zsMsz.', '..zzz..']
+    a.map(face, lg, -4, -20)
     a.px(-1, -15, P.cyan) // la larme
   })
 }
@@ -567,6 +590,50 @@ export function facadeSprite(kind, w = 150) {
   }, { soft: true, outline: false })
 }
 
+/* ---------- le kiosque des cascades (le tremplin de la fin) ---------- */
+export function cascadesSprite() {
+  // Kiosque vert à toit à lambrequins, l'enseigne « CASCADES », des fleurs autour. Ancre : pied gauche.
+  return sprite(64, 50, 0, 48, (a) => {
+    a.box(2, -36, 58, 34, 4, R.green)
+    a.rect(0, -40, 62, 3, R.wood[3])
+    a.rect(0, -37, 62, 1, R.wood[1])
+    for (let x = 1; x < 62; x += 4) a.px(x, -36, R.wood[2]) // les lambrequins
+    a.rect(4, -44, 54, 4, R.green[1])
+    a.rect(4, -44, 54, 1, R.green[3])
+    a.rect(8, -46, 46, 2, R.green[2])
+    // Les planches.
+    for (let y = -30; y < -4; y += 4) a.rect(3, y, 56, 1, R.green[1])
+    // L'enseigne.
+    a.rect(16, -22, 30, 8, P.cream)
+    a.rect(16, -22, 30, 1, P.white)
+    a.rect(16, -15, 30, 1, P.sand)
+    a.text3('CASCADES', 16, -21, P.redD)
+    a.rect(18, -13, 26, 6, P.redD)
+    a.text3('R.JULIEN', 17, -12, P.white)
+    // Fleurs et bambous devant.
+    for (let x = 2; x < 62; x += 6) {
+      a.rect(x, -4, 4, 4, R.grass[1])
+      a.px(x + 1, -5, [P.red, P.yellow, P.pink, P.orange][(x / 6) % 4])
+      a.px(x + 3, -3, R.grass[3])
+    }
+    a.rect(-1, -30, 2, 30, R.grass[2])
+    a.rect(61, -34, 2, 34, R.grass[2])
+  })
+}
+/** La banderole de la manifestation, portée par deux mimes. */
+export function banderoleSprite(text) {
+  const w = text.length * 4 + 8
+  return sprite(w, 14, Math.round(w / 2), 12, (a) => {
+    const x0 = -Math.round(w / 2)
+    a.rect(x0, -12, w, 10, P.white)
+    a.rect(x0, -12, w, 1, P.grey1)
+    a.rect(x0, -3, w, 1, P.grey2)
+    a.text3(text, x0 + 4, -10, P.ink)
+    a.rect(x0, -12, 1, 12, R.wood[1])
+    a.rect(x0 + w - 1, -12, 1, 12, R.wood[1])
+  })
+}
+
 /* ---------- effets ---------- */
 export function boomSprite(frame, big = false) {
   const r = (big ? 10 : 6) + frame * (big ? 5 : 3)
@@ -662,6 +729,7 @@ export function buildSprites(C) {
   S.sergeBoost = [0, 1, 2, 3].map((f) => sergeSprite(f, { boost: true }))
   S.sergeLook = [0, 1, 2, 3].map((f) => sergeSprite(f, { look: true }))
   S.sergeTrip = sergeSprite(0, { trip: true })
+  S.sergeJump = sergeSprite(0, { jump: true })
   S.killer = [0, 1, 2, 3].map((f) => killerSprite(f))
   S.killerTaunt = killerSprite(1, true)
   S.ped = {}
@@ -672,7 +740,10 @@ export function buildSprites(C) {
   }
   S.chien = [0, 1].map(chienSprite)
   S.chienLying = lying(chienSprite(0))
-  S.mime = [0, 1].map(mimeSprite)
+  S.mime = [0, 1].map((f) => mimeSprite(f))
+  S.mimeShocked = mimeSprite(0, { shocked: true })
+  S.cascades = cascadesSprite()
+  S.banderole = banderoleSprite('MIMES EN COLÈRE')
   S.roller = [0, 1].map(rollerSprite)
   S.mamie = [0, 1].map(mamieSprite)
   S.mamieLying = lying(mamieSprite(0))
