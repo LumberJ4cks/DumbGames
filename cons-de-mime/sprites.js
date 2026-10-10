@@ -446,6 +446,37 @@ export function femmeChapeauSprite(frame) {
   })
 }
 
+/* ---------- le commissaire Bialès ---------- */
+/*
+ * Cheveux gris en bataille, costume marron, chemise blanche, cravate rouge à pois, le verre de
+ * whisky à la main. Il regarde à gauche (vers Serge qui arrive) : dessiné à droite, renversé.
+ */
+export function bialesSprite(frame) {
+  const BRN = [P.plum, P.brown, P.clay, P.tan]
+  const lg = legend({ s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], G: [R.hairGrey, 3], g: [R.hairGrey, 2], H: [P.white], J: [BRN, 3], j: [BRN, 2], i: [BRN, 1], W: [P.white], T: [P.red], t: [P.redD], o: [P.white], D: [BRN, 2], d: [BRN, 1], M: [P.redD] })
+  return sprite(20, 26, 10, 24, (a) => {
+    a.shaded(-3, -7, 2, 6, BRN)
+    a.shaded(1, -7, 2, 6, BRN)
+    a.rect(-4, -1, 3, 1, P.plum)
+    a.rect(1, -1, 3, 1, P.plum)
+    // Veste marron ouverte, chemise blanche, cravate rouge à pois.
+    a.map(['JJWTji', 'JjWtji', 'JjWoji', 'jjWtii', 'jjWoii', 'DDDddi'], lg, -3, -14)
+    a.shaded(-4, -13, 1, 4, BRN)
+    a.px(-4, -9, R.skinPale[2])
+    // Le bras droit plié, le verre de whisky à la main.
+    a.shaded(3, -13, 2, 1, BRN)
+    a.shaded(4, -12, 1, 2, BRN)
+    a.px(4, -10, R.skinPale[2])
+    a.rect(4, -16, 3, 4, P.grey1)
+    a.rect(5, -14, 1, 2, P.amber)
+    a.px(4, -17, P.white)
+    // Tête : le visage long, les cheveux gris qui partent dans tous les sens.
+    a.map(['G.GGG.G', 'GGGGGGG', 'gGGGGGg', '.sSSSz.', '.sEsEz.', '.zssz..', '.zMMz..'], lg, -4, -22 + (frame ? 0 : 0))
+    a.px(-5, -22, R.hairGrey[2])
+    a.px(4, -21, R.hairGrey[2])
+  })
+}
+
 /* ---------- la fille en roller en jaune ---------- */
 export function rollerSprite(frame) {
   const lg = legend({ Y: [R.yellow, 3], y: [R.yellow, 2], o: [R.yellow, 1], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], G: [R.hairBlond, 2], g: [R.hairBlond, 1], H: [R.hairBlond, 3], E: [P.ink], M: [P.red], K: [P.ink], w: [P.grey2] })
@@ -1026,6 +1057,7 @@ export function buildSprites(C) {
   S.martine = [0, 1].map(martineSprite)
   S.acteur = [0, 1].map(acteurSprite)
   S.femme = [0, 1].map(femmeChapeauSprite)
+  S.biales = [0, 1].map(bialesSprite)
   S.mamie = [0, 1].map(mamieSprite)
   S.mamieLying = lying(mamieSprite(0))
   S.mamieSplat = mamieSplatSprite()
