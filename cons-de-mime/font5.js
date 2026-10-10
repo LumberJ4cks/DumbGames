@@ -4,7 +4,7 @@
  * Letters and digits are 5 px wide, punctuation is narrower; 1 px between glyphs.
  * The 3 × 5 font (font.js) stays for small mentions.
  */
-import { Pix, PAL, darker } from './pixel.js'
+import { Pix, PAL, darker } from './pixel.js?v=3'
 
 const G = {
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],

@@ -23,12 +23,12 @@
 <body>
 <div id="stage"><canvas id="c"></canvas></div>
 <div id="shell">
-  <span><b>CONS DE MIME !</b> · v1</span>
+  <span><b>CONS DE MIME !</b> · v2</span>
   <span>↑↓ couloir · →← avancer/reculer · <b>ESPACE</b> prout · <b>R</b> regarder · <b>M</b> son · <b>T</b> tutoriel · <b>Entrée</b> passer / rejouer</span>
   <span><code>?seed=42</code> rejoue la même partie · <code>?debug=1</code> hitboxes</span>
 </div>
 <script type="module">
-  import { create, GW, GH } from './game.js'
+  import { create, GW, GH } from './game.js?v=3'
   const canvas = document.getElementById('c')
   const stage = document.getElementById('stage')
   const game = create(canvas)
