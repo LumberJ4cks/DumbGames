@@ -304,9 +304,9 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     // hanche, jambe du dessous tendue au ras du sol, jambe du dessus pliée genou en l'air (cuisse
     // qui monte en diagonale depuis la hanche, tibia qui redescend vers un pied posé devant).
     const slide = pose === 'tackle1' ? 1 : 0
-    const AW = 44
+    const AW = 46
     const AH = 28
-    const ox = 4
+    const ox = 7
     const G = 25 // première rangée sous le corps (le sol)
     const grid = Array.from({ length: AH }, () => new Array(AW).fill('.'))
     const put = (x0, y0, w, h, m) => {
@@ -315,9 +315,8 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     // Hanche assise au sol.
     put(10, G - 6, 7, 6, 'R')
     // Jambe du dessous, tendue au ras du sol : cuisse, chaussette, crampon pointe en avant.
-    put(17, G - 4, 5, 4, 'S')
-    put(22, G - 4, 6, 4, 'C')
-    put(28, G - 4, 6, 4, 'B')
+    put(17, G - 4, 7, 4, 'C') // la cuisse est cachée par la jambe du dessus : on ne voit que la chaussette
+    put(24, G - 4, 6, 4, 'B')
     // Jambe du dessus, pliée genou en l'air : la cuisse monte depuis la hanche, le tibia redescend.
     const k = slide ? 1 : 0 // 2e image : genou un peu plus haut
     put(16, G - 8 - k, 4, 3, 'S')
@@ -327,29 +326,31 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     put(27, G - 8 - k, 4, 3, 'C')
     put(30, G - 7, 6, 4, 'B') // pied du dessus posé devant, un cran au-dessus de l'autre
     // Buste à 45° : 7 rangées de 8, de la hanche vers le haut et l'arrière.
-    for (let r = 0; r < 7; r++) put(9 - r, G - 7 - r, 8, 1, 'J')
+    const lean = (r) => Math.floor(r * 1.5)
+    for (let r = 0; r < 7; r++) put(9 - lean(r), G - 7 - r, 8, 1, 'J')
     // Bras avant planté au sol devant la hanche : de l'épaule avant (10, G-12) à la main.
-    put(11, G - 12, 3, 5, 'J')
-    put(13, G - 7, 3, 4, 'J')
-    put(15, G - 3, 3, 2, 'S')
+    // Bras avant : de l'épaule avant (sommet du buste, x 7) vers le bas et l'avant, la main passe derrière la cuisse pliée.
+    put(7, G - 13, 3, 3, 'J')
+    put(9, G - 11, 3, 3, 'J')
+    put(11, G - 9, 3, 3, 'J')
     const A = grid.map((r) => r.join(''))
     // Rayures Paraguay parallèles à l'axe du buste.
     const A2 = K.jersey2 ? A.map((r, y) => r.split('').map((m, x) => {
       const rr = G - 7 - y
-      if (m !== 'J' || rr < 0 || rr > 6 || x > ox + 16 - rr) return m
-      return Math.floor((x - (ox + 9 - rr)) / 2) % 2 === 1 ? 'K' : m
+      if (m !== 'J' || rr < 0 || rr > 6 || x > ox + 16 - lean(rr)) return m
+      return Math.floor((x - (ox + 9 - lean(rr))) / 2) % 2 === 1 ? 'K' : m
     }).join('')) : A
     const t = new Pix(AW + 4, AH + 4)
     stamp(t, piece(A2), 2, 2, mats)
     // Tête haute, posée sur les épaules (sommet du buste x 3..10, rangée G-13), un peu en arrière.
-    stamp(t, head, 2 + ox + 1, 2 + G - 24 + slide, mats)
+    stamp(t, head, 2 + ox - 2, 2 + G - 24 + slide, mats) // sommet du buste : x 0..7
     // Mottes et poussière derrière la glissade.
     const motte = (x, y, big) => {
       t.rect(x, y, big ? 3 : 2, 1, P.sand)
       t.rect(x, y + 1, big ? 3 : 2, 1, P.clay)
       if (big) t.px(x + 2, y + 1, P.brown)
     }
-    motte(2 + ox - 4, 2 + G - 1, true)
+    motte(2 + ox - 6, 2 + G - 1, true)
     motte(2 + ox + 4, 2 + G, false)
     motte(2 + ox + 20, 2 + G, true)
     for (const [dx, dy] of [[-3, -5], [-5, -9], [-2, -13], [8, 1], [26, 1]]) t.px(2 + ox + dx - slide, 2 + G + dy, (dx + dy) % 2 ? P.green : P.grey1)
