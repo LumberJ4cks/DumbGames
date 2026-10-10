@@ -11,11 +11,11 @@
  */
 // Le ?v=N sur chaque import force le navigateur à recharger les fichiers à chaque version : on
 // l'incrémente partout (index.html, game.js, sprites.js, font5.js) à chaque mise en ligne.
-import { Pix, PAL as P, toCanvas } from './pixel.js?v=3'
-import { mirror, buildSprites, TILE_W, PALAIS_W } from './sprites.js?v=3'
-import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js?v=3'
-import { drawText, drawTextC, textWidth } from './font.js?v=3'
-import { createAudio } from './audio.js?v=3'
+import { Pix, PAL as P, toCanvas } from './pixel.js?v=4'
+import { mirror, buildSprites, TILE_W, PALAIS_W } from './sprites.js?v=4'
+import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js?v=4'
+import { drawText, drawTextC, textWidth } from './font.js?v=4'
+import { createAudio } from './audio.js?v=4'
 
 export const GW = 480
 export const GH = 270
@@ -93,6 +93,7 @@ export function create(canvas) {
   const held = { up: false, down: false, left: false, right: false }
   let laneTarget = null
   let pointerTouch = false
+  let played = false // une partie a été jouée sur cette page : le bouton dit « rejouer »
   let S
   const audio = createAudio()
   try { audio.setMuted(localStorage.getItem('consDeMime:muted') === '1') } catch {}
@@ -378,7 +379,6 @@ export function create(canvas) {
     return { ax, ay }
   }
   /** Le bouton « regarder » tactile : vrai si (x, y) tombe dessus. */
-  const LOOK_BTN = { x: GW - 100, y: GH - 104, r: 18 }
   const TUTO_BTN = { x: 318, y: 226, w: 132, h: 24 }
   function tapAt(x, y) {
     pointerTouch = true
@@ -389,7 +389,7 @@ export function create(canvas) {
       return
     }
     if (S.mode === 'over') { if (S.overT > 1.5) reset(); return }
-    if (S.lookTarget && Math.hypot(x - LOOK_BTN.x, y - LOOK_BTN.y) < LOOK_BTN.r + 8) { doLook(); return }
+    if (S.lookTarget && Math.hypot(x - (S.lookTarget.x - S.camX), y - (S.lookTarget.y - 10)) < (S.lookTarget.id === 'odile' ? 70 : 34)) { doLook(); return }
     if (x >= GW * 0.4) doFart()
   }
 
@@ -414,8 +414,26 @@ export function create(canvas) {
       if (ahead < CFG.lookRange.behind || ahead > CFG.lookRange.ahead) continue
       if (!best || ahead < best.ahead) best = { ...c, ahead }
     }
+    if (best && (!S.lookTarget || S.lookTarget.id !== best.id)) best.since = S.clock
+    else if (best) best.since = S.lookTarget.since
     S.lookTarget = best
     S.lookWindow = best ? 1 : 0
+  }
+  /** La surbrillance de la cible à regarder : un halo jaune qui vibre trois fois, puis reste calme. */
+  function drawLookHighlight(cam) {
+    const t = S.lookTarget
+    if (!t || (S.tuto && S.tuto.waiting && S.tuto.step !== 3)) return
+    const age = S.clock - (t.since || 0)
+    const shaking = age < 1.2 // trois vibrations de 0,4 s
+    const jx = shaking ? Math.round(Math.sin((age / 0.4) * Math.PI * 2 * 4) * 2) : 0
+    const x = Math.round(t.x - cam) + jx
+    const y = Math.round(t.y)
+    const r = t.id === 'odile' ? 60 : 22
+    ctx.strokeStyle = shaking && Math.floor(age / 0.2) % 2 ? P.white : P.yellow
+    ctx.lineWidth = 2
+    ctx.beginPath(); ctx.ellipse(x, y - 10, r, r * 0.9, 0, 0, Math.PI * 2); ctx.stroke()
+    if (shaking) { ctx.fillStyle = 'rgba(254,231,97,0.18)'; ctx.beginPath(); ctx.ellipse(x, y - 10, r, r * 0.9, 0, 0, Math.PI * 2); ctx.fill() }
+    text3C(pointerTouch ? 'TAPE DESSUS' : 'R', x, y - 10 - r - 10, P.yellow)
   }
   function doLook() {
     if (S.mode !== 'run' || !S.lookTarget) return
@@ -672,7 +690,6 @@ export function create(canvas) {
             audio.nearMiss(S.combo)
             S.fart = Math.min(1, S.fart + CFG.fartNearMiss)
             addScore(CFG.score.nearMiss, sg.x, sg.y, e.type === 'mime' ? 'MUR ÉVITÉ' : 'FRÔLÉ')
-            if (S.combo % 5 === 0) pop(sg.x, sg.y - 40, 'COMBO ' + S.combo + '  ×' + mult(), '#80e0ff', true)
           }
         }
       }
@@ -702,8 +719,9 @@ export function create(canvas) {
   const KIOSK_RAMP = 40
   const KIOSK_H = 42
   function jumpMeters() {
-    const m = 2 + S.score / 1000 + S.bestCombo * 0.08 + S.fart * 0.5
-    return Math.round(Math.min(18, m) * 100) / 100
+    // Proportionnel au score : 5 000 points font 5 m, 20 000 points 16 m ; un peu de combo et de jauge en plus.
+    const m = 1.2 + S.score / 1300 + S.bestCombo * 0.04 + S.fart * 0.4
+    return Math.round(Math.min(40, m) * 100) / 100
   }
   function beginJump() {
     S.mode = 'jump'
@@ -793,6 +811,7 @@ export function create(canvas) {
         S.score += bonus
         S.jump.bonus = bonus
         S.mode = 'over'; S.overT = 0
+        played = true
         audio.duck(0.4)
         if (S.score > best) { best = S.score; try { localStorage.setItem('consDeMime:best', String(best)) } catch {} }
       }
@@ -941,6 +960,7 @@ export function create(canvas) {
       ctx.strokeRect(sx - CFG.fartCone.back + 0.5, sg.y - CFG.fartCone.half + 0.5, CFG.fartCone.back + CFG.fartCone.front, CFG.fartCone.half * 2)
     }
 
+    if (S.mode === 'run') drawLookHighlight(cam)
     // Popups.
     for (const p of S.pops) {
       const a = Math.min(1, (1.2 - p.t) * 3)
@@ -1167,13 +1187,11 @@ export function create(canvas) {
     text5Scaled(clock, GW - 6 - textWidth5(clock) * 0.75, 4, left < 10 && Math.floor(S.t * 4) % 2 ? P.red : P.white, 1.5, { shadow: P.ink })
     // Le bandeau de palier.
     if (S.tierT > 0) {
+      // Le palier franchi : le multiplicateur en géant au centre, qui tape puis s'efface, sans bande.
       const a = Math.min(1, S.tierT * 3)
+      const punch = 1 + Math.max(0, S.tierT - 0.6) * 3
       ctx.globalAlpha = a
-      ctx.fillStyle = col
-      ctx.fillRect(0, 100, GW, 30)
-      ctx.fillStyle = P.ink
-      ctx.fillRect(0, 100, GW, 2); ctx.fillRect(0, 128, GW, 2)
-      text5Scaled('×' + S.tierM + ' !', GW / 2, 104, P.ink, 2.2, {})
+      text5Scaled('×' + S.tierM + ' !', GW / 2, 96 - (punch - 1) * 8, col, 3 * punch, { outline: P.ink })
       ctx.globalAlpha = 1
     }
     if (pointerTouch) drawTouchControls()
@@ -1213,13 +1231,6 @@ export function create(canvas) {
     ring(bx, by, 21 + grow, 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.85)')
     text5C('PROUT', bx, by - 6, P.white, { outline: P.ink })
     text3C(Math.round(S.fart * 100) + ' %', bx, by + 6, P.white)
-    // L'œil « regarder », seulement quand il y a une cible.
-    if (S.lookTarget) {
-      ring(LOOK_BTN.x, LOOK_BTN.y, LOOK_BTN.r, 'rgba(254,231,97,0.4)', 'rgba(254,231,97,0.9)')
-      ctx.fillStyle = P.ink; ctx.beginPath(); ctx.ellipse(LOOK_BTN.x, LOOK_BTN.y - 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill()
-      ctx.fillStyle = P.yellow; ctx.beginPath(); ctx.arc(LOOK_BTN.x, LOOK_BTN.y - 2, 2.5, 0, Math.PI * 2); ctx.fill()
-      text3C('REGARDER ' + S.lookTarget.hint, LOOK_BTN.x, LOOK_BTN.y + 22, P.yellow)
-    }
   }
   /** Le panneau du tutoriel, avec sa flèche et la zone surlignée. */
   function drawTuto() {
@@ -1246,7 +1257,7 @@ export function create(canvas) {
         if (pointerTouch) arrow(GW - 56, 82, GH - 100)
         else { ctx.fillStyle = P.yellow; ctx.fillRect(0, GH - 26, 100, 1); ctx.fillRect(0, GH - 26, 1, 26); ctx.fillRect(99, GH - 26, 1, 26); arrow(50, 82, GH - 30) }
       } else if (tu.step === 3) {
-        callout('REGARDE-LA !', pointerTouch ? 'APPUIE SUR L\'ŒIL JAUNE' : 'APPUIE SUR R PENDANT QU\'ELLE EST DEVANT', 'ÇA RAPPORTE GROS, MAIS LES CONTRÔLES S\'INVERSENT')
+        callout('REGARDE-LA !', pointerTouch ? 'TAPE SUR ELLE' : 'APPUIE SUR R PENDANT QU\'ELLE EST DEVANT', 'ÇA RAPPORTE GROS, MAIS LES CONTRÔLES S\'INVERSENT')
         if (S.roller && !S.roller.gone) arrow(Math.max(40, Math.min(GW - 40, S.roller.x - cam)), 80, S.roller.y - 36)
       }
       text3C(pointerTouch ? 'TAP LONG : PASSER LE TUTORIEL' : 'ENTRÉE : PASSER LE TUTORIEL', GW / 2, GH - 8, P.grey2)
@@ -1291,7 +1302,7 @@ export function create(canvas) {
     const cards = [
       { x: 30, title: 'FRÔLE', key: pointerTouch ? 'JOYSTICK' : 'HAUT / BAS', what: 'PASSE TOUT PRÈS', bonus: '+1 COMBO', draw: (cx, cy) => { blit(SPR.ped.jeune[0][Math.floor(S.clock * 6) % 2], cx - 6, cy, true); blit(SPR.serge[f], cx + 12, cy + 2); ctx.fillStyle = P.yellow; ctx.fillRect(cx + 2, cy - 24, 2, 26) } },
       { x: 176, title: 'PÈTE', key: pointerTouch ? 'BOUTON' : 'ESPACE', what: 'SOUFFLE LA FOULE', bonus: '+1 COMBO  +POINTS', draw: (cx, cy) => { blit(SPR.gas[Math.floor(S.clock * 4) % 4], cx - 18, cy - 10); blit(SPR.sergeBoost[f], cx + 4, cy + 2); blitRot(SPR.ped.touriste[1][1], cx - 10, cy - 22 - Math.abs(Math.sin(S.clock * 3)) * 6, -0.8 + Math.sin(S.clock * 3) * 0.3) } },
-      { x: 322, title: 'REGARDE', key: pointerTouch ? "L'ŒIL" : 'R', what: 'LES STARS QUI PASSENT', bonus: '+2 COMBO  BONUS ×', draw: (cx, cy) => { blit(SPR.roller[Math.floor(S.clock * 8) % 2], cx + 14, cy + 2); blit(SPR.sergeLook[1], cx - 10, cy + 2); if (Math.floor(S.clock * 2) % 2) text3('?!', cx - 2, cy - 30, P.yellow) } },
+      { x: 322, title: 'REGARDE', key: pointerTouch ? 'TAPE DESSUS' : 'R', what: 'LES STARS QUI PASSENT', bonus: '+2 COMBO  BONUS ×', draw: (cx, cy) => { blit(SPR.roller[Math.floor(S.clock * 8) % 2], cx + 14, cy + 2); blit(SPR.sergeLook[1], cx - 10, cy + 2); if (Math.floor(S.clock * 2) % 2) text3('?!', cx - 2, cy - 30, P.yellow) } },
     ]
     for (const c of cards) {
       panel(c.x, 74, 128, 88, P.ink)
@@ -1310,7 +1321,7 @@ export function create(canvas) {
     // Deux boutons : le gros pour jouer tout de suite, le petit pour jouer avec le tutoriel.
     const on = Math.floor(S.introT * 2) % 2 === 0
     ctx.fillStyle = on ? P.yellow : P.amber; ctx.fillRect(30, 226, 280, 24); ctx.fillStyle = P.ink; ctx.fillRect(30, 248, 280, 2); ctx.fillRect(308, 226, 2, 24)
-    text5Scaled(pointerTouch ? 'TAPOTE : COMMENCER' : 'ESPACE : COMMENCER', 170, 230, P.ink, 1.6, {})
+    text5Scaled(pointerTouch ? (played ? 'TAPOTE : REJOUER' : 'TAPOTE : JOUER') : (played ? 'ESPACE : REJOUER' : 'ESPACE : COMMENCER'), 170, 230, P.ink, 1.6, {})
     const tb = TUTO_BTN
     ctx.fillStyle = P.green; ctx.fillRect(tb.x, tb.y, tb.w, tb.h)
     ctx.fillStyle = P.greenD; ctx.fillRect(tb.x, tb.y + tb.h - 2, tb.w, 2); ctx.fillRect(tb.x + tb.w - 2, tb.y, 2, tb.h)
