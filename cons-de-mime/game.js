@@ -10,7 +10,7 @@
  *   ?seed=42   rejoue la même partie       ?debug=1   hitboxes et chiffres
  */
 import { Pix, PAL as P, toCanvas } from './pixel.js'
-import { mirror, buildSprites, TILE_W } from './sprites.js'
+import { mirror, buildSprites, TILE_W, PALAIS_W } from './sprites.js'
 import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js'
 import { drawText, drawTextC, textWidth } from './font.js'
 import { createAudio } from './audio.js'
@@ -37,7 +37,7 @@ export const CFG = {
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 24,        // px vertical pour compter une esquive
   score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100 },
-  rollerAt: 20, mamieAt: 40, mimesFrom: 50,
+  rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30, odileAt: 62,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
 }
 
@@ -111,7 +111,7 @@ export function create(canvas) {
       combo: 0, bestCombo: 0, score: 0,
       ents: [], pops: [], spawnX: 300, nextMimeX: 0,
       roller: null, lookWindow: 0, invertT: 0, looked: false,
-      mamie: null, truck: null, mamieDone: false,
+      mamie: null, truck: null, mamieDone: false, acteur: null, odile: false,
       shake: 0, flash: 0,
       jump: null, result: null,
     }
@@ -288,6 +288,24 @@ export function create(canvas) {
       if (ahead > 0 && ahead < 110 && !S.looked && !ro.shown) { ro.shown = true; pop(ro.x, ro.y - 28, 'R : REGARDER ?', '#ffe060') }
       if (ro.x - S.camX > GW + 40 || ro.x - S.camX < -60) { S.roller = { gone: true, x: 1e9, y: 0 }; S.lookWindow = 0 }
     }
+    // L'acteur non accompagné : une seule fois, planté en haut du trottoir avec son ballon.
+    if (!S.acteur && S.t >= CFG.acteurAt) {
+      S.acteur = { type: 'acteur', k: 'ACTEUR', x: S.camX + GW + 30, y: CFG.sidewalkTop + 6, w: 10, h: 18, solid: true, state: 'walk', vx: 0, vy: 0, phase: 0, bubbleT: 0, bubble: '', hailed: false }
+      S.ents.push(S.acteur)
+      // La femme au chapeau de paille, à côté de lui.
+      S.ents.push({ type: 'femme', k: 'FEMME', x: S.acteur.x - 18, y: S.acteur.y + 2, w: 10, h: 18, solid: true, state: 'walk', vx: 0, vy: 0, phase: 0 })
+    }
+    if (S.acteur && !S.acteur.hailed && S.acteur.x - S.serge.x < 70) {
+      S.acteur.hailed = true
+      S.acteur.bubble = 'HOUHOU ! KARA !'
+      S.acteur.bubbleT = 2.5
+    }
+    if (S.acteur) S.acteur.bubbleT = Math.max(0, S.acteur.bubbleT - dt)
+    // O D I L E, peint sur les dalles.
+    if (!S.odile && S.t >= CFG.odileAt) {
+      S.odile = true
+      S.ents.push({ type: 'odile', x: S.camX + GW + 120, y: 150 })
+    }
     // La mamie et son caddie : à 40 s, zigzague en haut du trottoir ; le camion l'écrase après.
     if (!S.mamie && S.t >= CFG.mamieAt) {
       S.mamie = { type: 'ped', k: 'MAMIE + CADDIE', x: S.camX + GW + 20, y: CFG.sidewalkTop + 12, w: 26, h: 16, phase: 0, col: '#e0e0e0', vx: -12, vy: 40, state: 'walk', solid: true, mamie: true }
@@ -407,7 +425,7 @@ export function create(canvas) {
       const e = S.ents[i]
       if (e.type === 'boom') { e.t += dt; if (e.t > 0.6) S.ents.splice(i, 1); continue }
       if (e.x < S.camX - 120) { S.ents.splice(i, 1); continue }
-      if (e.type === 'scorch') continue
+      if (e.type === 'scorch' || e.type === 'odile') continue
       if (e.type === 'debris') {
         e.t += dt
         if (e.z > 0 || e.vz > 0) { e.x += e.vx * dt; e.y += e.vy * dt; e.vz -= 320 * dt; e.z = Math.max(0, e.z + e.vz * dt); if (e.z === 0) e.vz = 0 }
@@ -508,9 +526,13 @@ export function create(canvas) {
       S.ents.push({ type: 'mime', k: 'CON DE MIME', x, y, w: 10, h: 18, solid: false, wallH: 0, state: 'crowd', pose: r() * 2, shocked: false })
     }
     S.ents.push({ type: 'banderole', x: kx + KIOSK_W + 75, y: CFG.sidewalkTop + 4 })
+    // La tapette géante, juste après le point d'atterrissage : le tueur s'est fait attraper.
+    const meters = jumpMeters()
+    const landing = kx + KIOSK_W - 8 + 16 + meters * 16
+    S.ents.push({ type: 'tapette', x: Math.max(landing + 75, kx + 250), y: ky + 6 })
     S.roller = { gone: true, x: 1e9, y: 0 }
     S.lookWindow = 0
-    S.jump = { t: 0, meters: jumpMeters(), phase: 'run', kx, ky, z: 0 }
+    S.jump = { t: 0, meters, phase: 'run', kx, ky, z: 0 }
   }
   function updateJump(dt) {
     const j = S.jump
@@ -599,12 +621,13 @@ export function create(canvas) {
     const off = -(((cam % TILE_W) + TILE_W) % TILE_W)
     for (let x = off - TILE_W; x < GW + TILE_W; x += TILE_W) ctx.drawImage(SPR.tile, Math.round(x), 0)
     // Les façades au-dessus de la route : un bâtiment tous les 160 px, le Palais au départ.
-    const k0 = Math.floor(cam / 160) - 1
+    // Le Palais lui-même au départ, à la place de la route ; les façades au-delà.
+    if (cam < PALAIS_W + 40) ctx.drawImage(SPR.palais, Math.round(-cam), 0)
+    const k0 = Math.max(3, Math.floor(cam / 160) - 1)
     for (let k = k0; k <= k0 + 4; k++) {
       const x = k * 160 - cam
       let c
-      if (k <= 0) c = SPR.facade.palais
-      else if (mod(k, 10) === 9) c = SPR.facade.carlton
+      if (mod(k, 10) === 9) c = SPR.facade.carlton
       else if (mod(k, 3) === 2) c = SPR.facade.boutique
       else c = SPR.facade.hotel[mod(k, 3)]
       blit(c, x, CFG.roadTop)
@@ -641,9 +664,10 @@ export function create(canvas) {
 
     // Marques au sol d'abord.
     for (const e of S.ents) if (e.type === 'scorch') blit(SPR.scorch, e.x - cam, e.y)
+    for (const e of S.ents) if (e.type === 'odile') blit(SPR.odile, e.x - cam, e.y)
 
     // Tout ce qui a des pieds, trié par profondeur (y), Serge et le tueur compris.
-    const list = S.ents.filter((e) => e.type !== 'scorch').map((e) => ({ y: e.y, e }))
+    const list = S.ents.filter((e) => e.type !== 'scorch' && e.type !== 'odile').map((e) => ({ y: e.y, e }))
     list.push({ y: S.serge.y, serge: true })
     if (S.mode !== 'jump' && S.killer.x > cam - 40) list.push({ y: S.killer.y, killer: true })
     if (S.roller && !S.roller.gone) list.push({ y: S.roller.y, roller: true })
@@ -748,6 +772,23 @@ export function create(canvas) {
       blit(SPR.furn[e.k], x, e.y)
       return
     }
+    if (e.type === 'femme') {
+      if (e.state === 'walk') {
+        blit(SPR.shadow.m, x, e.y)
+        blit(SPR.femme[0], x, e.y)
+      } else if (e.state === 'fly') blitRot(SPR.femme[0], x, e.y - e.z, e.spin * e.z * 0.02)
+      else blit(SPR.pedLying.vieux[2], x, e.y)
+      return
+    }
+    if (e.type === 'acteur') {
+      if (e.state === 'walk') {
+        blit(SPR.shadow.m, x, e.y)
+        blit(SPR.acteur[Math.floor(S.clock * 2) % 2], x, e.y)
+        if (e.bubbleT > 0) bubble(e.bubble, x, e.y - 40)
+      } else if (e.state === 'fly') blitRot(SPR.acteur[0], x, e.y - e.z, e.spin * e.z * 0.02)
+      else blit(SPR.pedLying.touriste[0], x, e.y)
+      return
+    }
     if (e.type === 'martine') {
       blit(SPR.shadow.s, x, e.y)
       const talking = S.mode === 'intro' && DIALOG[S.intro.line] && DIALOG[S.intro.line].who === 'martine' && Math.floor(S.clock * 8) % 2
@@ -757,6 +798,11 @@ export function create(canvas) {
     }
     if (e.type === 'cascades') {
       blit(SPR.cascades, x, e.y)
+      return
+    }
+    if (e.type === 'tapette') {
+      blit(SPR.tapette, x, e.y)
+      if (S.mode === 'jump' && S.jump.phase === 'land' && Math.floor(S.jump.t * 3) % 2) text3C('ATTRAPÉ !', x, e.y - 48, P.yellow)
       return
     }
     if (e.type === 'banderole') {
@@ -846,7 +892,7 @@ export function create(canvas) {
     // Jauge de prout en bas à gauche, sur la mer.
     drawGauge(4, GH - 10, 80, S.fart, S.fart >= 1)
     text3(S.fart >= 1 ? (pointerTouch ? 'PROUT PRÊT  TAP À DROITE' : 'PROUT PRÊT  ESPACE') : 'PROUT ' + Math.round(S.fart * 100) + '%', 4, GH - 20, S.fart >= 1 ? P.yellow : P.grey1)
-    text3('TUEUR : 320 M  (TOUJOURS)', GW - 4 - textWidth('TUEUR : 320 M  (TOUJOURS)'), GH - 12, P.pink)
+    if (S.mode === 'run') text3('TUEUR : 320 M  (TOUJOURS)', GW - 4 - textWidth('TUEUR : 320 M  (TOUJOURS)'), GH - 12, P.pink)
     if (S.invertT > 0) text5C('CONTRÔLES INVERSÉS', GW / 2, 16, P.yellow, { outline: P.ink })
     if (S.lookWindow > 0) text5C(pointerTouch ? 'TAP À GAUCHE : LA REGARDER ?' : 'R : LA REGARDER ?', GW / 2, 16, P.yellow, { outline: P.ink })
     if (debug) text3(`SEED ${S.seed} · ENTS ${S.ents.length} · DENS ${density().toFixed(1)} · CAM ${S.camX | 0}`, 4, GH - 30, P.green)
@@ -920,7 +966,7 @@ export function create(canvas) {
       ['MEILLEUR COMBO', '×' + (S.bestCombo >= 20 ? 5 : S.bestCombo >= 15 ? 4 : S.bestCombo >= 10 ? 3 : S.bestCombo >= 5 ? 2 : 1), S.bestCombo + ' ESQUIVES'],
       ['LA FILLE EN JAUNE', S.looked ? 'REGARDÉE' : 'RATÉE', ''],
       ['LA MAMIE', S.mamieDone && S.mamie.state === 'splat' ? 'ÉCRASÉE' : 'ÉPARGNÉE', ''],
-      ['LE TUEUR', 'TOUJOURS À 320 M', ''],
+      ['LE TUEUR', 'DANS LA TAPETTE', ''],
     ]
     rows.forEach((r, i) => {
       const y = py + 26 + i * 14
