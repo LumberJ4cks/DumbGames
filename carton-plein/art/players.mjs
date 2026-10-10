@@ -16,7 +16,7 @@ export const RAMP = {
   skinTan: [P.brown, P.clay, P.skin, P.skinL],
   skinDark: [P.plum, P.brown, P.clay, P.skin],
   hairBrown: [P.plum, P.brown, P.clay, P.tan],
-  hairBlack: [P.ink, P.slateD, P.slate, P.grey3],
+  hairBlack: [P.ink, P.slate, P.grey3, P.grey2],
   hairBlond: [P.clay, P.tan, P.amber, P.yellow],
   hairRed: [P.brown, P.rust, P.tan, P.amber],
   hairGrey: [P.grey3, P.grey2, P.grey1, P.white],
@@ -202,6 +202,7 @@ function stamp(p, pc, x, y, mats) {
  * Ancre aux pieds (ax, ay). Largeur variable, marge de 2 px pour le contour.
  */
 export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', number = null, flip = false } = {}) {
+  if (pose.startsWith('tackle')) face = 'p' // le tacle est toujours de profil
   const K = KITS[kit]
   const L = LOOKS[look % LOOKS.length]
   const mats = { H: RAMP[L.hair], S: RAMP[L.skin], J: RAMP[K.jersey], K: RAMP[K.jersey2 || K.jersey], R: RAMP[K.shorts], C: RAMP[K.socks], B: RAMP[K.boots] }
@@ -243,6 +244,12 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
   const torsoW = face === 'p' ? 9 : 12
   const torsoA = fill(torsoW, 7, 'J')
   if (K.jersey2) for (let y = 0; y < 7; y++) torsoA[y] = torsoA[y].split('').map((m, x) => (Math.floor(x / 2) % 2 === 1 ? 'K' : 'J')).join('')
+  if (K.jersey2 && number !== null && K.num && face !== 'p') {
+    // Bande unie derrière le numéro, sur toute la hauteur : une rayure centrale plus large.
+    const nw = face === 'b' ? glyph5(String(number)).w + 2 : String(number).length * 4 + 1
+    const x0 = Math.floor((torsoW - nw) / 2)
+    for (let y = 0; y < 7; y++) torsoA[y] = torsoA[y].split('').map((m, x) => (x >= x0 && x < x0 + nw ? 'K' : m)).join('')
+  }
   if (K.accent) torsoA[0] = torsoA[0].split('').map((m, x) => m).join('')
   const torso = piece(torsoA)
   // Col et brassard de l'arbitre, numéro : calque C.
@@ -289,22 +296,74 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
   }
 
   if (pose.startsWith('tackle')) {
-    // Tacle glissé, profil : tête à gauche, corps couché, jambe tendue vers la droite.
-    const t = new Pix(44, 20)
+    // Tacle glissé, profil, calques écrits à la main : tête à gauche, bras arrière levé,
+    // bras d'appui au sol, jambe tendue vers la droite, jambe repliée dessous, mottes derrière.
+    const t = new Pix(50, 26)
     const slide = pose === 'tackle1' ? 1 : 0
-    stamp(t, piece(fill(9, 7, 'J').map((r) => r), null), 13, 6 + slide, mats) // torse couché
-    // Rayures Paraguay sur le torse couché.
-    if (K.jersey2) stamp(t, piece(fill(9, 7, 'J').map((r, y) => r.split('').map((m, x) => (Math.floor(y / 2) % 2 === 1 ? 'K' : 'J')).join(''))), 13, 6 + slide, mats)
-    stamp(t, piece(fill(5, 7, 'R')), 22, 6 + slide, mats) // short
-    stamp(t, piece(fill(10, 4, 'C')), 27, 8 + slide, mats) // jambe tendue
-    stamp(t, piece(['BBBBB', 'BBBBB', 'BBBBB'], ['22223', '22223', '11111']), 37, 8 + slide, mats) // crampon
-    stamp(t, piece(fill(4, 5, 'C')), 23, 13 + slide, mats) // jambe repliée
-    stamp(t, piece(['BBBB', 'BBBB'], ['2223', '1111']), 22, 17 + slide, mats)
-    stamp(t, head, 1, 2, mats) // tête relevée
-    stamp(t, piece([...fill(3, 5, 'J'), 'SSS', 'SSS']), 10, 10 + slide, mats) // bras d'appui
+    const bodyA = [
+      '.SSS............................',
+      '.SSS............................',
+      '.JJJ............................',
+      '.JJJ............................',
+      '.JJJ............................',
+      '.JJJ............................',
+      '.JJJ............................',
+      '.JJJ............................',
+      '.JJJJJJJJJRRRRR.................',
+      '.JJJJJJJJJRRRRR.................',
+      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRR.................',
+      '..JJJ......CCCC.................',
+      '..JJJ......CCCC.................',
+      '..JJJ......CCCC.................',
+      '..SSS.....BBBBB.................',
+      '..SSS.....BBBBB.................',
+    ]
+    const bodyB = [
+      '.331............................',
+      '.221............................',
+      '.441............................',
+      '.321............................',
+      '.321............................',
+      '.321............................',
+      '.321............................',
+      '.321............................',
+      '.44444444444444.................',
+      '.32222222232221.................',
+      '.32222222232221444444444422223..',
+      '.32222222232221322222222222223..',
+      '.32222222232221322222222222223..',
+      '.32222222232221111111111111111..',
+      '.11111111111111.................',
+      '..321......4444.................',
+      '..321......3222.................',
+      '..321......3221.................',
+      '..331.....22223.................',
+      '..221.....11111.................',
+    ]
+    // Rayures Paraguay couchées : horizontales sur le torse.
+    let A = bodyA
+    if (K.jersey2) A = bodyA.map((r, y) => (y >= 8 && y <= 14 ? r.split('').map((m, x) => (m === 'J' && x >= 1 && x <= 9 && Math.floor((y - 8) / 2) % 2 === 1 ? 'K' : m)).join('') : r))
+    stamp(t, piece(A, bodyB), 15, 2 + slide, mats)
+    stamp(t, head, 2, 3, mats) // tête relevée, devant l'épaule, bras arrière levé derrière
+    // Mottes de pelouse arrachées, derrière et sous le corps, et devant le crampon (calque C fixe).
+    const motte = (x, y, big) => {
+      t.rect(x, y, big ? 3 : 2, 1, P.sand)
+      t.rect(x, y + 1, big ? 3 : 2, 1, P.clay)
+      if (big) t.px(x + 2, y + 1, P.brown)
+      t.px(x - 1, y + 1, P.greenM)
+    }
+    motte(10, 22 + slide, true)
+    motte(19, 23 + slide, false)
+    motte(26, 21 + slide, true)
+    motte(46, 11 + slide, false)
+    if (slide) { t.px(6, 24, P.green); t.px(16, 25, P.green); t.px(48, 14, P.green) }
     const out = t.outline()
-    out.ax = 22
-    out.ay = 19
+    out.ax = 25
+    out.ay = 23
     return flip ? mirrorPix(out) : out
   }
 
