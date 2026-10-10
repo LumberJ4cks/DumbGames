@@ -1,0 +1,36 @@
+{
+  "group_id": "322b3907-937c-4c53-818d-25055c4371bc",
+  "states": [
+    {
+      "character": {
+        "id": "9216a39a-f7e9-4941-8bbf-4281d3cb7bf6",
+        "name": "Lying flat on his ba",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T18:19:58.858680+00:00"
+      },
+      "folder": "Lying_flat_on_his_ba",
+      "frames": {
+        "rotations": {
+          "south": "Lying_flat_on_his_ba/rotations/south.png",
+          "south-east": "Lying_flat_on_his_ba/rotations/south-east.png",
+          "east": "Lying_flat_on_his_ba/rotations/east.png",
+          "north-east": "Lying_flat_on_his_ba/rotations/north-east.png",
+          "north": "Lying_flat_on_his_ba/rotations/north.png",
+          "north-west": "Lying_flat_on_his_ba/rotations/north-west.png",
+          "west": "Lying_flat_on_his_ba/rotations/west.png",
+          "south-west": "Lying_flat_on_his_ba/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-10T18:22:24.217255"
+}
