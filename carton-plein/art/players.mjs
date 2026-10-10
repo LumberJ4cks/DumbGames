@@ -299,74 +299,59 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
   }
 
   if (pose.startsWith('tackle')) {
-    // Tacle glissé, profil, calques écrits à la main : tête à gauche, bras arrière levé,
-    // bras d'appui au sol, jambe tendue vers la droite, jambe repliée dessous, mottes derrière.
-    const t = new Pix(50, 26)
+    // Tacle glissé, profil, d'après la pose de Nintendo World Cup : assis sur la hanche, buste
+    // incliné en arrière, main arrière plantée au sol, bras avant levé, jambe avant tendue au
+    // ras du sol, jambe arrière repliée dessous, mottes et poussière derrière.
     const slide = pose === 'tackle1' ? 1 : 0
-    const bodyA = [
-      '.SSS............................',
-      '.SSS............................',
-      '.JJJ............................',
-      '.JJJ............................',
-      '.JJJ............................',
-      '.JJJ............................',
-      '.JJJ............................',
-      '.JJJ............................',
-      '.JJJJJJJJJRRRRR.................',
-      '.JJJJJJJJJRRRRR.................',
-      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRR.................',
-      '..JJJ......SSSS.................',
-      '..JJJ......CCCC.................',
-      '..JJJ......CCCC.................',
-      '..SSS.....BBBBB.................',
-      '..SSS.....BBBBB.................',
-    ]
-    const bodyB = [
-      '.331............................',
-      '.221............................',
-      '.441............................',
-      '.321............................',
-      '.321............................',
-      '.321............................',
-      '.321............................',
-      '.321............................',
-      '.44444444444444.................',
-      '.32222222232221.................',
-      '.32222222232221444444444422223..',
-      '.32222222232221322222222222223..',
-      '.32222222232221322222222222223..',
-      '.32222222232221111111111111111..',
-      '.11111111111111.................',
-      '..321......4444.................',
-      '..321......3222.................',
-      '..321......3221.................',
-      '..331.....22223.................',
-      '..221.....11111.................',
-    ]
-    // Rayures Paraguay couchées : horizontales sur le torse.
-    let A = bodyA
-    if (K.jersey2) A = bodyA.map((r, y) => (y >= 8 && y <= 14 ? r.split('').map((m, x) => (m === 'J' && x >= 1 && x <= 9 && Math.floor((y - 8) / 2) % 2 === 1 ? 'K' : m)).join('') : r))
-    stamp(t, piece(A, bodyB), 15, 2 + slide, mats)
-    stamp(t, head, 2, 3, mats) // tête relevée, devant l'épaule, bras arrière levé derrière
-    // Mottes de pelouse arrachées, derrière et sous le corps, et devant le crampon (calque C fixe).
+    const AW = 44
+    const AH = 28
+    const grid = Array.from({ length: AH }, () => new Array(AW).fill('.'))
+    const put = (x0, y0, w, h, m) => {
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (grid[y0 + j] && x0 + i >= 0 && x0 + i < AW) grid[y0 + j][x0 + i] = m
+    }
+    const G = 25 + slide // rangée du sol
+    const ox = 4 // marge pour les mottes derrière
+    // Jambe arrière repliée sous le corps (cuisse, tibia, crampon talon vers l'arrière).
+    put(ox + 8, G - 5, 4, 2, 'S')
+    put(ox + 5, G - 3, 6, 3, 'C')
+    put(ox + 0, G - 3, 5, 3, 'B')
+    // Jambe avant tendue au ras du sol : cuisse, chaussette, crampon pointe en avant.
+    put(ox + 17, G - 5, 5, 4, 'S')
+    put(ox + 22, G - 5, 6, 4, 'C')
+    put(ox + 28, G - 5, 6, 5, 'B')
+    put(ox + 33, G - 6, 2, 1, 'B')
+    // Hanches (short), posées au sol.
+    put(ox + 11, G - 7, 6, 5, 'R')
+    // Bras arrière planté au sol, derrière le buste.
+    put(ox + 2, G - 12, 3, 5, 'J')
+    put(ox + 0, G - 7, 3, 4, 'J')
+    put(ox + 0, G - 3, 3, 2, 'S')
+    // Buste incliné en arrière : 7 rangées de 8, décalées d'un pixel vers la gauche en montant.
+    for (let r = 0; r < 7; r++) put(ox + 10 - r, G - 8 - r, 8, 1, 'J')
+    // Bras avant levé pour l'équilibre.
+    put(ox + 12, G - 16, 3, 3, 'J')
+    put(ox + 14, G - 19, 3, 3, 'J')
+    put(ox + 16, G - 21, 3, 2, 'S')
+    const A = grid.map((r) => r.join(''))
+    // Rayures Paraguay : parallèles à l'axe du buste.
+    const A2 = K.jersey2 ? A.map((r, y) => r.split('').map((m, x) => (m === 'J' && y >= G - 14 && y <= G - 8 && Math.floor((x - ox - (G - 8 - y) * -1) / 2) % 2 === 1 ? 'K' : m)).join('')) : A
+    const t = new Pix(AW + 4, AH + 4)
+    stamp(t, piece(A2), 2, 2, mats)
+    // Tête de profil, posée sur les épaules, regard vers l'avant.
+    stamp(t, head, 2 + ox + 1, 2 + G - 25, mats)
+    // Mottes et poussière derrière la glissade (couleurs fixes).
     const motte = (x, y, big) => {
       t.rect(x, y, big ? 3 : 2, 1, P.sand)
       t.rect(x, y + 1, big ? 3 : 2, 1, P.clay)
       if (big) t.px(x + 2, y + 1, P.brown)
-      t.px(x - 1, y + 1, P.greenM)
     }
-    motte(10, 22 + slide, true)
-    motte(19, 23 + slide, false)
-    motte(26, 21 + slide, true)
-    motte(46, 11 + slide, false)
-    if (slide) { t.px(6, 24, P.green); t.px(16, 25, P.green); t.px(48, 14, P.green) }
+    motte(2 + ox - 4, 2 + G - 1, true)
+    motte(2 + ox + 1, 2 + G + 0, false)
+    motte(2 + ox + 14, 2 + G + 0, true)
+    for (const [dx, dy] of [[-3, -6], [-1, -9], [-4, -3], [8, 1], [20, 1]]) t.px(2 + ox + dx + slide, 2 + G + dy, (dx + dy) % 2 ? P.green : P.grey1)
     const out = t.outline()
-    out.ax = 25
-    out.ay = 23
+    out.ax = 2 + ox + 14
+    out.ay = 2 + G
     return flip ? mirrorPix(out) : out
   }
 
