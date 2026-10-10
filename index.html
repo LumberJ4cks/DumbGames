@@ -104,7 +104,6 @@
   /* ---------- promo ---------- */
   .promo { display: block; margin-top: 36px; background: #fff; border: 2px solid #fff; box-shadow: 4px 4px 0 #000; overflow: hidden; }
   .promo img { width: 100%; height: auto; image-rendering: auto; }
-  .promo:hover { border-color: var(--blue); }
 
   /* ---------- footer ---------- */
   footer.site { margin: 40px 0 32px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 13px; color: var(--mute); }
@@ -147,7 +146,6 @@
   <nav class="main">
     <a href="#jeux">Les jeux</a>
     <a href="#records">Les records</a>
-    <a class="btn blue" href="https://github.com/LumberJ4cks/DumbGames">Le code ↗</a>
     <span class="status">
       <button class="btn ghost" type="button" id="loginBtn" title="Aucun compte requis.">👤 Connexion</button>
       <span class="online" id="online">1 idiot en ligne</span>
@@ -227,9 +225,9 @@
   </div>
 </section>
 
-<a class="promo" href="https://github.com/LumberJ4cks/DumbGames" aria-label="Mauvais jeux. Très bon t-shirt. La boutique">
+<div class="promo">
   <img src="assets/boutique.webp" alt="Mauvais jeux. Très bon t-shirt. L’élégance du temps perdu. Un t-shirt noir DumbGames, et la mention : même en vrai, on est nuls." width="1983" height="793" loading="lazy">
-</a>
+</div>
 
 <footer class="site">
   <a class="logo" href="./">
@@ -237,7 +235,7 @@
     <span class="big name">DumbGames</span>
   </a>
   <span>Une amitié numérique depuis 2026.</span>
-  <nav><a href="#jeux">Les jeux</a><a href="#records">Les records</a><a href="https://github.com/LumberJ4cks/DumbGames">Le code</a></nav>
+  <nav><a href="#jeux">Les jeux</a><a href="#records">Les records</a></nav>
   <span class="counter"><b id="visits">00000001</b>visites depuis cet appareil.</span>
 </footer>
 <p class="legal">Toute ressemblance avec un logiciel existant serait purement catastrophique. Les records restent dans ton navigateur : personne d’autre ne les voit, et c’est très bien comme ça.</p>
