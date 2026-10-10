@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#161423">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>SIUUUU SIMULATOR</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #161423; color: #c0c0c0; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; touch-action: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  /* Portrait phone: the whole 16:9 frame is kept and rotated, so nothing is cut. */
+  #stage.rotated canvas { transform: rotate(90deg); transform-origin: center center; }
+  #shell { position: fixed; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 24px; padding: 0 16px; border-top: 1px solid #2a2740; background: #100e1b; white-space: nowrap; overflow: auto; font-size: 12px; }
+  #shell b { color: #f4f4f4; }
+  #shell .ok { color: #C9F23B; } #shell .ko { color: #E23B3B; }
+  @media (pointer: coarse), (max-width: 760px) { #shell { display: none; } }
+  @media (pointer: fine) and (min-width: 761px) { #stage { inset: 0 0 40px 0; } }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="shell">
+  <span>Coquille de test · <b id="title"></b></span>
+  <span>État : <b id="state">idle</b></span>
+  <span>Dernier résultat : <b id="result">—</b></span>
+  <span>Ajoute <code>?debug=1</code>, <code>?seed=42</code> ou <code>?run=15</code> à l’adresse.</span>
+</div>
+<script type="module">
+  import { manifest, create, validate, grade } from './game.js'
+
+  const canvas = document.getElementById('c')
+  const stage = document.getElementById('stage')
+  const $ = (id) => document.getElementById(id)
+  $('title').textContent = manifest.title + ' — ' + manifest.tagline
+  const { width: GW, height: GH } = manifest.size
+  const params = new URLSearchParams(location.search)
+
+  const game = create({
+    canvas,
+    settings: {
+      debug: params.get('debug') === '1',
+      seed: params.has('seed') ? params.get('seed') : null,
+      // Debug only: ?run=15 shortens the match to fifteen seconds to reach the results quickly.
+      config: params.has('run') ? { RUN_DURATION: Number(params.get('run')) } : null,
+    },
+    onState: (state) => { $('state').textContent = state },
+    onEnd: (result) => {
+      const ok = validate(result)
+      $('result').innerHTML = `${result.score.toLocaleString('fr-FR')} pts · ${grade(result)} · validation <span class="${ok ? 'ok' : 'ko'}">${ok ? 'acceptée' : 'refusée'}</span>`
+    },
+  })
+  window.__game = game
+
+  let rotated = false
+  function fit() {
+    const sw = stage.clientWidth
+    const sh = stage.clientHeight
+    rotated = sh > sw && sw < 700
+    stage.classList.toggle('rotated', rotated)
+    const availW = rotated ? sh : sw
+    const availH = rotated ? sw : sh
+    let scale = Math.min(availW / GW, availH / GH)
+    scale = scale >= 2 ? Math.floor(scale) : Math.max(0.5, scale)
+    canvas.style.width = GW * scale + 'px'
+    canvas.style.height = GH * scale + 'px'
+  }
+  addEventListener('resize', fit)
+  if (screen.orientation) screen.orientation.addEventListener('change', fit)
+  fit()
+
+  function toInternal(event) {
+    const r = canvas.getBoundingClientRect()
+    if (!rotated) return { x: ((event.clientX - r.left) / r.width) * GW, y: ((event.clientY - r.top) / r.height) * GH }
+    return { x: ((event.clientY - r.top) / r.height) * GW, y: ((r.right - event.clientX) / r.width) * GH }
+  }
+
+  // Pointer Events: finger or mouse down = press, up = release (the same two actions as Space).
+  const payload = (event, type) => ({ type, touch: event.pointerType !== 'mouse', ...toInternal(event) })
+  stage.addEventListener('pointerdown', (e) => { e.preventDefault(); game.unlock(); game.input('pointer', payload(e, 'down')) })
+  stage.addEventListener('pointerup', (e) => game.input('pointer', payload(e, 'up')))
+  stage.addEventListener('pointercancel', (e) => game.input('pointer', payload(e, 'up')))
+  addEventListener('contextmenu', (e) => e.preventDefault())
+
+  // Keyboard: Space on key down only (auto-repeat ignored), released on key up; M mutes, P/Escape pause.
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) { game.unlock(); game.input('press', { down: true }) } }
+    if (e.code === 'KeyM' && !e.repeat) game.input('mute')
+    if ((e.code === 'KeyP' || e.code === 'Escape') && !e.repeat) game.input('pause')
+  })
+  addEventListener('keyup', (e) => { if (e.code === 'Space') { e.preventDefault(); game.input('press', { down: false }) } })
+  addEventListener('blur', () => game.input('blur'))
+  document.addEventListener('visibilitychange', () => { if (document.hidden) game.input('blur') })
+
+  // Phones: full screen in landscape on the first tap, when the browser allows it; iOS audio unlock.
+  stage.addEventListener('pointerdown', async (e) => {
+    if (e.pointerType !== 'mouse') {
+      try { await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }) } catch {}
+      try { await screen.orientation?.lock?.('landscape') } catch {}
+      setTimeout(fit, 300)
+    }
+  }, { once: true })
+  const silence = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=')
+  silence.setAttribute('playsinline', '')
+  silence.volume = 0.01
+  let silenced = false
+  function unlock() { game.unlock(); if (!silenced) { silenced = true; silence.play().catch(() => {}) } }
+  stage.addEventListener('touchend', unlock, { passive: true })
+  stage.addEventListener('click', unlock)
+
+  game.start()
+</script>
+</body>
+</html>
