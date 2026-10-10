@@ -1312,7 +1312,7 @@ export function create(canvas) {
     const tb = TUTO_BTN
     ctx.fillStyle = P.green; ctx.fillRect(tb.x, tb.y, tb.w, tb.h)
     ctx.fillStyle = P.greenD; ctx.fillRect(tb.x, tb.y + tb.h - 2, tb.w, 2); ctx.fillRect(tb.x + tb.w - 2, tb.y, 2, tb.h)
-    text5Scaled(pointerTouch ? 'TUTO' : 'T : TUTO', tb.x + tb.w / 2, tb.y + 4, P.ink, 1.6, {})
+    text5Scaled('TUTO', tb.x + tb.w / 2, tb.y + 4, P.ink, 1.6, {})
     text3(audio.muted ? 'M : SON COUPÉ' : 'M : SON', 6, GH - 10, P.grey2)
     if (best) text3('RECORD ' + best, GW - 10 - textWidth('RECORD ' + best), GH - 10, P.yellow)
     text3('V2', GW - 12, GH - 20, P.grey3)
