@@ -113,7 +113,7 @@ Toutes les parties sont des **rectangles aux coins coupés d'un pixel**, jamais 
 | Buste | 12 × 7 | rangées 13 à 19 | Épaules carrées. Rangée du haut = face du dessus des épaules (ton 4). |
 | Bras | 3 × 6 chacun | rangées 13 à 18, collés au buste | Mains : 3 × 2 en peau, ton 2. |
 | Short | 12 × 4 | rangées 9 à 12 | Même largeur que le buste. Pas de taille marquée. |
-| Jambes | 4 × 5 chacune | rangées 3 à 7, espacées de 2 px | Chaussettes = la jambe entière. |
+| Jambes | 4 × 7 chacune | rangées 3 à 9, espacées de 2 px | Cuisse en peau sur 3 rangées sous le short, chaussette sur 4. |
 | Crampons | 5 × 2 chacun | rangées 0 à 2 | Dépassent d'un pixel devant la jambe. Ton 2 dessus, ton 1 dessous. |
 
 Proportions : tête 45 % de la hauteur, buste + short 35 %, jambes 20 %. La largeur de la

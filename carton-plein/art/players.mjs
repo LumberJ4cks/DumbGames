@@ -244,9 +244,9 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
   const torsoW = face === 'p' ? 9 : 12
   const torsoA = fill(torsoW, 7, 'J')
   if (K.jersey2) for (let y = 0; y < 7; y++) torsoA[y] = torsoA[y].split('').map((m, x) => (Math.floor(x / 2) % 2 === 1 ? 'K' : 'J')).join('')
-  if (K.jersey2 && number !== null && K.num && face !== 'p') {
+  if (K.jersey2 && number !== null && K.num && face === 'b') {
     // Bande unie derrière le numéro, sur toute la hauteur : une rayure centrale plus large.
-    const nw = face === 'b' ? glyph5(String(number)).w + 2 : String(number).length * 4 + 1
+    const nw = String(number).split('').reduce((w, d) => w + glyph5(d).w + 1, -1) + 2
     const x0 = Math.floor((torsoW - nw) / 2)
     for (let y = 0; y < 7; y++) torsoA[y] = torsoA[y].split('').map((m, x) => (x >= x0 && x < x0 + nw ? 'K' : m)).join('')
   }
@@ -258,15 +258,18 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
     for (let x = 0; x < torsoW; x++) torso.C[0][x] = K.accent
     if (face !== 'p') for (let y = 2; y < 4; y++) torso.C[y][0] = K.accent
   }
-  if (number !== null && K.num && face !== 'p') {
+  if (number !== null && K.num && face === 'b') {
     torso.C = torso.C || fill(torsoW, 7, '.').map((r) => r.split(''))
     if (face === 'b') {
-      const g = glyph5(String(number))
-      const gw = g.w
-      const ox2 = Math.floor((torsoW - gw) / 2)
-      g.rows.slice(2, 9).forEach((row, j) => {
-        for (let i = 0; i < gw; i++) if (row[i] === '#') torso.C[j][ox2 + i] = K.num
-      })
+      const gs = String(number).split('').map((d) => glyph5(d))
+      const gw = gs.reduce((w, g) => w + g.w + 1, -1)
+      let gx = Math.floor((torsoW - gw) / 2)
+      for (const g of gs) {
+        g.rows.slice(2, 9).forEach((row, j) => {
+          for (let i = 0; i < g.w; i++) if (row[i] === '#' && gx + i >= 0 && gx + i < torsoW) torso.C[j][gx + i] = K.num
+        })
+        gx += g.w + 1
+      }
     } else {
       const digits = String(number).split('')
       const x0 = Math.floor((torsoW - (digits.length * 4 - 1)) / 2)
@@ -278,7 +281,7 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
   const shorts = piece(fill(torsoW, 4, 'R'))
   const arm = piece([...fill(3, 6, 'J'), ...fill(3, 2, 'S')])
   const armLong = piece([...fill(8, 3, 'J'), ...fill(3, 3, 'S').map((r) => r.padStart(8, '.'))].map((r, i) => (i >= 3 ? '.....SSS' : r)))
-  const leg = (h) => piece(fill(4, h, 'C'))
+  const leg = (h) => piece([...fill(4, Math.min(3, h - 2), 'S'), ...fill(4, h - Math.min(3, h - 2), 'C')])
   const boot = piece(['BBBBB', 'BBBBB'], ['22223', '11111'])
   const bootP = piece(['BBBBBB', 'BBBBBB'], ['222233', '111111'])
 
@@ -311,12 +314,12 @@ export function player({ kit = 'france', look = 0, pose = 'idle0', face = 'f', n
       '.JJJ............................',
       '.JJJJJJJJJRRRRR.................',
       '.JJJJJJJJJRRRRR.................',
-      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
-      '.JJJJJJJJJRRRRRCCCCCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
+      '.JJJJJJJJJRRRRRSSSSCCCCCCBBBBB..',
       '.JJJJJJJJJRRRRR.................',
-      '..JJJ......CCCC.................',
+      '..JJJ......SSSS.................',
       '..JJJ......CCCC.................',
       '..JJJ......CCCC.................',
       '..SSS.....BBBBB.................',
