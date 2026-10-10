@@ -9,11 +9,13 @@
  * sprites.js dessus. Aucune dépendance.
  *   ?seed=42   rejoue la même partie       ?debug=1   hitboxes et chiffres
  */
-import { Pix, PAL as P, toCanvas } from './pixel.js'
-import { mirror, buildSprites, TILE_W, PALAIS_W } from './sprites.js'
-import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js'
-import { drawText, drawTextC, textWidth } from './font.js'
-import { createAudio } from './audio.js'
+// Le ?v=N sur chaque import force le navigateur à recharger les fichiers à chaque version : on
+// l'incrémente partout (index.html, game.js, sprites.js, font5.js) à chaque mise en ligne.
+import { Pix, PAL as P, toCanvas } from './pixel.js?v=3'
+import { mirror, buildSprites, TILE_W, PALAIS_W } from './sprites.js?v=3'
+import { drawText5, drawText5C, textWidth5, logoLine } from './font5.js?v=3'
+import { drawText, drawTextC, textWidth } from './font.js?v=3'
+import { createAudio } from './audio.js?v=3'
 
 export const GW = 480
 export const GH = 270
