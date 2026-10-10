@@ -82,19 +82,6 @@ export const CONFIG = {
   COMMENTS: { 3: 'IL EST CHAUD !', 5: 'C’EST UN HOMME, ÇA ?', 7: 'LE GAZON DEMANDE GRÂCE !', 9: 'APPELEZ LA FIFA !', 10: 'MULTIPLICATEUR MAXIMUM. INHUMAIN.' },
   RESULTS_LOCK: 0.6,
   INVADERS: 14,
-  // Ronaldo's size: each verdict moves it; above zero the camera pulls back and the stadium
-  // shrinks (he becomes a giant), below zero he shrinks himself. Clouds need about nine
-  // PERFECT in a row.
-  SIZE: { PERFECT: 0.3, GOOD: 0.05, BAD: -0.35, FAIL: -0.7, MIN: -1.6, MAX: 3.2, CLOUDS: 2.7 },
-  SIZE_LEVELS: [
-    [-1.2, 'RIDICULE'],
-    [-0.5, 'MINUSCULE'],
-    [0.5, 'NORMAL'],
-    [1.3, 'GRAND'],
-    [2.1, 'GÉANT'],
-    [2.7, 'GODZILLA'],
-    [99, 'DANS LES NUAGES'],
-  ],
 }
 
 /* ---------- palette ---------- */
@@ -485,9 +472,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       cycle: null,
       ending: false,
       ronaldo: { x: RUN_START_X, y: RUN_Y, pose: 'run1', flip: false, air: 0 },
-      size: 0,
-      sizeShown: 0,
-      sizeLevel: 'NORMAL',
     }
     particles.length = 0
     popups.length = 0
@@ -662,19 +646,9 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       r.flip = rng() < 0.5
     }
     addScore(pts)
-    g.size = clamp(g.size + CONFIG.SIZE[v], CONFIG.SIZE.MIN, CONFIG.SIZE.MAX)
-    const level = sizeLevel(g.size)
-    if (level !== g.sizeLevel) {
-      g.sizeLevel = level
-      const up = CONFIG.SIZE[v] > 0
-      popups.push({ text: up ? (level === 'DANS LES NUAGES' ? 'RONALDO DANS LES NUAGES !' : level === 'GODZILLA' ? 'RONALDO GODZILLA !' : 'RONALDO ' + level) : level === 'RIDICULE' ? 'RONALDO RIDICULE…' : 'RONALDO ' + level + '…', x: GW / 2, y: 118, life: 1.5, scale: 3, colour: up ? P.yellow : P.grey, outline: P.ink })
-      if (level === 'DANS LES NUAGES') comment = { text: 'COMMENTATEUR : IL A DÉPASSÉ LA COUCHE D’OZONE.', life: 3 }
-      if (level === 'RIDICULE') comment = { text: 'COMMENTATEUR : ON NE LE VOIT PLUS. C’EST GÊNANT.', life: 3 }
-    }
-    // feedback (popups live in screen space, so they follow the camera)
-    const S = toScreen(r.x + RON_CX, r.y)
-    const cx = S.x
-    const cy = S.y - 156 * Math.max(1, ronaldoScale())
+    // feedback
+    const cx = r.x + RON_CX
+    const cy = r.y - 156
     if (v === 'PERFECT') {
       audio.perfect()
       freeze = CONFIG.FREEZE_PERFECT
@@ -700,7 +674,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     if (pts > 0) popups.push({ text: '+' + fmt(pts), x: cx + (rng() * 40 - 20), y: cy - 26, life: 1.2, scale: 2, colour: P.white, outline: P.ink, rise: 30 })
     if ((v === 'PERFECT' || v === 'GOOD') && g.combo >= 2) {
-      popups.push({ text: 'COMBO ×' + Math.min(CONFIG.MAX_MULT, 1 + g.combo), x: cx - 110, y: S.y - 50 * ronaldoScale(), life: 0.8, scale: 2, colour: P.cream, outline: P.navy })
+      popups.push({ text: 'COMBO ×' + Math.min(CONFIG.MAX_MULT, 1 + g.combo), x: cx - 110, y: r.y - 50, life: 0.8, scale: 2, colour: P.cream, outline: P.navy })
       const line = CONFIG.COMMENTS[Math.min(CONFIG.MAX_MULT, 1 + g.combo)]
       if (line) comment = { text: 'COMMENTATEUR : ' + line, life: 2.6 }
     }
@@ -770,11 +744,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function update(dt) {
     clock += dt
     tickFlashes(dt)
-    if (g) g.sizeShown += (g.size - g.sizeShown) * Math.min(1, dt * 3)
-    for (const c of skyClouds) {
-      c.x -= c.v * dt
-      if (c.x + c.w < -40) c.x = GW + 40
-    }
     if (lock > 0) lock -= dt
     if (flash > 0) flash -= dt
     if (comment && (comment.life -= dt) <= 0) comment = null
@@ -950,23 +919,23 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
   }
 
-  function drawStadium(sx) {
+  function drawScene() {
     const { ox, oy } = sceneOffset()
     const chaos = g && diff().chaos
     const fever = g && inFever()
     // sky behind everything, visible once the stadium lifts off
-    sx.fillStyle = P.sky
-    sx.fillRect(0, 0, GW, GH)
+    ctx.fillStyle = P.sky
+    ctx.fillRect(0, 0, GW, GH)
     if (liftoff > 0) {
-      sx.fillStyle = P.sky2
+      ctx.fillStyle = P.sky2
       for (const c of clouds) {
-        sx.fillRect(Math.round(c.x), Math.round(c.y), Math.round(c.w), 10)
-        sx.fillRect(Math.round(c.x + c.w * 0.2), Math.round(c.y - 6), Math.round(c.w * 0.5), 6)
+        ctx.fillRect(Math.round(c.x), Math.round(c.y), Math.round(c.w), 10)
+        ctx.fillRect(Math.round(c.x + c.w * 0.2), Math.round(c.y - 6), Math.round(c.w * 0.5), 6)
       }
     }
-    sx.save()
-    sx.translate(ox, oy)
-    sx.drawImage(standsLayer, 0, 0)
+    ctx.save()
+    ctx.translate(ox, oy)
+    ctx.drawImage(standsLayer, 0, 0)
 
     // the crowd, back rows first
     const excited = g && (g.events.has('crowd') || fever)
@@ -983,257 +952,104 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
       if (chaos) dx = Math.round(Math.sin(clock * 9 + f.phase))
       const pose = jumping && s > 0 ? 'up' : 'idle'
-      drawFan(sx, f, pose, f.x + dx, f.y + dy)
+      drawFan(ctx, f, pose, f.x + dx, f.y + dy)
     }
-    const roofShade = sx.createLinearGradient(0, oy, 0, oy + 70)
+    const roofShade = ctx.createLinearGradient(0, oy, 0, oy + 70)
     roofShade.addColorStop(0, 'rgba(10,10,30,0.4)')
     roofShade.addColorStop(1, 'rgba(10,10,30,0)')
-    sx.fillStyle = roofShade
-    sx.fillRect(0, 0, GW, 70)
+    ctx.fillStyle = roofShade
+    ctx.fillRect(0, 0, GW, 70)
     for (const fl of flashes) {
-      sx.fillStyle = P.white
-      sx.fillRect(fl.x - 1, fl.y - 3, 3, 7)
-      sx.fillRect(fl.x - 3, fl.y - 1, 7, 3)
-      sx.fillStyle = P.sky2
-      sx.fillRect(fl.x, fl.y, 1, 1)
+      ctx.fillStyle = P.white
+      ctx.fillRect(fl.x - 1, fl.y - 3, 3, 7)
+      ctx.fillRect(fl.x - 3, fl.y - 1, 7, 3)
+      ctx.fillStyle = P.sky2
+      ctx.fillRect(fl.x, fl.y, 1, 1)
     }
-    sx.drawImage(frontLayer, 0, STAND_BOTTOM)
+    ctx.drawImage(frontLayer, 0, STAND_BOTTOM)
 
     // bench, stewards, cameraman (the track)
     const subsUp = g && g.events.has('subs')
-    if (!subsUp) for (const s of subs) sx.drawImage(mini('sit', P.white, s.hair, s.skin, P.white), s.x, BOARD_BOTTOM - 26)
-    for (const st of stewards) sx.drawImage(mini('back', '#FFD84A', '#2B1B14', '#C68A5A', '#2A2D3A'), st.x, st.y - 18)
-    sx.drawImage(prop('camera'), 552, PITCH_TOP - 28)
+    if (!subsUp) for (const s of subs) ctx.drawImage(mini('sit', P.white, s.hair, s.skin, P.white), s.x, BOARD_BOTTOM - 26)
+    for (const st of stewards) ctx.drawImage(mini('back', '#FFD84A', '#2B1B14', '#C68A5A', '#2A2D3A'), st.x, st.y - 18)
+    ctx.drawImage(prop('camera'), 552, PITCH_TOP - 28)
 
     // pitch mood: fever and chaos tints over the grass only
     if (fever || chaos) {
-      sx.globalAlpha = 0.22
-      sx.fillStyle = chaos ? ['#3B8FB0', '#A03BB0', '#B0803B', '#B03B3B'][Math.floor(clock * 2) % 4] : P.lime
-      sx.fillRect(0, PITCH_TOP, NET_X - 4, GH - PITCH_TOP)
-      sx.globalAlpha = 1
+      ctx.globalAlpha = 0.22
+      ctx.fillStyle = chaos ? ['#3B8FB0', '#A03BB0', '#B0803B', '#B03B3B'][Math.floor(clock * 2) % 4] : P.lime
+      ctx.fillRect(0, PITCH_TOP, NET_X - 4, GH - PITCH_TOP)
+      ctx.globalAlpha = 1
     }
     // corner flag
     const sway = Math.round(Math.sin(clock * 3) * 1.5)
-    sx.fillStyle = P.ink
-    sx.fillRect(GOAL_LINE - 1, TOUCHLINE - 30, 2, 30)
-    sx.fillStyle = P.yellow
-    sx.fillRect(GOAL_LINE + 1, TOUCHLINE - 30 + sway, 12, 4)
-    sx.fillStyle = P.red
-    sx.fillRect(GOAL_LINE + 1, TOUCHLINE - 26 + sway, 12, 4)
-    sx.fillStyle = P.yellow
-    sx.fillRect(GOAL_LINE + 1, TOUCHLINE - 22 + sway, 8, 3)
-    sx.drawImage(prop('ball'), 548, 216)
-    sx.drawImage(prop('cart'), 584, 206)
+    ctx.fillStyle = P.ink
+    ctx.fillRect(GOAL_LINE - 1, TOUCHLINE - 30, 2, 30)
+    ctx.fillStyle = P.yellow
+    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 30 + sway, 12, 4)
+    ctx.fillStyle = P.red
+    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 26 + sway, 12, 4)
+    ctx.fillStyle = P.yellow
+    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 22 + sway, 8, 3)
+    ctx.drawImage(prop('ball'), 548, 216)
+    ctx.drawImage(prop('cart'), 584, 206)
 
     if (subsUp)
       for (const s of subs) {
         const bob = Math.sin(clock * 6 + s.phase) > 0 ? -2 : 0
-        sx.drawImage(mini('siuuu', P.white, s.hair, s.skin, P.white), s.x + 6, PITCH_TOP - 4 + bob)
+        ctx.drawImage(mini('siuuu', P.white, s.hair, s.skin, P.white), s.x + 6, PITCH_TOP - 4 + bob)
       }
     for (const inv of invaders) {
       if (inv.delay > 0) continue
       const pose = Math.floor(clock * 8 + inv.phase) % 2 ? 'run1' : 'run2'
-      sx.drawImage(mini(pose, inv.shirt, inv.hair, inv.skin), Math.round(inv.x), Math.round(inv.y) - 18)
+      ctx.drawImage(mini(pose, inv.shirt, inv.hair, inv.skin), Math.round(inv.x), Math.round(inv.y) - 18)
     }
     const refsUp = g && g.events.has('refs')
     for (const r of refs) {
       const bob = refsUp && Math.sin(clock * 6 + r.x) > 0 ? -2 : 0
-      sx.fillStyle = 'rgba(0,0,0,0.25)'
-      sx.fillRect(r.x + 2, r.y - 2, 12, 3)
-      sx.drawImage(mini(refsUp ? 'siuuu' : 'idle', P.black, r.hair, r.skin, P.black), r.x, r.y - 18 + bob)
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'
+      ctx.fillRect(r.x + 2, r.y - 2, 12, 3)
+      ctx.drawImage(mini(refsUp ? 'siuuu' : 'idle', P.black, r.hair, r.skin, P.black), r.x, r.y - 18 + bob)
       if (r.flag && !refsUp) {
-        sx.fillStyle = P.ink
-        sx.fillRect(r.x + 14, r.y - 26, 1, 14)
-        sx.fillStyle = P.orange
-        sx.fillRect(r.x + 15, r.y - 26, 6, 5)
+        ctx.fillStyle = P.ink
+        ctx.fillRect(r.x + 14, r.y - 26, 1, 14)
+        ctx.fillStyle = P.orange
+        ctx.fillRect(r.x + 15, r.y - 26, 6, 5)
       }
     }
 
-    sx.restore()
+    // Ronaldo, with a soft shadow that shrinks as he rises
+    const r = g ? g.ronaldo : { x: RUN_END_X + LAND_DX, y: RUN_Y, pose: 'siuuu', flip: false, air: 0 }
+    const sh = Math.max(0.3, 1 - r.air / 120)
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'
+    const sw = Math.round(44 * sh)
+    ctx.fillRect(Math.round(r.x + RON_CX - sw / 2), r.y - 3, sw, 5)
+    ctx.fillRect(Math.round(r.x + RON_CX - sw / 2) + 4, r.y - 4, sw - 8, 7)
+    drawRonaldo(ctx, r.pose, r.x + RON_CX, r.y - r.air, r.flip)
+
+    for (const p of particles) {
+      if (p.ring) {
+        ctx.strokeStyle = p.colour
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.stroke()
+      } else {
+        ctx.fillStyle = p.colour
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size)
+      }
+    }
+    ctx.restore()
     if (liftoff > 0) {
       const base = GH + oy
       for (let i = 0; i < 5; i++) {
         const x = 60 + i * 130
         const h = 10 + Math.round(Math.abs(Math.sin(clock * 20 + i)) * 10)
-        sx.fillStyle = P.orange
-        sx.fillRect(x - 12, base, 24, h)
-        sx.fillStyle = P.yellow
-        sx.fillRect(x - 6, base, 12, h - 4)
+        ctx.fillStyle = P.orange
+        ctx.fillRect(x - 12, base, 24, h)
+        ctx.fillStyle = P.yellow
+        ctx.fillRect(x - 6, base, 12, h - 4)
       }
-    }
-  }
-
-
-  /* ----- the camera: the stadium shrinks as Ronaldo grows ----- */
-  const sceneCanvas = document.createElement('canvas')
-  sceneCanvas.width = GW
-  sceneCanvas.height = GH
-  const sceneCtx = sceneCanvas.getContext('2d', { alpha: false })
-  sceneCtx.imageSmoothingEnabled = false
-  const stars = Array.from({ length: 140 }, () => ({ x: artRng() * GW, y: artRng() * GH, k: artRng() }))
-  // the city around the stadium, in stadium coordinates (the stadium is 0..640 × 0..360)
-  const city = []
-  for (let x = -3200; x < 3800; x += 30 + Math.floor(artRng() * 60)) {
-    if (x > -80 && x < 720) continue
-    city.push({ x, w: 30 + Math.floor(artRng() * 70), h: 80 + Math.floor(artRng() * 420), far: false, seed: artRng() })
-  }
-  for (let x = -4000; x < 4600; x += 120 + Math.floor(artRng() * 160)) city.push({ x, w: 90 + Math.floor(artRng() * 160), h: 500 + Math.floor(artRng() * 700), far: true, seed: artRng() })
-  const skyClouds = Array.from({ length: 9 }, (_, i) => ({ x: artRng() * GW, y: artRng() * GH, w: 120 + artRng() * 200, h: 30 + artRng() * 40, v: 12 + artRng() * 20 }))
-  const sizeLevel = (sz) => CONFIG.SIZE_LEVELS.find(([max]) => sz < max)[1]
-  function zoom() {
-    const sz = g ? g.sizeShown : 0
-    return sz <= 0 ? 1 : 1 / (1 + sz)
-  }
-  function ronaldoScale() {
-    const sz = g ? g.sizeShown : 0
-    return sz >= 0 ? 1 + sz * 0.15 : Math.max(0.3, 1 + sz * 0.45)
-  }
-  function view() {
-    const z = zoom()
-    const k = smooth(clamp((1 - z) / 0.75, 0, 1))
-    const px = 500
-    const py = 316
-    const sx = lerp(px, 330, k)
-    const sy = lerp(py, 232, k)
-    return { z, ox: sx - px * z, oy: sy - py * z }
-  }
-  function toScreen(x, y) {
-    const v = view()
-    return { x: x * v.z + v.ox, y: y * v.z + v.oy }
-  }
-  function drawNightWorld(v) {
-    const sky = ctx.createLinearGradient(0, 0, 0, GH)
-    sky.addColorStop(0, '#05060F')
-    sky.addColorStop(1, '#141B3A')
-    ctx.fillStyle = sky
-    ctx.fillRect(0, 0, GW, GH)
-    for (const st of stars) {
-      const tw = Math.sin(clock * (2 + st.k * 3) + st.k * 20) > 0.6
-      ctx.fillStyle = tw ? '#FFFFFF' : '#9AA4C8'
-      ctx.fillRect(Math.round(st.x), Math.round(st.y), st.k > 0.9 ? 2 : 1, st.k > 0.9 ? 2 : 1)
-    }
-    ctx.fillStyle = '#F4EFC8'
-    ctx.fillRect(540, 40, 22, 22)
-    ctx.fillRect(537, 44, 28, 14)
-    ctx.fillRect(544, 37, 14, 28)
-    ctx.fillStyle = '#D9D2A4'
-    ctx.fillRect(546, 46, 4, 4)
-    ctx.fillRect(553, 52, 3, 3)
-    // ground: the city floor around the stadium, with roads
-    const gy = v.oy + GH * v.z
-    ctx.fillStyle = '#0C0F1F'
-    ctx.fillRect(0, gy, GW, GH - gy)
-    ctx.fillStyle = '#1B2140'
-    for (let i = -6; i < 8; i++) {
-      const rx = v.ox + (i * 520 + 320) * v.z
-      ctx.fillRect(Math.round(rx - 6 * v.z), gy, Math.max(1, Math.round(12 * v.z)), GH - gy)
-    }
-    ctx.fillStyle = '#F2C14E'
-    for (let i = -20; i < 24; i++) {
-      const lx = v.ox + (i * 160 + 80) * v.z
-      ctx.fillRect(Math.round(lx), Math.round(gy + 4), 1, 1)
-    }
-    // buildings behind the stadium: far row first
-    for (const pass of [true, false]) {
-      for (const b of city) {
-        if (b.far !== pass) continue
-        const zz = pass ? v.z * 0.6 : v.z
-        const bx = v.ox + (b.x + (pass ? 0 : 0)) * zz + (pass ? GW * (v.z - zz) * 0.5 : 0)
-        const bw = Math.max(1, b.w * zz)
-        const bh = b.h * zz
-        const by = (pass ? v.oy - 40 * zz : v.oy - 10 * v.z) - bh
-        ctx.fillStyle = pass ? '#0E1328' : '#1A2040'
-        ctx.fillRect(Math.round(bx), Math.round(by), Math.round(bw), Math.round(bh + (pass ? 60 * zz : 20 * v.z)))
-        if (zz > 0.12) {
-          const cols = Math.max(1, Math.floor(bw / (8 * zz)))
-          const rows = Math.max(1, Math.floor(bh / (10 * zz)))
-          for (let j = 0; j < rows; j++)
-            for (let i = 0; i < cols; i++) {
-              const h = Math.sin(b.seed * 100 + i * 7 + j * 13)
-              if (h > 0.35) {
-                ctx.fillStyle = h > 0.85 ? '#FFF1B0' : '#F2C14E'
-                ctx.fillRect(Math.round(bx + (i * 8 + 2) * zz), Math.round(by + (j * 10 + 3) * zz), Math.max(1, Math.round(3 * zz)), Math.max(1, Math.round(4 * zz)))
-              }
-            }
-        }
-        if (!pass && b.h > 400) {
-          ctx.fillStyle = Math.floor(clock * 2) % 2 ? '#FF3B3B' : '#7A1010'
-          ctx.fillRect(Math.round(bx + bw / 2), Math.round(by - 4 * zz), Math.max(1, Math.round(2 * zz)), Math.max(1, Math.round(2 * zz)))
-        }
-      }
-    }
-    // stadium floodlight glow
-    const glow = ctx.createRadialGradient(v.ox + 320 * v.z, v.oy + 200 * v.z, 10, v.ox + 320 * v.z, v.oy + 200 * v.z, 520 * v.z)
-    glow.addColorStop(0, 'rgba(255,240,180,0.35)')
-    glow.addColorStop(1, 'rgba(255,240,180,0)')
-    ctx.fillStyle = glow
-    ctx.fillRect(0, 0, GW, GH)
-  }
-  function drawCloudLayer(alpha) {
-    ctx.globalAlpha = alpha
-    // puffy clouds: a few overlapping domes made of stacked bars, lit from above
-    for (const c of skyClouds) {
-      const domes = [[0.05, 0.55, 0.55], [0.35, 0.5, 0.95], [0.62, 0.38, 0.7]]
-      for (const [dx, dw, dh] of domes) {
-        const w = c.w * dw
-        const h = c.h * dh * 1.4
-        const x0 = c.x + c.w * dx
-        const bottom = c.y + c.h
-        const rows = 6
-        for (let i = 0; i < rows; i++) {
-          const t = (i + 0.5) / rows
-          const rw = w * Math.sqrt(1 - (1 - t) * (1 - t))
-          ctx.fillStyle = i < 2 ? '#FFFFFF' : i < 4 ? '#ECF0F8' : '#D5DCEC'
-          ctx.fillRect(Math.round(x0 + (w - rw) / 2), Math.round(bottom - h + (h * i) / rows), Math.round(rw), Math.ceil(h / rows))
-        }
-      }
-      ctx.fillStyle = '#C3CCE0'
-      ctx.fillRect(Math.round(c.x), Math.round(c.y + c.h - 3), Math.round(c.w), 3)
-    }
-    ctx.globalAlpha = 1
-  }
-  function drawScene() {
-    drawStadium(sceneCtx)
-    const v = view()
-    const zoomed = v.z < 0.999
-    if (!zoomed) ctx.drawImage(sceneCanvas, 0, 0)
-    else {
-      drawNightWorld(v)
-      ctx.imageSmoothingEnabled = true
-      ctx.drawImage(sceneCanvas, v.ox, v.oy, GW * v.z, GH * v.z)
-      ctx.imageSmoothingEnabled = false
-      ctx.fillStyle = '#0C0F1F'
-      ctx.fillRect(Math.round(v.ox) - 3, Math.round(v.oy) - 3, Math.round(GW * v.z) + 6, 3)
-    }
-    // Ronaldo: at his own scale, feet on the (possibly shrunken) corner
-    const r = g ? g.ronaldo : { x: RUN_END_X + LAND_DX, y: RUN_Y, pose: 'siuuu', flip: false, air: 0 }
-    const rs = ronaldoScale()
-    const feet = toScreen(r.x + RON_CX, r.y)
-    const sh = Math.max(0.3, 1 - r.air / 120)
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    const sw = Math.round(44 * sh * rs)
-    ctx.fillRect(Math.round(feet.x - sw / 2), Math.round(feet.y - 3 * rs), sw, Math.max(2, Math.round(5 * rs)))
-    ctx.save()
-    ctx.translate(Math.round(feet.x), Math.round(feet.y - r.air * rs))
-    ctx.scale(rs, rs)
-    drawRonaldo(ctx, r.pose, 0, 0, r.flip)
-    ctx.restore()
-    for (const p of particles) {
-      const q = toScreen(p.x, p.y)
-      if (p.ring) {
-        ctx.strokeStyle = p.colour
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(q.x, q.y, p.r * Math.max(v.z, 0.5), 0, Math.PI * 2)
-        ctx.stroke()
-      } else {
-        ctx.fillStyle = p.colour
-        ctx.fillRect(Math.round(q.x), Math.round(q.y), p.size, p.size)
-      }
-    }
-    if (zoomed && g) {
-      const sz = g.sizeShown
-      if (sz > CONFIG.SIZE.CLOUDS - 0.6) drawCloudLayer(clamp((sz - (CONFIG.SIZE.CLOUDS - 0.6)) / 0.6, 0, 0.92))
     }
   }
 
@@ -1373,23 +1189,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     drawText(ctx, inFever() ? 'POINTS ×2 !' : Math.round(g.fever * 100) + '% — 4 PERFECT', fx, 330, inFever() ? P.yellow : P.cream)
 
-    // size
-    const lvl = sizeLevel(g.sizeShown)
-    const big = g.sizeShown > 0.5
-    const tiny = g.sizeShown < -0.5
-    drawTextC(ctx, 'TAILLE : ' + lvl, GW / 2, 10, big ? P.yellow : tiny ? P.grey : P.cream, { outline: P.ink })
-    ctx.fillStyle = P.ink
-    ctx.fillRect(GW / 2 - 52, 22, 104, 6)
-    ctx.fillStyle = '#2A2D3A'
-    ctx.fillRect(GW / 2 - 50, 23, 100, 4)
-    const k = (g.sizeShown - CONFIG.SIZE.MIN) / (CONFIG.SIZE.MAX - CONFIG.SIZE.MIN)
-    const zero = (0 - CONFIG.SIZE.MIN) / (CONFIG.SIZE.MAX - CONFIG.SIZE.MIN)
-    ctx.fillStyle = big ? P.yellow : tiny ? P.grey : P.lime
-    const a = Math.round(GW / 2 - 50 + Math.min(k, zero) * 100)
-    const b = Math.round(GW / 2 - 50 + Math.max(k, zero) * 100)
-    ctx.fillRect(a, 23, Math.max(2, b - a), 4)
-    ctx.fillStyle = P.white
-    ctx.fillRect(Math.round(GW / 2 - 50 + zero * 100), 22, 1, 6)
     drawGauge()
     if (inFever()) {
       const t = Math.floor(clock * 10) % 2
@@ -1399,7 +1198,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       ctx.fillRect(0, 0, 3, GH)
       ctx.fillRect(GW - 3, 0, 3, GH)
     }
-    if (g.elapsed >= CONFIG.CHAOS_AT && !g.ending) drawTextC(ctx, 'CHAOS', GW / 2 + 120, 10, [P.red, P.yellow, P.lime][Math.floor(clock * 6) % 3], { scale: 1, smooth: true, outline: P.ink, extrude: [P.ink] })
+    if (g.elapsed >= CONFIG.CHAOS_AT && !g.ending) drawTextC(ctx, 'CHAOS', GW / 2, 10, [P.red, P.yellow, P.lime][Math.floor(clock * 6) % 3], { scale: 1, smooth: true, outline: P.ink, extrude: [P.ink] })
   }
 
   function drawPopups() {
