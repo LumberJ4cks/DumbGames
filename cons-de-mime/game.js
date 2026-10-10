@@ -20,7 +20,7 @@ export const GH = 270
 
 /* ---------- réglages (tout ce qu'on va vouloir toucher en test) ---------- */
 export const CFG = {
-  duration: 90,            // s
+  duration: 60,            // s
   baseSpeed: 110,          // px/s, vitesse de la caméra (Serge est accroché dedans)
   boostSpeed: 2.3,         // × pendant le prout
   boostTime: 0.6,          // s
@@ -38,7 +38,7 @@ export const CFG = {
   fartCone: { back: 100, front: 40, half: 58 },
   nearMissDist: 24,        // px vertical pour compter une esquive
   score: { nearMiss: 50, knock: 100, explode: 300, look: 500, mamie: 1000, meter: 100, blast: 75 },
-  rollerAt: 20, mamieAt: 40, mimesFrom: 50, acteurAt: 30, odileAt: 62, bialesAt: 72,
+  rollerAt: 12, mamieAt: 26, mimesFrom: 33, acteurAt: 19, odileAt: 40, bialesAt: 47,
   lookInvert: 1.5,         // s de contrôles inversés après avoir regardé
 }
 
@@ -132,7 +132,7 @@ export function create(canvas) {
   function density() {
     // nombre d'entités par tranche de 100 px, de 1,2 à ~4 sur 90 s
     const p = Math.min(1, S.t / CFG.duration)
-    return 1.2 + 2.8 * p
+    return 1.4 + 2.8 * p
   }
 
   function spawnChunk() {
@@ -148,6 +148,11 @@ export function create(canvas) {
         else if (f.edge) y = r() < 0.5 ? CFG.sidewalkTop + 4 : CFG.sidewalkBottom - 2
         else y = CFG.sidewalkTop + 10 + r() * (CFG.sidewalkBottom - CFG.sidewalkTop - 20)
         S.ents.push({ type: 'furn', k: f.k, x, y, w: f.w, h: f.h, solid: true })
+        // De temps en temps, un ou deux petits vieux assis sur le banc.
+        if (f.k === 'banc' && r() < 0.6) {
+          const n2 = r() < 0.5 ? 1 : 2
+          for (let k = 0; k < n2; k++) S.ents.push({ type: 'assis', x: x + (n2 === 1 ? 0 : k ? 7 : -7), y: y + 0.5, variant: (r() * 3) | 0, solid: false })
+        }
       } else {
         const p = pick(r, PEOPLE)
         const y = CFG.sidewalkTop + 6 + r() * (CFG.sidewalkBottom - CFG.sidewalkTop - 12)
@@ -162,7 +167,7 @@ export function create(canvas) {
     if (S.t >= CFG.mimesFrom && x0 >= S.nextMimeX) {
       const y = CFG.sidewalkTop + 14 + r() * (CFG.sidewalkBottom - CFG.sidewalkTop - 28)
       S.ents.push({ type: 'mime', k: 'CON DE MIME', x: x0 + 50, y, w: 10, h: 18, solid: true, wallH: 44, state: 'mime', pose: 0 })
-      S.nextMimeX = x0 + 180 - Math.min(100, (S.t - CFG.mimesFrom) * 2.2)
+      S.nextMimeX = x0 + 180 - Math.min(100, (S.t - CFG.mimesFrom) * 3.5)
     }
     S.spawnX += 100
   }
@@ -205,7 +210,7 @@ export function create(canvas) {
     S.gas.push({ x: sx - 10, y: sy, t: 0 })
     let hit = 0
     for (const e of S.ents) {
-      if (e.type === 'furn' || e.state !== 'walk' && e.state !== 'mime') continue
+      if (e.type === 'furn' || e.type === 'assis' || e.state !== 'walk' && e.state !== 'mime') continue
       const dx = e.x - sx, dy = e.y - sy
       if (dx < -CFG.fartCone.back * reach || dx > CFG.fartCone.front * reach || Math.abs(dy) > CFG.fartCone.half * reach) continue
       if (e.type === 'mime') { pop(e.x, e.y - 24, 'IMMUNISÉ', '#ffffff'); audio.immune(); continue }
@@ -448,7 +453,7 @@ export function create(canvas) {
       const e = S.ents[i]
       if (e.type === 'boom') { e.t += dt; if (e.t > 0.6) S.ents.splice(i, 1); continue }
       if (e.x < S.camX - 120) { S.ents.splice(i, 1); continue }
-      if (e.type === 'scorch' || e.type === 'odile') continue
+      if (e.type === 'scorch' || e.type === 'odile' || e.type === 'assis' || e.type === 'drapeau' || e.type === 'officiel') continue
       if (e.type === 'debris') {
         e.t += dt
         if (e.z > 0 || e.vz > 0) { e.x += e.vx * dt; e.y += e.vy * dt; e.vz -= 320 * dt; e.z = Math.max(0, e.z + e.vz * dt); if (e.z === 0) e.vz = 0 }
@@ -538,10 +543,11 @@ export function create(canvas) {
    * de mimes avec banderole. Serge grimpe sur le kiosque, hurle « Barrez-vous, cons de mime ! »,
    * et saute par-dessus. Plus le score est haut, plus il va loin.
    */
-  const KIOSK_W = 62
-  const KIOSK_H = 44
+  const KIOSK_W = 102 // kiosque + roue + rampe
+  const KIOSK_BODY = 62
+  const KIOSK_H = 42
   function jumpMeters() {
-    const m = 2 + S.score / 1500 + S.bestCombo * 0.08 + S.fart * 0.5
+    const m = 2 + S.score / 1000 + S.bestCombo * 0.08 + S.fart * 0.5
     return Math.round(Math.min(18, m) * 100) / 100
   }
   function beginJump() {
@@ -578,10 +584,10 @@ export function create(canvas) {
       sg.x += 170 * dt
       sg.y += (j.ky - sg.y) * Math.min(1, dt * 4)
       follow(sg.x - CFG.sergeHomeX, 8)
-      if (sg.x >= j.kx) { j.phase = 'climb'; j.t = 0; sg.y = j.ky; audio.climb() }
+      if (sg.x >= j.kx + KIOSK_BODY) { j.phase = 'climb'; j.t = 0; sg.y = j.ky; audio.climb() }
     } else if (j.phase === 'climb') {
-      const p = Math.min(1, j.t / 0.55)
-      sg.x = j.kx + p * (KIOSK_W - 8)
+      const p = Math.min(1, j.t / 0.6)
+      sg.x = j.kx + KIOSK_BODY + p * (KIOSK_W - KIOSK_BODY - 6)
       j.z = p * KIOSK_H
       follow(sg.x - 160, 8)
       if (p >= 1) { j.phase = 'shout'; j.t = 0; S.shake = 0.15; audio.duck(0.35); audio.shout() }
@@ -596,10 +602,31 @@ export function create(canvas) {
       j.z = KIOSK_H * (1 - p) + Math.sin(p * Math.PI) * (24 + j.meters * 2.5)
       follow(sg.x - 200, 6)
       for (const e of S.ents) if (e.type === 'mime' && e.state === 'crowd' && !e.shocked && e.x < sg.x + 10) e.shocked = true
-      if (p >= 1) { j.phase = 'land'; j.t = 0; j.z = 0; S.shake = 0.3; S.gas.push({ x: sg.x, y: sg.y, t: 0.2, dust: true }); audio.land(); setTimeout(() => audio.fanfare(), 400) }
+      if (p >= 1) {
+        j.phase = 'land'; j.t = 0; j.z = 0; S.shake = 0.3
+        S.gas.push({ x: sg.x, y: sg.y, t: 0.2, dust: true })
+        audio.land()
+        // Les commissaires de course accourent depuis la droite, pour planter le drapeau au point d'impact.
+        j.flagX = sg.x - 6
+        j.officiels = [0, 1].map((v) => ({ type: 'officiel', v, x: S.camX + GW + 20 + v * 24, y: sg.y + (v ? 10 : -8), tx: j.flagX + (v ? 12 : -12), state: 'walk', phase: v })) 
+        for (const o of j.officiels) S.ents.push(o)
+        j.flagPlanted = false
+      }
     } else if (j.phase === 'land') {
       follow(sg.x - 200, 6)
-      if (j.t > 1.8) {
+      for (const o of j.officiels) {
+        if (o.state === 'walk') {
+          const d = o.tx - o.x
+          if (Math.abs(d) > 2) { o.x += Math.sign(d) * 150 * dt; o.y += (sg.y + (o.v ? 10 : -8) - o.y) * Math.min(1, dt * 4) }
+          else o.state = 'kneel'
+        }
+      }
+      if (!j.flagPlanted && j.officiels.every((o) => o.state === 'kneel')) {
+        j.flagPlanted = true
+        S.ents.push({ type: 'drapeau', x: j.flagX, y: sg.y + 1 })
+        audio.fanfare()
+      }
+      if (j.t > 3.2) {
         const bonus = Math.round(j.meters * CFG.score.meter)
         S.score += bonus
         S.jump.bonus = bonus
@@ -851,6 +878,26 @@ export function create(canvas) {
       if (e.bubbleT > 0) bubble(e.bubble, x, e.y - 30)
       return
     }
+    if (e.type === 'drapeau') {
+      blit(SPR.drapeau, x, e.y)
+      // Le mètre ruban jaune, du drapeau jusqu'au pied de la rampe.
+      const x1 = S.jump.kx + KIOSK_W - 6 - cam
+      ctx.fillStyle = P.yellow
+      ctx.fillRect(Math.round(Math.min(x, x1)), Math.round(e.y) + 2, Math.round(Math.abs(x - x1)), 1)
+      for (let k = Math.round(Math.min(x, x1)); k < Math.max(x, x1); k += 8) { ctx.fillStyle = P.ink; ctx.fillRect(k, Math.round(e.y) + 2, 1, 1) }
+      return
+    }
+    if (e.type === 'officiel') {
+      blit(SPR.shadow.m, x, e.y)
+      const set = SPR.officiel[e.v]
+      if (e.state === 'kneel') blit(set.kneel, x, e.y, e.v === 0)
+      else blit(set.walk[walkFrame(e)], x, e.y, true)
+      return
+    }
+    if (e.type === 'assis') {
+      blit(SPR.assis[e.variant % 3], x, e.y - 6)
+      return
+    }
     if (e.type === 'cascades') {
       blit(SPR.cascades, x, e.y)
       return
@@ -1087,8 +1134,9 @@ export function create(canvas) {
         }
       }
       if (j.phase === 'air' || j.phase === 'land') text5C('SAUT EN LONGUEUR', GW / 2, 30, P.white, { outline: P.ink })
-      if (j.phase === 'land') text5Scaled(j.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 42, P.yellow, 2, { outline: P.ink })
-      if (j.phase === 'land' && j.t > 0.8) text3C('PLUS LE SCORE EST HAUT, PLUS IL VA LOIN', GW / 2, 52, P.grey1)
+      if (j.phase === 'land' && j.flagPlanted) text5Scaled(j.meters.toFixed(2).replace('.', ',') + ' M', GW / 2, 42, P.yellow, 2, { outline: P.ink })
+      if (j.phase === 'land' && !j.flagPlanted) text3C('LES COMMISSAIRES MESURENT...', GW / 2, 44, P.grey1)
+      if (j.phase === 'land' && j.t > 2.2) text3C('PLUS LE SCORE EST HAUT, PLUS IL VA LOIN', GW / 2, 58, P.grey1)
     }
     if (S.mode === 'over') drawOver()
   }

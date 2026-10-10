@@ -305,6 +305,33 @@ export const PED_LOOKS = {
   livreur: [{ skin: 'skinDark', hair: 'hairBlack', top: 'teal', bottom: 'black', hat: 'cap', acc: 'bag' }],
 }
 
+/** Un petit vieux ou une petite vieille assis sur un banc : buste, genoux en avant, canne ou sac. */
+export function assisSprite(variant) {
+  const looks = PED_LOOKS.vieux
+  const lk = looks[variant % looks.length]
+  const Sk = R[lk.skin]
+  const Hr = R[lk.hair]
+  const T = R[lk.top]
+  const B = R[lk.bottom]
+  const lg = legend({ s: [Sk, 2], S: [Sk, 3], z: [Sk, 1], G: [Hr, 2], g: [Hr, 1], H: [Hr, 3], T: [T, 3], t: [T, 2], u: [T, 1], E: [P.ink], w: [P.grey1] })
+  return sprite(14, 18, 7, 16, (a) => {
+    // Les cuisses vers l'avant, les mollets qui pendent, les pieds.
+    a.shaded(-3, -7, 7, 3, B)
+    a.shaded(-3, -4, 2, 3, B)
+    a.shaded(1, -4, 2, 3, B)
+    a.rect(-4, -1, 3, 1, P.plum)
+    a.rect(1, -1, 3, 1, P.plum)
+    a.map(['TTttu.', 'tttuu.', 'ttuuu.', 'ttuuu.'], lg, -3, -11)
+    a.shaded(-4, -10, 1, 3, T)
+    a.shaded(3, -10, 1, 3, T)
+    const head = lk.hat === 'bald' ? ['......', '.sSSz.', 'ssSSzz', '.sSEz.', '.zssz.'] : lk.hat === 'bun' ? ['..GG..', '.GGGg.', 'GsSSzg', '.sSEz.', '.zssz.'] : ['.GGGg.', 'GGGGgg', 'GsSSzg', '.sSEz.', '.zssz.']
+    a.map(head, lg, -3, -16)
+    if (lk.acc === 'glasses') a.map(['wwwww'], lg, -3, -13)
+    if (lk.acc === 'cane') { a.rect(5, -8, 1, 8, R.wood[1]); a.px(4, -9, R.wood[2]) }
+    if (lk.acc === 'poodle') { a.rect(-7, -6, 3, 3, R.purple[2]) }
+  })
+}
+
 export function chienSprite(frame) {
   const lg = legend({ b: [R.dog, 2], B: [R.dog, 3], d: [R.dog, 1], h: [R.dog, 2], H: [R.dog, 3], e: [R.dog, 1], E: [P.ink], n: [P.ink], p: [P.pink], r: [P.red], k: [P.plum] })
   return sprite(16, 12, 8, 10, (a) => {
@@ -474,6 +501,50 @@ export function bialesSprite(frame) {
     a.map(['G.GGG.G', 'GGGGGGG', 'gGGGGGg', '.sSSSz.', '.sEsEz.', '.zssz..', '.zMMz..'], lg, -4, -22 + (frame ? 0 : 0))
     a.px(-5, -22, R.hairGrey[2])
     a.px(4, -21, R.hairGrey[2])
+  })
+}
+
+/* ---------- les commissaires de course ---------- */
+/*
+ * Deux hommes en costume : le premier lunettes de soleil et veste sombre sur pantalon gris,
+ * le second cravate rayée. Ils marchent (2 images) puis s'agenouillent pour planter le drapeau
+ * et tirer le mètre.
+ */
+export function officielSprite(variant, pose, frame = 0) {
+  const NAVY = [P.ink, P.slateD, P.slate, P.grey3]
+  const GREY = [P.slateD, P.slate, P.grey3, P.grey2]
+  const lg = legend({ s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], G: [R.hairBrown, 1], g: [R.hairBrown, 0], H: [R.hairBrown, 2], J: [NAVY, 3], j: [NAVY, 2], i: [NAVY, 1], W: [P.white], K: [P.ink], T: [P.redD], t: [P.blueD], D: [GREY, 2], d: [GREY, 1] })
+  const head = variant === 0 ? ['.GGHg.', 'GGGGgg', 'KKsKKz', 'zsSEz.', '.zssz.'] : ['.GGHg.', 'GGGGgg', 'GsSSzg', 'zsSEz.', '.zssz.']
+  if (pose === 'kneel') {
+    return sprite(22, 20, 11, 18, (a) => {
+      // Un genou à terre, penché en avant, les mains au sol.
+      a.shaded(-6, -4, 6, 3, variant === 0 ? GREY : NAVY) // la jambe repliée
+      a.shaded(2, -8, 3, 7, variant === 0 ? GREY : NAVY) // le genou
+      a.rect(-8, -1, 3, 1, P.ink)
+      a.rect(3, -1, 3, 1, P.ink)
+      a.map(['JJWTji', 'JjWtji', 'jjWtii', 'jjjiii'], lg, -4, -13)
+      a.shaded(1, -9, 1, 5, NAVY) // le bras tendu vers le drapeau
+      a.shaded(2, -5, 4, 1, NAVY)
+      a.px(6, -5, R.skinPale[2])
+      a.map(head, lg, -3, -18)
+    })
+  }
+  return sprite(20, 24, 10, 22, (a) => {
+    walker(a, frame, variant === 0 ? GREY : NAVY)
+    a.map(['JJWTji', 'JjWtji', 'JjWTji', 'jjWtii', 'jjjiii', 'jjjiii'], lg, -3, -13)
+    const arms = frame ? [[-4, -12, 1, 3], [3, -12, 1, 2]] : [[-4, -12, 1, 2], [3, -12, 1, 3]]
+    for (const [x, y, w, h] of arms) a.shaded(x, y, w, h, NAVY)
+    a.px(-4, -9, R.skinPale[2])
+    a.px(3, -9, R.skinPale[2])
+    a.map(head, lg, -3, -18)
+  })
+}
+/** Le petit drapeau blanc planté au point d'atterrissage, et le mètre ruban déroulé. */
+export function drapeauSprite() {
+  return sprite(14, 22, 2, 20, (a) => {
+    a.rect(0, -20, 1, 20, P.ink)
+    a.map(['WWWWWWWWW', 'WWWWWWWw.', 'WWWWWw...', 'WWWw.....', 'Ww.......'], { W: P.white, w: P.grey1 }, 1, -20)
+    a.rect(-1, 0, 3, 1, P.grey3)
   })
 }
 
@@ -745,8 +816,9 @@ export function facadeSprite(kind, w = 150) {
 
 /* ---------- le kiosque des cascades (le tremplin de la fin) ---------- */
 export function cascadesSprite() {
-  // Kiosque vert à toit à lambrequins, l'enseigne « CASCADES », des fleurs autour. Ancre : pied gauche.
-  return sprite(64, 50, 0, 48, (a) => {
+  // Le kiosque vert à lambrequins (« CASCADES / Rémy Julienne »), et à droite la grande roue de
+  // charrette couchée contre lui avec la rampe de plantes que Serge remonte. Ancre : pied gauche.
+  return sprite(104, 52, 0, 50, (a) => {
     a.box(2, -36, 58, 34, 4, R.green)
     a.rect(0, -40, 62, 3, R.wood[3])
     a.rect(0, -37, 62, 1, R.wood[1])
@@ -754,23 +826,43 @@ export function cascadesSprite() {
     a.rect(4, -44, 54, 4, R.green[1])
     a.rect(4, -44, 54, 1, R.green[3])
     a.rect(8, -46, 46, 2, R.green[2])
-    // Les planches.
-    for (let y = -30; y < -4; y += 4) a.rect(3, y, 56, 1, R.green[1])
-    // L'enseigne.
+    for (let y = -30; y < -4; y += 4) a.rect(3, y, 56, 1, R.green[1]) // les planches
     a.rect(16, -22, 30, 8, P.cream)
     a.rect(16, -22, 30, 1, P.white)
     a.rect(16, -15, 30, 1, P.sand)
     a.text3('CASCADES', 16, -21, P.redD)
     a.rect(18, -13, 26, 6, P.redD)
     a.text3('R.JULIEN', 17, -12, P.white)
-    // Fleurs et bambous devant.
+    // La roue de charrette : jante, douze rayons, moyeu, vue de côté contre le kiosque.
+    const cx = 80
+    const cy = -22
+    const rr = 20
+    for (let t = 0; t < 360; t += 2) {
+      const rad = (t * Math.PI) / 180
+      a.px(cx + Math.cos(rad) * rr, cy + Math.sin(rad) * rr, R.wood[1])
+      a.px(cx + Math.cos(rad) * (rr - 1), cy + Math.sin(rad) * (rr - 1), R.wood[2])
+      a.px(cx + Math.cos(rad) * (rr + 1), cy + Math.sin(rad) * (rr + 1), R.wood[0])
+    }
+    for (let k = 0; k < 12; k++) {
+      const rad = (k * Math.PI) / 6
+      a.line(cx, cy, cx + Math.cos(rad) * (rr - 2), cy + Math.sin(rad) * (rr - 2), R.wood[2])
+    }
+    a.disc(cx, cy, 3.5, 3.5, R.wood[1])
+    a.px(cx, cy, R.wood[3])
+    // La rampe de plantes qui monte du sol jusqu'au sommet de la roue, et les fleurs au pied.
+    for (let x = 62; x < 104; x++) {
+      const top = -2 - Math.round(((x - 62) / 42) * 40)
+      for (let y = top; y < 0; y += 1) if (bayer(x, y) < 0.55) a.px(x, y, (x + y) % 5 === 0 ? R.grass[3] : R.grass[1 + ((x * 3 + y) % 2)])
+      if ((x % 7) === 3) a.px(x, top - 1, [P.red, P.yellow, P.pink, P.orange][(x / 7) % 4])
+    }
     for (let x = 2; x < 62; x += 6) {
       a.rect(x, -4, 4, 4, R.grass[1])
       a.px(x + 1, -5, [P.red, P.yellow, P.pink, P.orange][(x / 6) % 4])
       a.px(x + 3, -3, R.grass[3])
     }
     a.rect(-1, -30, 2, 30, R.grass[2])
-    a.rect(61, -34, 2, 34, R.grass[2])
+    // Les bambous derrière le kiosque.
+    for (const bx of [6, 30, 54]) { a.rect(bx, -56, 1, 12, R.grass[2]); a.rect(bx - 2, -54, 5, 1, R.grass[3]); a.rect(bx - 1, -50, 4, 1, R.grass[3]) }
   })
 }
 /** La banderole de la manifestation, portée par deux mimes. */
@@ -1058,6 +1150,9 @@ export function buildSprites(C) {
   S.acteur = [0, 1].map(acteurSprite)
   S.femme = [0, 1].map(femmeChapeauSprite)
   S.biales = [0, 1].map(bialesSprite)
+  S.officiel = [0, 1].map((v) => ({ walk: [0, 1].map((f) => officielSprite(v, 'walk', f)), kneel: officielSprite(v, 'kneel') }))
+  S.drapeau = drapeauSprite()
+  S.assis = [0, 1, 2].map(assisSprite)
   S.mamie = [0, 1].map(mamieSprite)
   S.mamieLying = lying(mamieSprite(0))
   S.mamieSplat = mamieSplatSprite()
