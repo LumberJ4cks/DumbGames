@@ -3,32 +3,297 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DumbGames</title>
+<title>DumbGames — Jeux idiots. Scores sérieux.</title>
+<meta name="description" content="Des jeux à la con, un à la fois. 100 % gratuit, 0 % utile.">
 <style>
-  :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #101010; color: #c0c0c0; font: 15px/1.6 ui-monospace, Menlo, monospace; }
-  main { max-width: 520px; padding: 32px 20px; }
-  h1 { color: #f4f4f4; font-size: 28px; margin: 0 0 4px; letter-spacing: 2px; }
-  p.sub { color: #808080; margin: 0 0 32px; }
-  a.game { display: block; border: 2px solid #c0c0c0; box-shadow: 4px 4px 0 #000; padding: 14px 16px; color: #f4f4f4; text-decoration: none; margin-bottom: 16px; }
-  a.game:hover { background: #1c3fa8; border-color: #f4f4f4; }
-  a.game b { display: block; font-size: 18px; }
-  a.game span { color: #c0c0c0; }
-  footer { color: #606060; font-size: 12px; margin-top: 40px; }
+  :root {
+    color-scheme: dark;
+    --bg: #141414; --panel: #1c1c1c; --panel2: #232323; --line: #3a3a3a;
+    --ink: #f4f4f4; --mute: #a0a0a0; --dim: #666;
+    --blue: #1c6cff; --yellow: #ffe600; --gold: #ffb400;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
+  a { color: inherit; }
+  img { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  .mono { font-family: var(--mono); }
+  .big { font-family: var(--sans); font-weight: 900; font-style: italic; letter-spacing: -0.03em; text-transform: uppercase; line-height: .95; }
+
+  /* ---------- header ---------- */
+  header.head { display: flex; align-items: center; gap: 24px; padding: 24px 0 8px; flex-wrap: wrap; }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; flex: none; }
+  .logo > span { display: flex; flex-direction: column; }
+  .logo svg { width: 56px; height: 56px; flex: none; }
+  .logo .name { font-size: 44px; white-space: nowrap; }
+  .logo .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .25em; color: var(--mute); margin-top: 2px; }
+  nav.main { display: flex; align-items: center; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+  nav.main a { text-decoration: none; font-weight: 600; font-size: 14px; }
+  nav.main a:hover { text-decoration: underline; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; font-size: 14px; }
+  .btn.blue { background: var(--blue); color: #fff; }
+  .btn.blue:hover { background: #3b82ff; }
+  .btn.ghost { background: var(--panel); border: 1px solid var(--line); color: var(--ink); font-weight: 500; }
+  .btn.ghost:hover { border-color: var(--mute); }
+  .status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .online { font-family: var(--mono); font-size: 11px; color: var(--mute); display: flex; align-items: center; gap: 6px; }
+  .online::before { content: ""; width: 8px; height: 8px; background: #2ecc40; border-radius: 50%; box-shadow: 0 0 6px #2ecc40; }
+  .badge { display: inline-block; background: var(--yellow); color: #111; font-family: var(--mono); font-weight: 700; font-size: 12px; letter-spacing: .12em; padding: 5px 10px; margin: 4px 0 22px; }
+
+  /* ---------- windows ---------- */
+  .win { background: var(--panel); border: 2px solid var(--line); box-shadow: 4px 4px 0 #000; overflow: hidden; }
+  .win .bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #000; border-bottom: 2px solid var(--line); font-family: var(--mono); font-weight: 700; font-size: 13px; letter-spacing: .04em; }
+  .win .bar .ico { width: 14px; height: 14px; background: #d33; border-radius: 50%; border: 2px solid #fff; flex: none; }
+  .win .bar .ctl { margin-left: auto; display: flex; gap: 4px; }
+  .win .bar .ctl i { width: 16px; height: 16px; border: 1px solid var(--mute); display: grid; place-items: center; font-style: normal; font-size: 10px; color: var(--mute); }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: stretch; }
+  .feature { position: relative; }
+  .feature .art { position: relative; aspect-ratio: 16 / 7; overflow: hidden; background: #0a0a0a; }
+  .feature .art img { width: 100%; height: 100%; object-fit: cover; }
+  .feature .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 35%); }
+  .feature .copy { position: absolute; inset: 0; padding: 28px; display: flex; flex-direction: column; justify-content: flex-end; z-index: 1; }
+  .feature h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; }
+  .feature .line { font-weight: 800; font-size: clamp(14px, 2vw, 20px); background: #000; display: inline-block; padding: 2px 10px; margin-top: 8px; align-self: flex-start; }
+  .feature .play { margin-top: auto; align-self: flex-start; background: var(--yellow); color: #111; font-weight: 900; font-size: 18px; text-transform: uppercase; text-decoration: none; padding: 12px 20px; box-shadow: 4px 4px 0 #000; }
+  .feature .play:hover { background: #fff; }
+  .sticker { position: absolute; right: 16px; bottom: 16px; z-index: 2; background: #fff; color: #111; font-family: var(--mono); font-weight: 700; font-size: 11px; line-height: 1.25; letter-spacing: .05em; padding: 8px 10px; transform: rotate(-6deg); box-shadow: 3px 3px 0 #000; text-align: center; }
+
+  .top { display: flex; flex-direction: column; }
+  .top .sub { font-family: var(--mono); font-size: 11px; color: var(--mute); letter-spacing: .1em; padding: 10px 12px 4px; }
+  .top ol { list-style: none; margin: 0; padding: 4px 12px; flex: 1; }
+  .top li { display: grid; grid-template-columns: 24px 28px 1fr auto; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #2a2a2a; font-family: var(--mono); font-size: 13px; }
+  .top li:last-child { border-bottom: 0; }
+  .top li .n { color: var(--mute); }
+  .top li .cup { font-size: 16px; }
+  .top li .who { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top li .score { font-weight: 700; font-size: 15px; }
+  .top li.empty .score { color: var(--dim); font-weight: 400; }
+  .top .more { padding: 10px 12px 12px; text-align: right; font-size: 13px; }
+  .top .more a { color: #5a9bff; }
+
+  /* ---------- games ---------- */
+  section.games { margin-top: 44px; }
+  .hd { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .hd h2 { margin: 0; font-size: clamp(32px, 5vw, 44px); }
+  .hd p { margin: 0; color: var(--mute); font-size: 14px; }
+  .row { display: grid; grid-template-columns: 1fr 210px; gap: 14px; margin-bottom: 14px; }
+  .card { position: relative; display: block; text-decoration: none; border: 2px solid var(--line); box-shadow: 4px 4px 0 #000; overflow: hidden; background: #000; aspect-ratio: 32 / 9; min-height: 120px; }
+  .card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .25s; }
+  .card:hover img { transform: scale(1.03); }
+  .card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.45) 45%, rgba(0,0,0,.05) 100%); }
+  .card .t { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); z-index: 1; max-width: 70%; }
+  .card h3 { margin: 0; font-size: clamp(24px, 4vw, 40px); color: var(--c, #fff); text-shadow: 3px 3px 0 #000; }
+  .card .l { display: inline-block; background: #000; font-weight: 700; font-size: 13px; padding: 2px 8px; margin-top: 6px; }
+  .card.art::after { display: none; }
+  .card.art .t { display: none; }
+  .card .go { position: absolute; right: 14px; bottom: 14px; z-index: 1; width: 34px; height: 34px; background: var(--yellow); display: grid; place-items: center; color: #111; font-size: 14px; box-shadow: 2px 2px 0 #000; }
+  .card:hover .go { background: #fff; }
+  .champ { border: 2px solid var(--line); box-shadow: 4px 4px 0 #000; background: var(--panel); padding: 12px 14px; font-family: var(--mono); display: flex; flex-direction: column; }
+  .champ .k { font-size: 11px; letter-spacing: .15em; color: var(--mute); }
+  .champ .who { margin-top: 10px; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .champ .who::before { content: "🏆"; }
+  .champ .hs { margin-top: auto; padding-top: 8px; font-size: 10px; letter-spacing: .15em; color: var(--mute); }
+  .champ .val { font-size: 26px; font-weight: 700; line-height: 1.1; }
+  .champ.none .val { color: var(--dim); font-size: 14px; font-weight: 400; }
+
+  /* ---------- promo ---------- */
+  .promo { display: block; margin-top: 36px; background: #fff; border: 2px solid #fff; box-shadow: 4px 4px 0 #000; overflow: hidden; }
+  .promo img { width: 100%; height: auto; image-rendering: auto; }
+  .promo:hover { border-color: var(--blue); }
+
+  /* ---------- footer ---------- */
+  footer.site { margin: 40px 0 32px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 13px; color: var(--mute); }
+  footer.site .logo svg { width: 28px; height: 28px; }
+  footer.site .logo .name { font-size: 18px; }
+  footer.site nav { display: flex; gap: 16px; margin-left: auto; }
+  footer.site nav a { text-decoration: none; }
+  footer.site nav a:hover { text-decoration: underline; }
+  .counter { display: flex; align-items: center; gap: 10px; }
+  .counter b { background: #000; border: 2px solid var(--line); color: var(--ink); font-family: var(--mono); font-size: 16px; letter-spacing: .25em; padding: 4px 10px; }
+  .legal { color: var(--dim); font-size: 12px; margin-bottom: 24px; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr; }
+    .champ { flex-direction: row; align-items: center; gap: 16px; }
+    .champ .hs { margin: 0 0 0 auto; padding: 0; text-align: right; }
+    .logo .name { font-size: 30px; }
+    .sticker { display: none; }
+    .feature .copy { padding: 14px; }
+    .feature .play { font-size: 14px; padding: 9px 14px; }
+    nav.main { margin-left: 0; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>DUMBGAMES</h1>
-  <p class="sub">Des jeux à la con, un à la fois.</p>
-  <a class="game" href="barricasse/"><b>BARRICASSE</b><span>Tout fait barricade. Même le poisson. Livre des meubles avant la balle, quatre-vingt-dix secondes.</span></a>
-  <a class="game" href="attention-a-la-mousse/"><b>ATTENTION À LA MOUSSE !</b><span>10 kilomètres d’effort. 20 centimètres de catastrophe. Une touche, deux minutes, un peloton.</span></a>
-  <a class="game" href="francis-hero/"><b>FRANCIS HERO</b><span>La LAN revient. Le riff aussi. Quatre flèches, un manche en perspective, une foule à chauffer.</span></a>
-  <a class="game" href="only-feet/"><b>ONLY FEET</b><span>Deux minutes pour payer ton loyer. Peins un pied atroce à la main, publie, encaisse.</span></a>
-  <a class="game" href="la-verite-si-je-vends/"><b>LA VÉRITÉ SI JE VENDS !</b><span>Une seule touche. Aucune dignité. Le prix monte, vends avant qu’il se barre.</span></a>
-  <a class="game" href="ou-est-la-voiture/"><b>OÙ EST LA VOITURE ?</b><span>Elle était là il y a deux secondes. Un bonneteau, une berline FIFA, soixante secondes.</span></a>
-  <a class="game" href="ctrl-rn/"><b>CTRL + RN</b><span>Impossible de vider l’historique. Une souris, soixante secondes, aucune chance.</span></a>
-  <footer>Toute ressemblance avec un logiciel existant serait purement catastrophique.</footer>
-</main>
+<div class="wrap">
+
+<header class="head">
+  <a class="logo" href="./" aria-label="DumbGames, accueil">
+    <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+      <path fill="#fff" d="M2 1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h-5v1h1v1h1v1h-2v-1h-1v-1h-1v-1h-1v1h-1v1h-1v1h-1z"/>
+      <path fill="#111" d="M3 3h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM5 3h1v1h-1z"/>
+    </svg>
+    <span>
+      <span class="big name">Dumb Games</span>
+      <span class="tag">JEUX IDIOTS. SCORES SÉRIEUX.</span>
+    </span>
+  </a>
+  <nav class="main">
+    <a href="#jeux">Les jeux</a>
+    <a href="#records">Les records</a>
+    <a class="btn blue" href="https://github.com/LumberJ4cks/DumbGames">Le code ↗</a>
+    <span class="status">
+      <button class="btn ghost" type="button" id="loginBtn" title="Aucun compte requis.">👤 Connexion</button>
+      <span class="online" id="online">1 idiot en ligne</span>
+    </span>
+  </nav>
+</header>
+<span class="badge">100% GRATUIT · 0% UTILE</span>
+
+<section class="hero">
+  <div class="win feature">
+    <div class="bar"><span class="ico"></span>LE JEU DU MOMENT<span class="ctl"><i>_</i><i>□</i><i>×</i></span></div>
+    <div class="sticker">PLUS<br>DE JEUX<br>MOINS<br>DE BOULOT<br>☺</div>
+    <div class="art">
+      <img src="assets/barricasse.webp" alt="" width="1600" height="700">
+      <div class="copy">
+        <h2 class="big">Barricasse</h2>
+        <a class="play" href="barricasse/">Jouer maintenant ▶</a>
+      </div>
+    </div>
+  </div>
+
+  <aside class="win top" id="records">
+    <div class="bar"><span class="ico"></span>LE TOP DES IDIOTS<span class="ctl"><i>_</i><i>□</i><i>×</i></span></div>
+    <div class="sub">TES RECORDS · SUR CET APPAREIL</div>
+    <ol id="topList"></ol>
+    <div class="more"><a href="#jeux">Tout le classement ↗</a></div>
+  </aside>
+</section>
+
+<section class="games" id="jeux">
+  <div class="hd"><h2 class="big">Des jeux. Voilà.</h2><p>Petites parties. Grandes pertes de temps.</p></div>
+
+  <div class="row">
+    <a class="card art" href="francis-hero/">
+      <img src="assets/francis-hero.webp" alt="" width="1600" height="450" loading="lazy">
+      <div class="t"><h3 class="big">Francis Hero</h3><span class="l">Grattez la légende.</span></div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="francis-hero"></div>
+  </div>
+
+  <div class="row">
+    <a class="card art" href="attention-a-la-mousse/">
+      <img src="assets/attention-a-la-mousse.webp" alt="" width="1600" height="450" loading="lazy">
+      <div class="t"><h3 class="big">Attention<br>à la mousse</h3><span class="l">Ça passe. Ou ça mousse.</span></div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="attention-a-la-mousse"></div>
+  </div>
+
+  <div class="row">
+    <a class="card art" href="la-verite-si-je-vends/">
+      <img src="assets/la-verite-si-je-vends.webp" alt="" width="1600" height="450" loading="lazy">
+      <div class="t"><h3 class="big">La vérité<br>si je vends</h3><span class="l">Une affaire de réflexes.</span></div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="la-verite-si-je-vends"></div>
+  </div>
+
+  <div class="row">
+    <a class="card art" href="only-feet/">
+      <img src="assets/only-feet.webp" alt="" width="1600" height="450" loading="lazy">
+      <div class="t"><h3 class="big">Only Feet</h3><span class="l">Deux minutes pour payer ton loyer.</span></div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="only-feet"></div>
+  </div>
+
+
+  <div class="row">
+    <a class="card art" href="ctrl-rn/">
+      <img src="assets/ctrl-rn.webp" alt="" width="1600" height="450" loading="lazy">
+      <div class="t"><h3 class="big">Ctrl + RN</h3><span class="l">Fermez tout. Vite.</span></div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="ctrl-rn"></div>
+  </div>
+</section>
+
+<a class="promo" href="https://github.com/LumberJ4cks/DumbGames" aria-label="Mauvais jeux. Très bon t-shirt. La boutique">
+  <img src="assets/boutique.webp" alt="Mauvais jeux. Très bon t-shirt. L’élégance du temps perdu. Un t-shirt noir DumbGames, et la mention : même en vrai, on est nuls." width="1983" height="793" loading="lazy">
+</a>
+
+<footer class="site">
+  <a class="logo" href="./">
+    <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff" d="M2 1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h-5v1h1v1h1v1h-2v-1h-1v-1h-1v-1h-1v1h-1v1h-1v1h-1z"/><path fill="#111" d="M3 3h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM5 3h1v1h-1z"/></svg>
+    <span class="big name">DumbGames</span>
+  </a>
+  <span>Une amitié numérique depuis 2026.</span>
+  <nav><a href="#jeux">Les jeux</a><a href="#records">Les records</a><a href="https://github.com/LumberJ4cks/DumbGames">Le code</a></nav>
+  <span class="counter"><b id="visits">00000001</b>visites depuis cet appareil.</span>
+</footer>
+<p class="legal">Toute ressemblance avec un logiciel existant serait purement catastrophique. Les records restent dans ton navigateur : personne d’autre ne les voit, et c’est très bien comme ça.</p>
+
+</div>
+
+<script>
+(() => {
+  const get = (k) => { try { return localStorage.getItem(k) } catch { return null } }
+  const set = (k, v) => { try { localStorage.setItem(k, v) } catch {} }
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0 }
+  const json = (v) => { try { return JSON.parse(v) } catch { return null } }
+  const fmt = (n, unit) => n.toLocaleString('fr-FR') + (unit ? ' ' + unit : '')
+
+  // Où chaque jeu range son record dans localStorage.
+  const games = {
+    'barricasse':            { name: 'BARRICASSE',             unit: '',  read: () => num(json(get('barricasse.record'))?.score) },
+    'francis-hero':          { name: 'FRANCIS HERO',           unit: '',  read: () => num(get('francisHero:best')) },
+    'attention-a-la-mousse': { name: 'ATTENTION À LA MOUSSE',  unit: '',  read: () => num(json(get('attentionALaMousse2:best'))) },
+    'la-verite-si-je-vends': { name: 'LA VÉRITÉ SI JE VENDS',  unit: '€', read: () => num(json(get('laVeriteSiJeVends:best'))) },
+    'only-feet':             { name: 'ONLY FEET',              unit: '€', read: () => num(json(get('onlyFeet:best'))) },
+    'ctrl-rn':               { name: 'CTRL + RN',              unit: '',  read: () => 0 },
+  }
+  const who = get('dumbgames.pseudo') || 'Toi'
+  const cups = ['🥇', '🥈', '🥉', '🏅', '🏅']
+
+  // Panneau "Le top des idiots" : les cinq meilleurs records de cet appareil, tous jeux confondus.
+  const rows = Object.entries(games).map(([id, g]) => ({ id, name: g.name, unit: g.unit, score: g.read() }))
+    .sort((a, b) => b.score - a.score).slice(0, 5)
+  document.getElementById('topList').innerHTML = rows.map((r, i) => r.score
+    ? `<li><span class="n">0${i + 1}</span><span class="cup">${cups[i]}</span><span class="who" title="${r.name}">${r.name}</span><span class="score">${fmt(r.score, r.unit)}</span></li>`
+    : `<li class="empty"><span class="n">0${i + 1}</span><span class="cup">·</span><span class="who">${r.name}</span><span class="score">à toi</span></li>`
+  ).join('')
+
+  // Carte "Le champion" à côté de chaque jeu.
+  document.querySelectorAll('.champ').forEach(el => {
+    const g = games[el.dataset.game]
+    const s = g ? g.read() : 0
+    el.classList.toggle('none', !s)
+    el.innerHTML = `<span class="k">LE CHAMPION</span><span class="who">${s ? who : 'Personne'}</span><span class="hs">HIGH SCORE<br><span class="val">${s ? fmt(s, g.unit) : 'Toujours libre.'}</span></span>`
+  })
+
+  // Compteur de visites, strictement local.
+  const visits = num(get('dumbgames.visits')) + 1
+  set('dumbgames.visits', String(visits))
+  document.getElementById('visits').textContent = String(visits).padStart(8, '0')
+
+  // Connexion : un pseudo, rien d'autre.
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const p = prompt('Ton pseudo d’idiot (il reste sur cet appareil) :', who === 'Toi' ? '' : who)
+    if (p === null) return
+    set('dumbgames.pseudo', p.trim().slice(0, 24))
+    location.reload()
+  })
+  document.getElementById('online').textContent = '1 idiot en ligne (toi)'
+})()
+</script>
 </body>
 </html>
