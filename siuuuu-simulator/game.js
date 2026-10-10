@@ -1,4 +1,5 @@
 import { createAudio } from './audio.js'
+import { POSES, sprite, makeFan, fanSprite, mini, prop } from './sprites.js'
 import { drawText, drawTextC, drawTextR, textWidth, LINE_H } from './font.js'
 
 /*
@@ -112,365 +113,6 @@ const P = {
   sky2: '#B9E3FF',
 }
 
-/* ---------- Ronaldo: 24 × 24 pixel poses, drawn ×3 with a dark outline ---------- */
-const INKS = { h: P.hair, s: P.skin, w: P.white, d: '#CBD0DA', k: P.black, n: P.navy, r: '#C8343E' }
-const POSES = {
-  run1: [
-    '........hhhhhhh.........',
-    '.......hhhhhhhhh........',
-    '.......hhhhhhhhh........',
-    '.......hhsssssss........',
-    '.......hhssskssss.......',
-    '........ssssssss........',
-    '........sssssss.........',
-    '.........sss............',
-    '.......wwwwwww..........',
-    '......wwwwwwwww.........',
-    '.....swwwwwwwwws........',
-    '.....sdwwwwwwwwss.......',
-    '......dwwwwwwww.........',
-    '......dwwwwwwww.........',
-    '......dwwwwwwww.........',
-    '.......wwwwwwww.........',
-    '.......wwwwwwww.........',
-    '......wwww..wwww........',
-    '.....sss......sss.......',
-    '....sss........sss......',
-    '....www.........www.....',
-    '...www...........www....',
-    '...www...........www....',
-    '..kkk.............kkk...',
-  ],
-  run2: [
-    '........hhhhhhh.........',
-    '.......hhhhhhhhh........',
-    '.......hhhhhhhhh........',
-    '.......hhsssssss........',
-    '.......hhssskssss.......',
-    '........ssssssss........',
-    '........sssssss.........',
-    '.........sss............',
-    '.......wwwwwww..........',
-    '......wwwwwwwww.........',
-    '......wwwwwwwwww........',
-    '.....sdwwwwwwwwws.......',
-    '......dwwwwwwww.........',
-    '......dwwwwwwww.........',
-    '......dwwwwwwww.........',
-    '.......wwwwwwww.........',
-    '.......wwwwwwww.........',
-    '.......wwwwwww..........',
-    '.......ssssss...........',
-    '.......sss.sss..........',
-    '.......www.www..........',
-    '.......www.www..........',
-    '.......www..www.........',
-    '......kkk...kkk.........',
-  ],
-  crouch: [
-    '........................',
-    '........................',
-    '........................',
-    '........hhhhhhh.........',
-    '.......hhhhhhhhh........',
-    '.......hhhhhhhhh........',
-    '.......hhsssssss........',
-    '.......hhssskssss.......',
-    '........ssssssss........',
-    '........sssssss.........',
-    '.........sss............',
-    '......wwwwwwwww.........',
-    '....swwwwwwwwwwww.......',
-    '...ssdwwwwwwwwwwws......',
-    '......dwwwwwwwwwws......',
-    '......dwwwwwwwww........',
-    '.......wwwwwwwww........',
-    '......wwwwwwwwwww.......',
-    '.....wwwww..wwwwww......',
-    '....sss.......ssss......',
-    '....www........www......',
-    '....www........www......',
-    '...kkkk.........kkkk....',
-    '........................',
-  ],
-  jumpBack: [
-    '...s..............s.....',
-    '...s..............s.....',
-    '...ww....hhhhhhh..ww....',
-    '...ww...hhhhhhhhh.ww....',
-    '...ww...hhhhhhhhh.ww....',
-    '....ww..hhhhhhhhh.ww....',
-    '....ww..hhhhhhhhh.ww....',
-    '....ww...sssssss.ww.....',
-    '.....ww..sssss..ww......',
-    '.....wwwwwwwwwwwww......',
-    '......wwwwwwwwwww.......',
-    '......wwwnnnwwwww.......',
-    '......wwwwwnwwwww.......',
-    '......wwwwnwwwwww.......',
-    '......wwwwnwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......ssss...ssss.......',
-    '.....sss.....sss........',
-    '....www.......www.......',
-    '....www.......www.......',
-    '...kkkk.......kkkk......',
-    '........................',
-  ],
-  jumpSide: [
-    '..........s.............',
-    '..........s.............',
-    '.........ww.hhhhhh......',
-    '.........ww.hhhhhhh.....',
-    '.........ww.hhhhhhh.....',
-    '.........wwsssssshh.....',
-    '.........wwsskssshh.....',
-    '..........wssssss.......',
-    '..........wwsssss.......',
-    '..........wwwsss........',
-    '.........wwwwwwww.......',
-    '.........wwwwwwww.......',
-    '.........dwwwwwww.......',
-    '.........dwwwwwww.......',
-    '.........dwwwwwww.......',
-    '.........dwwwwwww.......',
-    '..........wwwwww........',
-    '..........wwwwww........',
-    '.........sssss..........',
-    '........sss.sss.........',
-    '.......www...www........',
-    '.......www...www........',
-    '......kkkk...kkkk.......',
-    '........................',
-  ],
-  jumpFront: [
-    '...s..............s.....',
-    '...s..............s.....',
-    '...ww....hhhhhhh..ww....',
-    '...ww...hhhhhhhhh.ww....',
-    '...ww...hhhhhhhhh.ww....',
-    '....ww..hsssssssh.ww....',
-    '....ww..sskssskss.ww....',
-    '....ww...sssssss.ww.....',
-    '.....ww..ssrrrs..ww.....',
-    '.....wwwwwwwwwwwww......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwdwwwww.......',
-    '......wwwwwdwwwww.......',
-    '......wwwwwdwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......ssss...ssss.......',
-    '.....sss.....sss........',
-    '....www.......www.......',
-    '....www.......www.......',
-    '...kkkk.......kkkk......',
-    '........................',
-  ],
-  siuuu: [
-    '........hhhhhhh.........',
-    '.......hhhhhhhhh........',
-    '......hhhhhhhhhhh.......',
-    '......hhhhhhhhhhh.......',
-    '......hhhhhhhhhhh.......',
-    '.......hhhhhhhhh........',
-    '........sssssss.........',
-    '.........sssss..........',
-    '....wwwwwwwwwwwwwww.....',
-    '..wwwwwwwwwwwwwwwwwww...',
-    '.wwww.wwwwwwwwwww.wwww..',
-    'wwww..wwwnnnwwwww..wwww.',
-    'sss...wwwwwnwwwww...sss.',
-    'ss....wwwwnwwwwww....ss.',
-    '......wwwwnwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '.....wwwww...wwwww......',
-    '.....wwww.....wwww......',
-    '....ssss.......ssss.....',
-    '....wwww.......wwww.....',
-    '...wwww.........wwww....',
-    '...wwww.........wwww....',
-    '..kkkk...........kkkk...',
-  ],
-  good: [
-    '........hhhhhhh.........',
-    '.......hhhhhhhhh........',
-    '......hhhhhhhhhhh.......',
-    '......hhhhhhhhhhh.......',
-    '......hhhhhhhhhhh.......',
-    '.......hhhhhhhhh........',
-    '........sssssss.........',
-    '.........sssss..........',
-    '.....wwwwwwwwwwwww......',
-    '....wwwwwwwwwwwwwww.....',
-    '...wwwwwwwwwwwwwwwww....',
-    '..wwwwwwwnnnwwwwwwwww...',
-    '..www.wwwwwnwwwww.www...',
-    '.sss..wwwwnwwwwww..sss..',
-    '.ss...wwwwnwwwwww...ss..',
-    '......wwwwwwwwwww.......',
-    '......wwwwwwwwwww.......',
-    '......wwwww.wwwww.......',
-    '......wwww...wwww.......',
-    '......ssss...ssss.......',
-    '.....wwww.....wwww......',
-    '.....wwww.....wwww......',
-    '.....wwww.....wwww......',
-    '....kkkk.......kkkk.....',
-  ],
-  bad: [
-    '......hhhhhhh...........',
-    '.....hhhhhhhhh....s.....',
-    '....hhhhhhhhhhh...s.....',
-    '....hhhhhhhhhhh...ww....',
-    '....hhhhhhhhhhh...ww....',
-    '.....hhhhhhhhh....ww....',
-    '......sssssss.....ww....',
-    '.......sssss.....ww.....',
-    '.....wwwwwwwwwwwwww.....',
-    '....wwwwwwwwwwwwww......',
-    '...wwwwwwwwwwwwww.......',
-    '..wwww.wwnnnwwww........',
-    '.www...wwwwnwwww........',
-    'ss.....wwwnwwwww........',
-    'ss.....wwwnwwwww........',
-    '.......wwwwwwwww........',
-    '.......wwwwwwwww........',
-    '......wwwww.wwwwww......',
-    '......wwww...wwwwww.....',
-    '......ssss.....ssss.....',
-    '.....wwww.......www.....',
-    '.....wwww......www......',
-    '.....wwww.....www.......',
-    '....kkkk.....kkkk.......',
-  ],
-  fail1: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '..................ss....',
-    '..................ww....',
-    '..hhhhh...........ww....',
-    '.hhhhhhhwwwwwwwwwwwww...',
-    '.hhhhhhhwwwwwwwwwwwwww..',
-    '.hhssssswwwwwwwwwwwwwwww',
-    '..sssss.dddddddwwwwwwkkk',
-    '...sss..ddddddd..wwww...',
-    '........................',
-    '........................',
-  ],
-  fail2: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '..............kkk..kkk..',
-    '..............www..www..',
-    '..............www..www..',
-    '..............sss..sss..',
-    '..............sss.sss...',
-    '...............wwwwww...',
-    '.......wwwwwwwwwwwwww...',
-    '.....hhwwwwwwwwwwwwwww..',
-    '....hhhhwwwwnnnwwwwwww..',
-    '...hhhhhhsssswnwwwwwwww.',
-    '...hhhhhhsssswnwwwwwwww.',
-    '...hhhhhhssssswwwwwwww..',
-    '....hhhhhhsss.wwwwwwww..',
-    '.....hhhhsss..wwwwwwww..',
-    '.......sss....ss....ss..',
-    '..............ss....ss..',
-    '........................',
-  ],
-}
-const SPRITE_SCALE = 4
-const spriteCache = new Map()
-function sprite(name, flip = false) {
-  const key = name + (flip ? 'f' : '')
-  let c = spriteCache.get(key)
-  if (c) return c
-  const rows = POSES[name]
-  const h = rows.length
-  const w = rows[0].length
-  const S = SPRITE_SCALE
-  c = document.createElement('canvas')
-  c.width = (w + 2) * S
-  c.height = (h + 2) * S
-  const x = c.getContext('2d')
-  const at = (i, j) => (i >= 0 && j >= 0 && i < w && j < h ? rows[j][i] : '.')
-  const col = (i) => (flip ? w - 1 - i : i)
-  // outline pass
-  x.fillStyle = P.ink
-  for (let j = -1; j <= h; j++)
-    for (let i = -1; i <= w; i++) {
-      if (at(i, j) !== '.') continue
-      if (at(i - 1, j) !== '.' || at(i + 1, j) !== '.' || at(i, j - 1) !== '.' || at(i, j + 1) !== '.') x.fillRect((col(i) + 1) * S, (j + 1) * S, S, S)
-    }
-  for (let j = 0; j < h; j++)
-    for (let i = 0; i < w; i++) {
-      const ch = rows[j][i]
-      if (ch === '.') continue
-      x.fillStyle = INKS[ch]
-      x.fillRect((col(i) + 1) * S, (j + 1) * S, S, S)
-    }
-  spriteCache.set(key, c)
-  return c
-}
-
-/* ---------- small people (fans, substitutes, referees, invaders): 7 × 9 pixel maps ×2 ---------- */
-const MINI = {
-  idle: ['..hhh..', '..sss..', '..sss..', '.wwwww.', '.swwws.', '..www..', '..p.p..', '..p.p..', '..k.k..'],
-  up: ['s.....s', 's.hhh.s', 'w.sss.w', '.wsssw.', '..www..', '..www..', '..p.p..', '..p.p..', '..k.k..'],
-  siuuu: ['..hhh..', '..hhh..', '..sss..', '.wwwww.', 'wwwwwww', 's.www.s', '..w.w..', '.p...p.', '.k...k.'],
-  sit: ['.......', '.......', '..hhh..', '..sss..', '..sss..', '.wwwww.', '.swwws.', '..wwwp.', '..pkpk.'],
-  run1: ['..hhh..', '..sss..', '.ssss..', '.wwwws.', 's.www..', '..www..', '.p..p..', 'p....p.', 'k....k.'],
-  run2: ['..hhh..', '..sss..', '..sss..', '.wwwws.', '.swww..', '..www..', '..pp...', '..p.p..', '..k.k..'],
-}
-const miniCache = new Map()
-function mini(pose, shirt, hair, skin, pants = '#2F3550') {
-  const key = pose + shirt + hair + skin + pants
-  let c = miniCache.get(key)
-  if (c) return c
-  const rows = MINI[pose]
-  c = document.createElement('canvas')
-  c.width = 14
-  c.height = 18
-  const x = c.getContext('2d')
-  const inks = { h: hair, s: skin, w: shirt, p: pants, k: P.black }
-  rows.forEach((row, j) => {
-    for (let i = 0; i < 7; i++) {
-      const ch = row[i]
-      if (ch === '.') continue
-      x.fillStyle = inks[ch]
-      x.fillRect(i * 2, j * 2, 2, 2)
-    }
-  })
-  miniCache.set(key, c)
-  return c
-}
-const SHIRTS = ['#F6F6F6', '#F6F6F6', '#E23B3B', '#FFD84A', '#2C4FA3', '#2C4FA3', '#4CAF50', '#9A9EAA', '#F08A24', '#7B3FA0', '#1E2A4A', '#E8D8B0']
-const HAIRS = ['#2B1B14', '#2B1B14', '#111', '#8A5A2B', '#D8B25C', '#C8502E', '#9A9EAA', '#F6F6F6', '#2B1B14', '#4A2C7A']
-const SKINS = ['#E9B687', '#F2CBA4', '#C68A5A', '#8C5A3C', '#5C3A26', '#E9B687']
-
 /* ---------- utilities ---------- */
 function mulberry32(seed) {
   let a = seed >>> 0
@@ -517,19 +159,25 @@ export function difficultyAt(elapsed) {
   return { sweep: lerp(a.sweep, b.sweep, t), spin: lerp(a.spin, b.spin, t), perfect: lerp(a.perfect, b.perfect, t), wind: lerp(a.wind, b.wind, t), chaos: elapsed >= CONFIG.CHAOS_AT }
 }
 
+
 /* ---------- scene geometry ---------- */
 const GW = 640
 const GH = 360
-const STAND_BOTTOM = 148
-const WALL_BOTTOM = 166
-const BOARD_BOTTOM = 192
-const PITCH_TOP = 200
-const TOUCHLINE = 207
-const GOAL_LINE = 598
-const RUN_START_X = -60
-const RUN_END_X = 436
-const RUN_Y = 300 // feet line of the run
-const LAND_DX = 36
+const STAND_BOTTOM = 138
+const WALL_BOTTOM = 156
+const BOARD_BOTTOM = 182
+const PITCH_TOP = 190
+const TOUCHLINE = 198
+const GOAL_LINE = 578
+const NET_X = 606
+const RUN_START_X = -110
+const RUN_END_X = 400
+const RUN_Y = 318 // feet line of the run
+const LAND_DX = 44
+const RS = 3 // Ronaldo scale
+const RON_CX = 17 * RS // centre of the sprite canvas
+const RON_FEET = 41 * RS // feet row inside the sprite canvas
+const AISLES = [[192, 212], [428, 448]]
 
 /* ---------- the game ---------- */
 export function create({ canvas, settings = {}, onState, onEnd }) {
@@ -541,6 +189,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   const debug = !!settings.debug
   const seed = settings.seed != null ? Number(settings.seed) || 1 : (Date.now() & 0xffff) || 1
   const rng = mulberry32(seed)
+  const artRng = mulberry32(seed * 7 + 3)
 
   const load = (key, fallback) => {
     try {
@@ -559,36 +208,218 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   const audio = createAudio()
   audio.setMuted(load('muted', false) === true)
 
-  /* ----- persistent scene: fans, substitutes, referees ----- */
+  /* ----- persistent scene: the crowd, the bench, the officials, the props ----- */
   const fans = []
-  const AISLES = [[196, 214], [436, 454]]
-  for (let row = 0; row < 9; row++) {
-    const y = 4 + row * 15
-    for (let x = 2 + (row % 2) * 7; x < GW - 12; x += 15) {
-      if (AISLES.some(([a, b]) => x + 14 > a && x < b)) continue
-      fans.push({
-        x: x + Math.floor(rng() * 3) - 1,
-        y,
-        shirt: SHIRTS[Math.floor(rng() * SHIRTS.length)],
-        hair: HAIRS[Math.floor(rng() * HAIRS.length)],
-        skin: SKINS[Math.floor(rng() * SKINS.length)],
-        phase: rng() * Math.PI * 2,
-        rate: 5 + rng() * 3,
-        up: rng() < 0.08,
-      })
+  for (let row = 0; row < 8; row++) {
+    const y = row * 16 - 10
+    for (let x = -6 + (row % 2) * 7; x < GW - 10; x += 13) {
+      const jx = x + Math.floor(artRng() * 5) - 2
+      if (AISLES.some(([a, b]) => jx + 24 > a && jx + 8 < b)) continue
+      fans.push({ x: jx, y, desc: makeFan(artRng), phase: artRng() * Math.PI * 2, rate: 5 + artRng() * 3, up: false })
     }
   }
   const subs = Array.from({ length: 6 }, (_, i) => ({
-    x: 22 + i * 18,
-    y: 168,
-    hair: HAIRS[Math.floor(rng() * HAIRS.length)],
-    skin: SKINS[Math.floor(rng() * SKINS.length)],
-    phase: rng() * 6,
+    x: 22 + i * 17,
+    hair: ['#2B1B14', '#111111', '#8A5A2B', '#D8B25C', '#C8502E', '#2B1B14'][i],
+    skin: ['#EBB98B', '#C68A5A', '#F2CBA4', '#8C5A3C', '#EBB98B', '#5C3A26'][i],
+    phase: artRng() * 6,
   }))
   const refs = [
-    { x: 540, y: 318, hair: '#111', skin: SKINS[1], flag: false },
-    { x: 606, y: 246, hair: '#8A5A2B', skin: SKINS[2], flag: true },
+    { x: 520, y: 300, hair: '#111111', skin: '#F2CBA4', flag: false },
+    { x: 588, y: 250, hair: '#8A5A2B', skin: '#C68A5A', flag: true },
   ]
+  const stewards = [
+    { x: 194, y: PITCH_TOP },
+    { x: 430, y: PITCH_TOP },
+  ]
+  const flashes = []
+  const BOARDS = [
+    { bg: '#161423', fg: P.lime, text: 'DUMB GAMES', icon: 'joystick' },
+    { bg: '#D32F2F', fg: '#FFFFFF', text: 'SIUUU COLA', icon: 'bottle' },
+    { bg: '#1E2A4A', fg: '#F1E7C9', text: 'BANQUE DU COIN', icon: 'coin' },
+    { bg: '#FFD84A', fg: '#161423', text: 'PIZZA N°7', icon: 'pizza' },
+    { bg: '#2F7D4F', fg: '#FFFFFF', text: 'GAZON PRO', icon: 'mower' },
+    { bg: '#F4F4F2', fg: '#D32F2F', text: 'TAXI SIUUU', icon: 'taxi' },
+  ].map((b) => ({ ...b, w: textWidth(b.text, 2) + 50 }))
+  const ICONS = {
+    joystick: { rows: ['...rr...', '..rrrr..', '..rrrr..', '...kk...', '...kk...', '.kkkkkk.', 'kkkkkkkk', 'kkkkkkkk'], inks: { r: '#E23B3B', k: '#9A9EAA' } },
+    bottle: { rows: ['...ww...', '...ww...', '..wwww..', '..wwww..', '..wwww..', '..wkkw..', '..wkkw..', '..wwww..'], inks: { w: '#FFFFFF', k: '#D32F2F' } },
+    coin: { rows: ['..yyyy..', '.yyyyyy.', 'yyyooyyy', 'yyyoyyyy', 'yyyooyyy', 'yyyyoyyy', '.yyooyy.', '..yyyy..'], inks: { y: '#FFD84A', o: '#B8860B' } },
+    pizza: { rows: ['kkkkkkkk', '.yyryyy.', '.yyyyry.', '..yryy..', '..yyyy..', '...yr...', '...yy...', '....y...'], inks: { k: '#8E5A3C', y: '#FFE9A8', r: '#D32F2F' } },
+    mower: { rows: ['......kk', '.....kk.', '....kk..', 'rrrrrr..', 'rrrrrr..', 'rrrrrr..', 'kk.kk.k.', 'kk.kk.k.'], inks: { k: '#161423', r: '#E23B3B' } },
+    taxi: { rows: ['........', '..yyyy..', '.yykkyy.', 'yyyyyyyy', 'yyyyyyyy', 'kyyyyyyk', '.kk..kk.', '........'], inks: { y: '#FFD84A', k: '#161423' } },
+  }
+  function drawIcon(c, name, x, y, scale = 2) {
+    const ic = ICONS[name]
+    ic.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i]
+        if (ch === '.') continue
+        c.fillStyle = ic.inks[ch]
+        c.fillRect(x + i * scale, y + j * scale, scale, scale)
+      }
+    })
+  }
+
+  /* ----- prerendered layers ----- */
+  const layer = (w, h) => {
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    const x = c.getContext('2d')
+    x.imageSmoothingEnabled = false
+    return [c, x]
+  }
+  const [standsLayer, sl] = layer(GW, STAND_BOTTOM)
+  {
+    for (let row = 0; row < 10; row++) {
+      const y = row * 16 - 12
+      sl.fillStyle = row % 2 ? '#C2C5CD' : '#B4B7C0'
+      sl.fillRect(0, y, GW, 16)
+      sl.fillStyle = '#8C909B'
+      sl.fillRect(0, y + 12, GW, 3)
+      sl.fillStyle = '#6A6E79'
+      sl.fillRect(0, y + 15, GW, 1)
+      sl.fillStyle = '#D8DAE0'
+      sl.fillRect(0, y, GW, 1)
+      for (let i = 0; i < 40; i++) {
+        sl.fillStyle = artRng() < 0.5 ? '#A5A8B2' : '#CFD1D8'
+        sl.fillRect(Math.floor(artRng() * GW), y + 1 + Math.floor(artRng() * 10), 1 + Math.floor(artRng() * 3), 1)
+      }
+    }
+    const roof = sl.createLinearGradient(0, 0, 0, 100)
+    roof.addColorStop(0, 'rgba(10,10,30,0.45)')
+    roof.addColorStop(1, 'rgba(10,10,30,0)')
+    sl.fillStyle = roof
+    sl.fillRect(0, 0, GW, 100)
+    for (const [a, b] of AISLES) {
+      sl.fillStyle = '#DADCE2'
+      sl.fillRect(a, 0, b - a, STAND_BOTTOM)
+      for (let y = 2; y < STAND_BOTTOM; y += 8) {
+        sl.fillStyle = '#A5A8B2'
+        sl.fillRect(a, y, b - a, 2)
+        sl.fillStyle = '#F2F3F6'
+        sl.fillRect(a, y + 2, b - a, 1)
+      }
+      sl.fillStyle = '#FFD84A'
+      sl.fillRect(a + (b - a) / 2 - 1, 0, 2, STAND_BOTTOM)
+      sl.fillStyle = '#B8860B'
+      sl.fillRect(a + (b - a) / 2 + 1, 0, 1, STAND_BOTTOM)
+    }
+  }
+  const [frontLayer, fl] = layer(GW, GH - STAND_BOTTOM)
+  {
+    const Y = (y) => y - STAND_BOTTOM
+    // wall and railing
+    fl.fillStyle = '#E4E6EA'
+    fl.fillRect(0, Y(STAND_BOTTOM), GW, WALL_BOTTOM - STAND_BOTTOM)
+    fl.fillStyle = '#1E2A4A'
+    fl.fillRect(0, Y(STAND_BOTTOM), GW, 3)
+    fl.fillStyle = '#5A6A8E'
+    fl.fillRect(0, Y(STAND_BOTTOM) + 3, GW, 1)
+    fl.fillStyle = '#C8CBD3'
+    fl.fillRect(0, Y(WALL_BOTTOM) - 3, GW, 3)
+    for (let i = 0; i < 60; i++) {
+      fl.fillStyle = artRng() < 0.5 ? '#D4D6DC' : '#F2F3F6'
+      fl.fillRect(Math.floor(artRng() * GW), Y(STAND_BOTTOM) + 5 + Math.floor(artRng() * 9), 1 + Math.floor(artRng() * 4), 1)
+    }
+    fl.fillStyle = '#9A9EAA'
+    for (let x = 0; x < GW; x += 64) fl.fillRect(x, Y(STAND_BOTTOM) + 4, 1, WALL_BOTTOM - STAND_BOTTOM - 7)
+    // dugout
+    fl.fillStyle = '#161423'
+    fl.fillRect(8, Y(STAND_BOTTOM) + 2, 126, BOARD_BOTTOM - STAND_BOTTOM - 2)
+    fl.fillStyle = '#1E2A4A'
+    fl.fillRect(11, Y(STAND_BOTTOM) + 5, 120, BOARD_BOTTOM - STAND_BOTTOM - 9)
+    fl.fillStyle = '#3A4D7A'
+    fl.fillRect(11, Y(STAND_BOTTOM) + 5, 120, 2)
+    fl.fillStyle = '#27365E'
+    for (let x = 14; x < 130; x += 6) fl.fillRect(x, Y(STAND_BOTTOM) + 8, 3, 14)
+    fl.fillStyle = '#8E93A3'
+    fl.fillRect(16, Y(BOARD_BOTTOM) - 12, 110, 3)
+    fl.fillRect(18, Y(BOARD_BOTTOM) - 9, 2, 6)
+    fl.fillRect(122, Y(BOARD_BOTTOM) - 9, 2, 6)
+    drawText(fl, 'BANC', 14, Y(STAND_BOTTOM) + 8, '#F1E7C9')
+    // boards
+    let bx = 136
+    let bi = 0
+    while (bx < GW) {
+      const b = BOARDS[bi % BOARDS.length]
+      fl.fillStyle = b.bg
+      fl.fillRect(bx, Y(WALL_BOTTOM), b.w, BOARD_BOTTOM - WALL_BOTTOM)
+      fl.fillStyle = 'rgba(0,0,0,0.25)'
+      fl.fillRect(bx, Y(BOARD_BOTTOM) - 3, b.w, 3)
+      fl.fillStyle = 'rgba(255,255,255,0.18)'
+      fl.fillRect(bx, Y(WALL_BOTTOM), b.w, 2)
+      fl.fillStyle = '#161423'
+      fl.fillRect(bx + b.w - 2, Y(WALL_BOTTOM), 2, BOARD_BOTTOM - WALL_BOTTOM)
+      drawIcon(fl, b.icon, bx + 8, Y(WALL_BOTTOM) + 5)
+      drawText(fl, b.text, bx + 30, Y(WALL_BOTTOM) + 4, b.fg, { scale: 1, smooth: true })
+      bx += b.w
+      bi++
+    }
+    // track
+    fl.fillStyle = '#8E5A3C'
+    fl.fillRect(0, Y(BOARD_BOTTOM), GW, PITCH_TOP - BOARD_BOTTOM)
+    fl.fillStyle = '#A86E4A'
+    fl.fillRect(0, Y(BOARD_BOTTOM), GW, 1)
+    fl.fillStyle = '#6E432B'
+    fl.fillRect(0, Y(PITCH_TOP) - 1, GW, 1)
+    // pitch: stripes, checker, blades
+    for (let y = PITCH_TOP; y < GH + 20; y += 20) {
+      const band = ((y - PITCH_TOP) / 20) % 2
+      for (let x = 0; x < GW; x += 40) {
+        const chk = (x / 40) % 2
+        const k = band ^ chk
+        fl.fillStyle = k ? '#3A9336' : '#4AAE45'
+        fl.fillRect(x, Y(y), 40, 20)
+      }
+    }
+    for (let i = 0; i < 1400; i++) {
+      const x = Math.floor(artRng() * GW)
+      const y = PITCH_TOP + Math.floor(artRng() * (GH - PITCH_TOP))
+      fl.fillStyle = artRng() < 0.5 ? '#358A33' : '#55B84E'
+      fl.fillRect(x, Y(y), 1, 1 + Math.floor(artRng() * 2))
+    }
+    // lines, arc
+    fl.fillStyle = '#F3F7EE'
+    fl.fillRect(0, Y(TOUCHLINE) - 1, GOAL_LINE + 2, 3)
+    fl.fillRect(GOAL_LINE - 1, Y(TOUCHLINE) - 1, 3, GH)
+    for (let a = 0; a <= 24; a++) {
+      const t = (a / 24) * Math.PI * 0.5
+      fl.fillRect(Math.round(GOAL_LINE - Math.cos(t) * 24) - 1, Math.round(Y(TOUCHLINE) + Math.sin(t) * 24) - 1, 3, 3)
+    }
+    // beyond the goal line: grass, then the side netting in perspective
+    fl.fillStyle = '#161423'
+    fl.fillRect(NET_X, Y(PITCH_TOP), GW - NET_X, GH - PITCH_TOP)
+    fl.fillStyle = '#8E93A3'
+    for (let y = PITCH_TOP; y < GH; y += 7) fl.fillRect(NET_X, Y(y), GW - NET_X, 1)
+    for (let x = NET_X; x < GW; x += 7) fl.fillRect(x, Y(PITCH_TOP), 1, GH - PITCH_TOP)
+    fl.fillStyle = '#C8CBD3'
+    for (let i = 0; i < 24; i++) fl.fillRect(NET_X + i, Y(PITCH_TOP) + i * 7, 1, 1)
+    fl.fillStyle = '#FFFFFF'
+    fl.fillRect(NET_X - 4, Y(PITCH_TOP) - 6, 4, GH - PITCH_TOP + 6)
+    fl.fillStyle = '#C8CBD3'
+    fl.fillRect(NET_X - 1, Y(PITCH_TOP) - 6, 1, GH - PITCH_TOP + 6)
+  }
+  const [scanLayer, sc] = layer(GW, GH)
+  {
+    sc.fillStyle = 'rgba(0,0,0,0.16)'
+    for (let y = 0; y < GH; y += 2) sc.fillRect(0, y, GW, 1)
+    const g1 = sc.createLinearGradient(0, 0, 0, GH)
+    g1.addColorStop(0, 'rgba(0,0,0,0.28)')
+    g1.addColorStop(0.25, 'rgba(0,0,0,0)')
+    g1.addColorStop(0.8, 'rgba(0,0,0,0)')
+    g1.addColorStop(1, 'rgba(0,0,0,0.3)')
+    sc.fillStyle = g1
+    sc.fillRect(0, 0, GW, GH)
+    const g2 = sc.createLinearGradient(0, 0, GW, 0)
+    g2.addColorStop(0, 'rgba(0,0,0,0.22)')
+    g2.addColorStop(0.15, 'rgba(0,0,0,0)')
+    g2.addColorStop(0.85, 'rgba(0,0,0,0)')
+    g2.addColorStop(1, 'rgba(0,0,0,0.22)')
+    sc.fillStyle = g2
+    sc.fillRect(0, 0, GW, GH)
+  }
 
   /* ----- mutable state ----- */
   let state = 'TITLE'
@@ -750,7 +581,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     g.ronaldo.pose = 'crouch'
     audio.jump()
     audio.spinStart()
-    burst(g.ronaldo.x + 13 * SPRITE_SCALE, RUN_Y, 10, [P.cream, P.grass2], 60, 1)
+    burst(g.ronaldo.x + RON_CX, RUN_Y, 10, [P.cream, P.grass2], 60, 1)
     setState('AIRBORNE')
   }
   function startLanding() {
@@ -815,8 +646,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     addScore(pts)
     // feedback
-    const cx = r.x + 13 * SPRITE_SCALE
-    const cy = r.y - 150
+    const cx = r.x + RON_CX
+    const cy = r.y - 156
     if (v === 'PERFECT') {
       audio.perfect()
       freeze = CONFIG.FREEZE_PERFECT
@@ -842,7 +673,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     if (pts > 0) popups.push({ text: '+' + fmt(pts), x: cx + (rng() * 40 - 20), y: cy - 26, life: 1.2, scale: 2, colour: P.white, outline: P.ink, rise: 30 })
     if ((v === 'PERFECT' || v === 'GOOD') && g.combo >= 2) {
-      popups.push({ text: 'COMBO ×' + Math.min(CONFIG.MAX_MULT, 1 + g.combo), x: cx - 120, y: r.y - 60, life: 0.8, scale: 2, colour: P.cream, outline: P.navy })
+      popups.push({ text: 'COMBO ×' + Math.min(CONFIG.MAX_MULT, 1 + g.combo), x: cx - 110, y: r.y - 50, life: 0.8, scale: 2, colour: P.cream, outline: P.navy })
       const line = CONFIG.COMMENTS[Math.min(CONFIG.MAX_MULT, 1 + g.combo)]
       if (line) comment = { text: 'COMMENTATEUR : ' + line, life: 2.6 }
     }
@@ -881,7 +712,8 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (ev.id === 'invasion') {
       for (let i = 0; i < CONFIG.INVADERS; i++) {
         const f = fans[Math.floor(rng() * fans.length)]
-        invaders.push({ x: 40 + rng() * 520, y: WALL_BOTTOM - 4, tx: 0, ty: 0, t: rng() * 2, shirt: f.shirt, hair: f.hair, skin: f.skin, phase: rng() * 6, delay: i * 0.12 })
+        const d = f.desc
+        invaders.push({ x: 40 + rng() * 520, y: PITCH_TOP - 2, tx: 0, ty: 0, t: rng() * 2, shirt: d.shirt || P.yellow, hair: d.hair || P.hair, skin: d.skin || P.skin, phase: rng() * 6, delay: i * 0.12 })
       }
     }
     if (ev.id === 'quake') {
@@ -910,6 +742,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   /* ----- update ----- */
   function update(dt) {
     clock += dt
+    tickFlashes(dt)
     if (lock > 0) lock -= dt
     if (flash > 0) flash -= dt
     if (comment && (comment.life -= dt) <= 0) comment = null
@@ -1063,14 +896,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   }
 
   /* ----- drawing ----- */
-  const BOARDS = [
-    { bg: P.ink, fg: P.lime, text: 'DUMB GAMES' },
-    { bg: P.red, fg: P.white, text: 'SIUUU COLA' },
-    { bg: P.navy, fg: P.cream, text: 'BANQUE DU COIN' },
-    { bg: P.yellow, fg: P.ink, text: 'PIZZA N°7' },
-    { bg: '#2F7D4F', fg: P.white, text: 'GAZON PRO' },
-    { bg: P.white, fg: P.red, text: 'TAXI SIUUU' },
-  ].map((b) => ({ ...b, w: textWidth(b.text, 2) + 28 }))
   let touch = false
 
   function sceneOffset() {
@@ -1083,12 +908,21 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (liftoff > 0) oy += -liftoff * 26 + Math.sin(clock * 2.3) * 3 * liftoff
     return { ox: Math.round(ox), oy: Math.round(oy) }
   }
+  function tickFlashes(dt) {
+    for (let i = flashes.length - 1; i >= 0; i--) if ((flashes[i].ttl -= dt) <= 0) flashes.splice(i, 1)
+    const combo = g ? g.combo : 0
+    const rate = 1.5 + combo * 1.2 + (g && inFever() ? 14 : 0) + (g && g.events.has('crowd') ? 3 : 0) + (state === 'RESULT' && g.cycle.result === 'PERFECT' ? 30 : 0)
+    if (rng() < rate * dt) {
+      const f = fans[Math.floor(rng() * fans.length)]
+      flashes.push({ x: f.x + 17, y: f.y + 10, ttl: 0.07 + rng() * 0.06 })
+    }
+  }
 
   function drawScene() {
     const { ox, oy } = sceneOffset()
     const chaos = g && diff().chaos
     const fever = g && inFever()
-    // sky behind everything, visible once the stadium lifts
+    // sky behind everything, visible once the stadium lifts off
     ctx.fillStyle = P.sky
     ctx.fillRect(0, 0, GW, GH)
     if (liftoff > 0) {
@@ -1100,141 +934,99 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
     ctx.save()
     ctx.translate(ox, oy)
+    ctx.drawImage(standsLayer, 0, 0)
 
-    // stands: concrete steps
-    for (let row = 0; row < 10; row++) {
-      ctx.fillStyle = row % 2 ? P.concrete : P.concrete2
-      ctx.fillRect(0, row * 15, GW, 15)
-      ctx.fillStyle = P.grey3
-      ctx.fillRect(0, row * 15 + 14, GW, 1)
-    }
-    for (const [a, b] of AISLES) {
-      ctx.fillStyle = '#D5D7DD'
-      ctx.fillRect(a, 0, b - a, STAND_BOTTOM)
-      ctx.fillStyle = P.grey2
-      for (let y = 4; y < STAND_BOTTOM; y += 8) ctx.fillRect(a, y, b - a, 1)
-    }
-    // fans, back rows first
+    // the crowd, back rows first
     const excited = g && (g.events.has('crowd') || fever)
     for (const f of fans) {
       const s = Math.sin(clock * f.rate + f.phase)
-      const jumping = excited || f.up
-      let dy = jumping ? (s > 0 ? -3 : 0) : Math.round(s * 0.6)
+      const jumping = excited || f.up || f.desc.excited
+      let dy = jumping ? (s > 0 ? -4 : 0) : s > 0.6 ? -1 : 0
       let dx = 0
+      if (excited) dy += Math.round(Math.sin(clock * 6 - f.x * 0.02) * 2)
       if (shockwave > 0) {
         const front = shockwave * (GW + 260) - 120
         const d = Math.abs(f.x - front)
         if (d < 110) dy -= Math.round(16 * Math.cos((d / 110) * Math.PI * 0.5))
       }
-      if (chaos) dx = Math.round(Math.sin(clock * 9 + f.phase) * 1)
+      if (chaos) dx = Math.round(Math.sin(clock * 9 + f.phase))
       const pose = jumping && s > 0 ? 'up' : 'idle'
-      ctx.drawImage(mini(pose, f.shirt, f.hair, f.skin), f.x + dx, f.y + dy)
+      ctx.drawImage(fanSprite(f.desc, pose), f.x + dx, f.y + dy)
     }
-    // railing + wall
-    ctx.fillStyle = P.grey3
-    ctx.fillRect(0, STAND_BOTTOM - 2, GW, 2)
-    ctx.fillStyle = '#CDCFD6'
-    ctx.fillRect(0, STAND_BOTTOM, GW, WALL_BOTTOM - STAND_BOTTOM)
-    ctx.fillStyle = P.concrete2
-    ctx.fillRect(0, WALL_BOTTOM - 3, GW, 3)
-    // dugout with the substitutes, bottom-left of the stands
-    ctx.fillStyle = P.navy
-    ctx.fillRect(8, STAND_BOTTOM, 122, BOARD_BOTTOM - STAND_BOTTOM)
-    ctx.fillStyle = P.navy2
-    ctx.fillRect(12, STAND_BOTTOM + 4, 114, BOARD_BOTTOM - STAND_BOTTOM - 8)
-    ctx.fillStyle = '#5A6A8E'
-    ctx.fillRect(12, STAND_BOTTOM + 4, 114, 2)
-    drawText(ctx, 'BANC', 14, STAND_BOTTOM + 2, P.cream)
+    const roofShade = ctx.createLinearGradient(0, oy, 0, oy + 70)
+    roofShade.addColorStop(0, 'rgba(10,10,30,0.4)')
+    roofShade.addColorStop(1, 'rgba(10,10,30,0)')
+    ctx.fillStyle = roofShade
+    ctx.fillRect(0, 0, GW, 70)
+    for (const fl of flashes) {
+      ctx.fillStyle = P.white
+      ctx.fillRect(fl.x - 1, fl.y - 3, 3, 7)
+      ctx.fillRect(fl.x - 3, fl.y - 1, 7, 3)
+      ctx.fillStyle = P.sky2
+      ctx.fillRect(fl.x, fl.y, 1, 1)
+    }
+    ctx.drawImage(frontLayer, 0, STAND_BOTTOM)
+
+    // bench, stewards, cameraman (the track)
     const subsUp = g && g.events.has('subs')
-    if (!subsUp) for (const s of subs) ctx.drawImage(mini('sit', P.white, s.hair, s.skin, P.white), s.x, s.y)
-    ctx.fillStyle = P.grey3
-    ctx.fillRect(12, BOARD_BOTTOM - 6, 114, 2)
-    // advertising boards
-    let bx = 132
-    let bi = 0
-    while (bx < GW) {
-      const b = BOARDS[bi % BOARDS.length]
-      ctx.fillStyle = b.bg
-      ctx.fillRect(bx, WALL_BOTTOM, b.w, BOARD_BOTTOM - WALL_BOTTOM)
-      ctx.fillStyle = P.ink
-      ctx.fillRect(bx + b.w - 2, WALL_BOTTOM, 2, BOARD_BOTTOM - WALL_BOTTOM)
-      drawTextC(ctx, b.text, bx + b.w / 2, WALL_BOTTOM + 4, b.fg, { scale: 2 })
-      bx += b.w
-      bi++
-    }
-    // cinder track then the pitch
-    ctx.fillStyle = '#8E5A3C'
-    ctx.fillRect(0, BOARD_BOTTOM, GW, PITCH_TOP - BOARD_BOTTOM)
-    for (let y = PITCH_TOP; y < GH + 40; y += 20) {
-      const band = ((y - PITCH_TOP) / 20) % 2
-      let colour = band ? P.grass : P.grass2
-      if (chaos) colour = band ? ['#3F9C3B', '#3B8FB0', '#A03BB0', '#B0803B'][Math.floor(clock * 2) % 4] : P.grass2
-      if (fever && !chaos) colour = band ? '#4EA83C' : '#5CBE44'
-      ctx.fillStyle = colour
-      ctx.fillRect(0, y, GW, 20)
-    }
-    // lines, corner arc and flag
-    ctx.fillStyle = P.line
-    ctx.fillRect(0, TOUCHLINE - 1, GOAL_LINE + 1, 2)
-    ctx.fillRect(GOAL_LINE - 1, TOUCHLINE - 1, 2, GH)
-    for (let a = 0; a <= 16; a++) {
-      const t = (a / 16) * Math.PI * 0.5
-      ctx.fillRect(Math.round(GOAL_LINE - Math.cos(t) * 22) - 1, Math.round(TOUCHLINE + Math.sin(t) * 22) - 1, 2, 2)
+    if (!subsUp) for (const s of subs) ctx.drawImage(mini('sit', P.white, s.hair, s.skin, P.white), s.x, BOARD_BOTTOM - 26)
+    for (const st of stewards) ctx.drawImage(mini('back', '#FFD84A', '#2B1B14', '#C68A5A', '#2A2D3A'), st.x, st.y - 18)
+    ctx.drawImage(prop('camera'), 552, PITCH_TOP - 28)
+
+    // pitch mood: fever and chaos tints over the grass only
+    if (fever || chaos) {
+      ctx.globalAlpha = 0.22
+      ctx.fillStyle = chaos ? ['#3B8FB0', '#A03BB0', '#B0803B', '#B03B3B'][Math.floor(clock * 2) % 4] : P.lime
+      ctx.fillRect(0, PITCH_TOP, NET_X - 4, GH - PITCH_TOP)
+      ctx.globalAlpha = 1
     }
     // corner flag
     const sway = Math.round(Math.sin(clock * 3) * 1.5)
     ctx.fillStyle = P.ink
-    ctx.fillRect(GOAL_LINE - 1, TOUCHLINE - 28, 2, 28)
+    ctx.fillRect(GOAL_LINE - 1, TOUCHLINE - 30, 2, 30)
     ctx.fillStyle = P.yellow
-    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 28 + sway, 12, 4)
+    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 30 + sway, 12, 4)
     ctx.fillStyle = P.red
-    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 24 + sway, 12, 4)
+    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 26 + sway, 12, 4)
     ctx.fillStyle = P.yellow
-    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 20 + sway, 8, 3)
-    // the side netting beyond the goal line
-    ctx.fillStyle = P.navy
-    ctx.fillRect(618, PITCH_TOP, GW - 618, GH - PITCH_TOP)
-    ctx.fillStyle = '#6B7691'
-    for (let y = PITCH_TOP; y < GH; y += 6) ctx.fillRect(618, y, GW - 618, 1)
-    for (let x = 618; x < GW; x += 6) ctx.fillRect(x, PITCH_TOP, 1, GH - PITCH_TOP)
-    ctx.fillStyle = P.white
-    ctx.fillRect(615, PITCH_TOP, 3, GH - PITCH_TOP)
+    ctx.fillRect(GOAL_LINE + 1, TOUCHLINE - 22 + sway, 8, 3)
+    ctx.drawImage(prop('ball'), 548, 216)
+    ctx.drawImage(prop('cart'), 584, 206)
 
-    // substitutes standing on the track, imitating the master
     if (subsUp)
       for (const s of subs) {
         const bob = Math.sin(clock * 6 + s.phase) > 0 ? -2 : 0
-        ctx.drawImage(mini('siuuu', P.white, s.hair, s.skin, P.white), s.x + 6, BOARD_BOTTOM - 2 + bob)
+        ctx.drawImage(mini('siuuu', P.white, s.hair, s.skin, P.white), s.x + 6, PITCH_TOP - 4 + bob)
       }
-    // pitch invaders (ambience only)
     for (const inv of invaders) {
       if (inv.delay > 0) continue
       const pose = Math.floor(clock * 8 + inv.phase) % 2 ? 'run1' : 'run2'
       ctx.drawImage(mini(pose, inv.shirt, inv.hair, inv.skin), Math.round(inv.x), Math.round(inv.y) - 18)
     }
-    // referees
     const refsUp = g && g.events.has('refs')
     for (const r of refs) {
       const bob = refsUp && Math.sin(clock * 6 + r.x) > 0 ? -2 : 0
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'
+      ctx.fillRect(r.x + 2, r.y - 2, 12, 3)
       ctx.drawImage(mini(refsUp ? 'siuuu' : 'idle', P.black, r.hair, r.skin, P.black), r.x, r.y - 18 + bob)
       if (r.flag && !refsUp) {
         ctx.fillStyle = P.ink
-        ctx.fillRect(r.x + 13, r.y - 26, 1, 14)
+        ctx.fillRect(r.x + 14, r.y - 26, 1, 14)
         ctx.fillStyle = P.orange
-        ctx.fillRect(r.x + 14, r.y - 26, 6, 5)
+        ctx.fillRect(r.x + 15, r.y - 26, 6, 5)
       }
     }
 
-    // Ronaldo, with his shadow
+    // Ronaldo, with a soft shadow that shrinks as he rises
     const r = g ? g.ronaldo : { x: RUN_END_X + LAND_DX, y: RUN_Y, pose: 'siuuu', flip: false, air: 0 }
     const sh = Math.max(0.3, 1 - r.air / 120)
-    const half = 6 * SPRITE_SCALE
-    ctx.fillStyle = P.grassDark
-    ctx.fillRect(Math.round(r.x + 13 * SPRITE_SCALE - half * sh), r.y - 2, Math.round(2 * half * sh), 4)
-    const sp = sprite(r.pose, r.flip)
-    ctx.drawImage(sp, Math.round(r.x), Math.round(r.y - 25 * SPRITE_SCALE - r.air))
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'
+    const sw = Math.round(44 * sh)
+    ctx.fillRect(Math.round(r.x + RON_CX - sw / 2), r.y - 3, sw, 5)
+    ctx.fillRect(Math.round(r.x + RON_CX - sw / 2) + 4, r.y - 4, sw - 8, 7)
+    const sp = sprite(POSES[r.pose], r.pose, r.flip)
+    ctx.drawImage(sp, Math.round(r.x), Math.round(r.y - RON_FEET - r.air))
 
-    // particles
     for (const p of particles) {
       if (p.ring) {
         ctx.strokeStyle = p.colour
@@ -1248,7 +1040,6 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       }
     }
     ctx.restore()
-    // lift-off thrusters, under the stadium
     if (liftoff > 0) {
       const base = GH + oy
       for (let i = 0; i < 5; i++) {
@@ -1262,122 +1053,152 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     }
   }
 
+  /* ----- gauges ----- */
+  const BAR_X = 150
+  const BAR_Y = 334
+  const BAR_W = 340
+  const BAR_H = 14
   function zonesFor(center, wp) {
-    const half = 180
+    const half = BAR_W / 2
     const px = (e) => Math.round(e * half)
-    return { center, half, perfect: px(wp), good: px(errorFor(CONFIG.GOOD_MIN, wp)), bad: px(errorFor(CONFIG.BAD_MIN, wp)) }
+    return { center, perfect: px(wp), good: px(errorFor(CONFIG.GOOD_MIN, wp)), bad: px(errorFor(CONFIG.BAD_MIN, wp)) }
   }
-  function drawBar(x0, y0, w, h, z) {
+  function drawBar(z, hot) {
+    const x0 = BAR_X
+    const y0 = BAR_Y
+    const w = BAR_W
+    const h = BAR_H
     const cx = x0 + Math.round(z.center * w)
-    ctx.fillStyle = P.navy
-    ctx.fillRect(x0 - 3, y0 - 3, w + 6, h + 6)
-    ctx.fillStyle = P.red2
+    ctx.fillStyle = P.ink
+    ctx.fillRect(x0 - 4, y0 - 4, w + 8, h + 8)
+    ctx.fillStyle = hot ? P.lime : P.navy2
+    ctx.fillRect(x0 - 2, y0 - 2, w + 4, h + 4)
+    ctx.fillStyle = '#6B1520'
     ctx.fillRect(x0, y0, w, h)
-    const band = (half, colour) => {
+    const band = (half, colour, top) => {
       ctx.fillStyle = colour
       const a = Math.max(x0, cx - half)
       const b = Math.min(x0 + w, cx + half)
       if (b > a) ctx.fillRect(a, y0, b - a, h)
+      ctx.fillStyle = top
+      if (b > a) ctx.fillRect(a, y0, b - a, 2)
     }
-    band(z.bad, P.red)
-    band(z.good, P.orange)
-    band(z.perfect, P.green)
+    band(z.bad, '#D83A3A', '#F06A6A')
+    band(z.good, '#F39A2E', '#FFC16A')
+    band(z.perfect, '#3FBF5A', '#8CE89A')
     ctx.fillStyle = P.lime
-    ctx.fillRect(cx - 1, y0, 2, h)
+    ctx.fillRect(cx - 1, y0 - 2, 2, h + 4)
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'
+    ctx.fillRect(x0, y0 + h - 2, w, 2)
+  }
+  function cursor(px, colour) {
+    ctx.fillStyle = P.ink
+    ctx.fillRect(px - 4, BAR_Y - 8, 8, BAR_H + 16)
+    ctx.fillStyle = colour
+    ctx.fillRect(px - 2, BAR_Y - 6, 4, BAR_H + 12)
+    ctx.fillStyle = P.white
+    ctx.fillRect(px - 1, BAR_Y - 6, 1, BAR_H + 12)
   }
   function drawGauge() {
     const c = g.cycle
-    const x0 = 140
-    const y0 = 320
-    const w = 360
-    const h = 20
     const wp = diff().perfect
-    const showJump = state === 'RUNUP' && c.t >= CONFIG.GAUGE_DELAY
-    const showSpin = state === 'AIRBORNE'
-    if (showJump) {
+    const labelY = BAR_Y - 24
+    if (state === 'RUNUP' && c.t >= CONFIG.GAUGE_DELAY) {
       const z = zonesFor(jumpTarget(), wp)
-      drawBar(x0, y0, w, h, z)
-      const cx = x0 + Math.round(jumpCursor() * w)
-      ctx.fillStyle = P.navy
-      ctx.fillRect(cx - 4, y0 - 7, 8, h + 14)
-      ctx.fillStyle = P.white
-      ctx.fillRect(cx - 2, y0 - 5, 4, h + 10)
-      drawTextC(ctx, touch ? 'TAP POUR SAUTER !' : 'APPUIE POUR SAUTER !', GW / 2, y0 - 26, P.white, { scale: 2, outline: P.navy })
-    } else if (showSpin) {
+      const p = jumpCursor()
+      const hot = Math.abs(p - z.center) / 0.5 <= wp
+      drawBar(z, hot)
+      cursor(BAR_X + Math.round(p * BAR_W), hot ? P.lime : P.cream)
+      drawTextC(ctx, touch ? 'TAP POUR SAUTER !' : 'APPUIE POUR SAUTER !', GW / 2, labelY, hot ? P.lime : P.white, { scale: 2, outline: P.ink })
+    } else if (state === 'AIRBORNE') {
       const z = zonesFor(CONFIG.SPIN_TARGET, wp)
-      drawBar(x0, y0, w, h, z)
-      const fx = Math.round(c.spinP * w)
-      ctx.fillStyle = P.cream
-      ctx.fillRect(x0, y0 + 6, fx, h - 12)
-      ctx.fillStyle = P.white
-      ctx.fillRect(x0 + fx - 2, y0 - 5, 4, h + 10)
-      ctx.fillStyle = P.navy
-      ctx.fillRect(x0 + fx - 3, y0 - 7, 6, 2)
-      ctx.fillRect(x0 + fx - 3, y0 + h + 5, 6, 2)
       const inZone = Math.abs(c.spinP - CONFIG.SPIN_TARGET) / 0.5 <= wp
-      drawTextC(ctx, inZone ? 'RELÂCHE !' : 'MAINTIENS… RELÂCHE DANS LE VERT', GW / 2, y0 - 26, inZone ? P.lime : P.white, { scale: 2, outline: P.navy })
+      drawBar(z, inZone)
+      const fx = Math.round(c.spinP * BAR_W)
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'
+      ctx.fillRect(BAR_X, BAR_Y + 3, fx, BAR_H - 6)
+      cursor(BAR_X + fx, inZone ? P.lime : P.cream)
+      drawTextC(ctx, inZone ? 'RELÂCHE !' : 'MAINTIENS… RELÂCHE DANS LE VERT', GW / 2, labelY, inZone ? P.lime : P.white, { scale: 2, outline: P.ink })
     } else if (state === 'RESULT' || state === 'LANDING') {
-      // the two hits, as a recap
       const zj = zonesFor(0.5, wp)
-      drawBar(x0, y0, w, h, zj)
+      drawBar(zj, false)
       const mark = (e, colour, dy) => {
-        const px = x0 + Math.round((0.5 + e * 0.5) * w)
-        ctx.fillStyle = P.navy
-        ctx.fillRect(px - 3, y0 + dy - 1, 6, h / 2 + 2)
+        const px = BAR_X + Math.round((0.5 + e * 0.5) * BAR_W)
+        ctx.fillStyle = P.ink
+        ctx.fillRect(px - 3, BAR_Y + dy - 1, 6, BAR_H / 2 + 2)
         ctx.fillStyle = colour
-        ctx.fillRect(px - 2, y0 + dy, 4, h / 2)
+        ctx.fillRect(px - 2, BAR_Y + dy, 4, BAR_H / 2)
       }
       if (c.jumpErr != null) mark(c.jumpHit ?? c.jumpErr, P.white, 0)
-      if (c.spinErr != null) mark(c.spinHit ?? c.spinErr, P.cream, h / 2)
-      drawText(ctx, 'SAUT', x0 - 56, y0 - 2, P.white, { outline: P.navy })
-      drawText(ctx, 'ROTATION', x0 - 56, y0 + 9, P.cream, { outline: P.navy })
+      if (c.spinErr != null) mark(c.spinHit ?? c.spinErr, P.yellow, BAR_H / 2)
+      drawTextC(ctx, 'SAUT', GW / 2 - 60, BAR_Y - 20, P.white, { outline: P.ink })
+      drawTextC(ctx, 'ROTATION', GW / 2 + 60, BAR_Y - 20, P.yellow, { outline: P.ink })
     }
   }
 
+  /* ----- HUD ----- */
+  function board(x, y, w, h) {
+    ctx.fillStyle = P.ink
+    ctx.fillRect(x - 2, y - 2, w + 4, h + 4)
+    ctx.fillStyle = '#0A0A14'
+    ctx.fillRect(x, y, w, h)
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'
+    for (let yy = y; yy < y + h; yy += 2) ctx.fillRect(x, yy, w, 1)
+    ctx.fillStyle = P.navy2
+    ctx.fillRect(x, y, w, 1)
+  }
   function drawHUD() {
-    // timer (top-left)
     const left = Math.max(0, CONFIG.RUN_DURATION - g.elapsed)
     const secs = Math.ceil(left)
     const urgent = left <= 10 && left > 0
-    drawText(ctx, 'TEMPS', 12, 8, P.cream, { outline: P.navy })
-    drawText(ctx, String(secs), 12, 18, urgent && Math.floor(clock * 4) % 2 ? P.red : P.white, { scale: 4, outline: P.navy })
-    // score / record (top-right)
-    drawTextR(ctx, 'SCORE', GW - 12, 8, P.cream, { outline: P.navy })
-    drawTextR(ctx, fmt(g.score), GW - 12, 18, P.white, { scale: 3, outline: P.navy })
-    drawTextR(ctx, 'RECORD ' + fmt(Math.max(best, g.score)), GW - 12, 50, P.yellow, { outline: P.navy })
-    // combo (bottom-left)
+    // timer, scoreboard style
+    board(10, 8, 74, 44)
+    drawText(ctx, 'TEMPS', 16, 10, P.grey)
+    drawText(ctx, String(secs).padStart(2, '0'), 16, 20, urgent && Math.floor(clock * 4) % 2 ? P.red : P.lime, { scale: 3 })
+    ctx.fillStyle = 'rgba(201,242,59,0.12)'
+    ctx.fillRect(16, 26, 36, 21)
+    // score and record
+    board(GW - 176, 8, 166, 44)
+    drawText(ctx, 'SCORE', GW - 170, 10, P.grey)
+    drawTextR(ctx, 'RECORD ' + fmt(Math.max(best, g.score)), GW - 16, 10, P.yellow)
+    drawTextR(ctx, fmt(g.score), GW - 16, 20, P.white, { scale: 3 })
+    // combo meter
     const m = multiplier()
-    drawText(ctx, 'COMBO', 12, 318, P.cream, { outline: P.navy })
-    drawText(ctx, '×' + m, 12, 328, m >= CONFIG.MAX_MULT ? P.lime : m > 1 ? P.yellow : P.white, { scale: 3, outline: P.navy })
-    // fever (bottom-right)
-    const fx = 520
-    const fy = 322
-    drawText(ctx, 'SIUUU FEVER', fx, fy - 12, inFever() ? P.yellow : P.cream, { outline: P.navy })
-    ctx.fillStyle = P.navy
-    ctx.fillRect(fx - 2, fy, 92, 12)
-    ctx.fillStyle = P.grey3
-    ctx.fillRect(fx, fy + 2, 88, 8)
+    board(10, 300, 110, 50)
+    drawText(ctx, 'COMBO', 16, 302, P.grey)
+    drawText(ctx, '×' + m, 16, 312, m >= CONFIG.MAX_MULT ? P.lime : m > 1 ? P.yellow : P.white, { scale: 3 })
+    for (let i = 0; i < CONFIG.MAX_MULT; i++) {
+      ctx.fillStyle = i < m - 1 ? (m >= CONFIG.MAX_MULT ? P.lime : P.yellow) : '#2A2D3A'
+      ctx.fillRect(16 + i * 10, 342, 8, 4)
+    }
+    // fever
+    const fx = 522
+    board(fx - 6, 300, 112, 50)
+    drawText(ctx, 'SIUUU FEVER', fx, 302, inFever() ? P.yellow : P.grey)
+    ctx.fillStyle = '#2A2D3A'
+    ctx.fillRect(fx, 314, 100, 10)
     if (inFever()) {
       const k = g.feverTime / CONFIG.FEVER_DURATION
       ctx.fillStyle = Math.floor(clock * 8) % 2 ? P.yellow : P.orange
-      ctx.fillRect(fx, fy + 2, Math.round(88 * k), 8)
+      ctx.fillRect(fx, 314, Math.round(100 * k), 10)
     } else {
       ctx.fillStyle = P.lime
-      ctx.fillRect(fx, fy + 2, Math.round(88 * g.fever), 8)
+      ctx.fillRect(fx, 314, Math.round(100 * g.fever), 10)
+      ctx.fillStyle = '#8CE89A'
+      ctx.fillRect(fx, 314, Math.round(100 * g.fever), 2)
     }
-    drawText(ctx, inFever() ? '×2 !' : Math.round(g.fever * 100) + '%', fx + 92 + 6, fy + 1, P.white, { outline: P.navy })
+    drawText(ctx, inFever() ? 'POINTS ×2 !' : Math.round(g.fever * 100) + '% — 4 PERFECT', fx, 330, inFever() ? P.yellow : P.cream)
 
     drawGauge()
-    // fever frame
     if (inFever()) {
       const t = Math.floor(clock * 10) % 2
       ctx.fillStyle = t ? P.yellow : P.orange
-      ctx.fillRect(0, 0, GW, 4)
-      ctx.fillRect(0, GH - 4, GW, 4)
-      ctx.fillRect(0, 0, 4, GH)
-      ctx.fillRect(GW - 4, 0, 4, GH)
+      ctx.fillRect(0, 0, GW, 3)
+      ctx.fillRect(0, GH - 3, GW, 3)
+      ctx.fillRect(0, 0, 3, GH)
+      ctx.fillRect(GW - 3, 0, 3, GH)
     }
-    if (g.elapsed >= CONFIG.CHAOS_AT && !g.ending) drawTextC(ctx, 'CHAOS', GW / 2, 8, [P.red, P.yellow, P.lime][Math.floor(clock * 6) % 3], { scale: 2, outline: P.ink })
+    if (g.elapsed >= CONFIG.CHAOS_AT && !g.ending) drawTextC(ctx, 'CHAOS', GW / 2, 10, [P.red, P.yellow, P.lime][Math.floor(clock * 6) % 3], { scale: 1, smooth: true, outline: P.ink, extrude: [P.ink] })
   }
 
   function drawPopups() {
@@ -1385,56 +1206,76 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       const k = p.life
       const grow = p.scale + (k > 0.9 ? 1 : 0)
       ctx.globalAlpha = k < 0.25 ? k / 0.25 : 1
-      const x = clamp(p.x, textWidth(p.text, grow) / 2 + 4, GW - textWidth(p.text, grow) / 2 - 4)
-      drawTextC(ctx, p.text, x, clamp(p.y, 50, 290), p.colour, { scale: grow, outline: p.outline })
+      const sm = p.scale >= 3
+      const sc = sm ? Math.round(grow / 2) : grow
+      const w = textWidth(p.text, sc, sm)
+      const x = clamp(p.x, w / 2 + 4, GW - w / 2 - 4)
+      drawTextC(ctx, p.text, x, clamp(p.y, 50, 290), p.colour, { scale: sc, smooth: sm, outline: p.outline })
       ctx.globalAlpha = 1
     }
     if (banner) {
-      const y = 74 + (banner.life > 2.7 ? Math.round((banner.life - 2.7) * 120) : 0)
-      ctx.fillStyle = P.ink
+      const y = 70 + (banner.life > 2.7 ? Math.round((banner.life - 2.7) * 120) : 0)
+      ctx.fillStyle = 'rgba(10,10,20,0.85)'
       ctx.fillRect(0, y - 6, GW, 34)
       ctx.fillStyle = P.lime
       ctx.fillRect(0, y - 6, GW, 2)
       ctx.fillRect(0, y + 26, GW, 2)
       const wob = Math.round(Math.sin(clock * 20) * 2)
-      drawTextC(ctx, banner.text, GW / 2 + wob, y, P.yellow, { scale: 2, shadow: P.red2 })
+      drawTextC(ctx, banner.text, GW / 2 + wob, y, P.yellow, { scale: 1, smooth: true, outline: P.ink, extrude: [P.red2] })
     }
     if (comment) {
       ctx.globalAlpha = comment.life < 0.4 ? comment.life / 0.4 : 1
-      drawTextC(ctx, comment.text, GW / 2, 52, P.white, { outline: P.ink })
+      ctx.fillStyle = 'rgba(10,10,20,0.7)'
+      ctx.fillRect(GW / 2 - textWidth(comment.text) / 2 - 6, 56, textWidth(comment.text) + 12, 14)
+      drawTextC(ctx, comment.text, GW / 2, 58, P.white)
       ctx.globalAlpha = 1
     }
   }
 
   function drawPanel(x, y, w, h) {
+    ctx.fillStyle = 'rgba(10,10,20,0.55)'
+    ctx.fillRect(0, 0, GW, GH)
     ctx.fillStyle = P.ink
     ctx.fillRect(x - 3, y - 3, w + 6, h + 6)
-    ctx.fillStyle = P.navy
+    ctx.fillStyle = 'rgba(22,32,64,0.92)'
     ctx.fillRect(x, y, w, h)
     ctx.fillStyle = P.navy2
-    ctx.fillRect(x + 3, y + 3, w - 6, h - 6)
+    ctx.fillRect(x, y, w, 2)
+    ctx.fillRect(x, y, 2, h)
+    ctx.fillStyle = '#0C1224'
+    ctx.fillRect(x, y + h - 2, w, 2)
+    ctx.fillRect(x + w - 2, y, 2, h)
+  }
+  function drawLogo(cx, y) {
+    const bounce = Math.round(Math.sin(clock * 4) * 3)
+    drawTextC(ctx, 'SIUUUU', cx, y + bounce, P.yellow, {
+      scale: 4,
+      smooth: true,
+      outline: P.ink,
+      extrude: ['#B8860B', '#8E5A1E', '#5E3A14', '#3A2410'],
+      gradient: ['#FFF7C2', '#FFE14D', '#FFC53D', '#FF9A2E', '#F06A2E', '#D63A3A', '#B02040'],
+    })
+    drawTextC(ctx, 'SIMULATOR', cx, y + 66, P.white, { scale: 2, smooth: true, outline: P.ink, extrude: ['#8C94A6', '#4F65A0'] })
   }
   function drawTitle() {
     const blink = Math.floor(clock * 2) % 2 === 0
-    drawPanel(70, 28, 500, 304)
-    const bounce = Math.round(Math.sin(clock * 4) * 3)
-    drawTextC(ctx, 'SIUUUU', GW / 2, 40 + bounce, P.lime, { scale: 7, outline: P.ink, shadow: P.red2 })
-    drawTextC(ctx, 'SIMULATOR', GW / 2, 112, P.white, { scale: 4, outline: P.ink })
-    drawTextC(ctx, '90 SECONDES. ZÉRO BUT. UN MAXIMUM DE SIUUUU.', GW / 2, 160, P.cream, { scale: 2 })
-    drawTextC(ctx, touch ? 'TAP POUR JOUER' : 'ESPACE POUR JOUER', GW / 2, 196, blink ? P.yellow : P.orange, { scale: 3, outline: P.ink })
-    drawTextC(ctx, touch ? 'TAP POUR SAUTER • RELÂCHE POUR TERMINER TA ROTATION' : 'APPUIE POUR SAUTER • RELÂCHE POUR TERMINER TA ROTATION', GW / 2, 236, P.white, { scale: 1 })
-    drawTextC(ctx, 'VISE LE VERT, DEUX FOIS DE SUITE.', GW / 2, 250, P.grey, { scale: 1 })
-    drawTextC(ctx, best ? 'RECORD : ' + fmt(best) : 'RECORD : TOUJOURS LIBRE', GW / 2, 276, P.yellow, { scale: 2, outline: P.ink })
-    drawTextC(ctx, (touch ? 'BOUTON SON EN BAS À DROITE' : 'M : SON  •  P : PAUSE') + '  •  DUMB GAMES', GW / 2, 306, P.grey, { scale: 1 })
+    drawPanel(60, 22, 520, 316)
+    drawLogo(GW / 2, 36)
+    drawTextC(ctx, '90 SECONDES. ZÉRO BUT. UN MAXIMUM DE SIUUUU.', GW / 2, 150, P.cream, { scale: 1, smooth: true })
+    drawTextC(ctx, touch ? 'TAP POUR JOUER' : 'ESPACE POUR JOUER', GW / 2, 186, blink ? P.yellow : P.orange, { scale: 2, smooth: true, outline: P.ink, extrude: [P.red2] })
+    drawTextC(ctx, touch ? 'TAP POUR SAUTER • RELÂCHE POUR TERMINER TA ROTATION' : 'APPUIE POUR SAUTER • RELÂCHE POUR TERMINER TA ROTATION', GW / 2, 228, P.white)
+    drawTextC(ctx, 'VISE LE VERT, DEUX FOIS DE SUITE.', GW / 2, 242, P.grey)
+    drawTextC(ctx, best ? 'RECORD : ' + fmt(best) : 'RECORD : TOUJOURS LIBRE', GW / 2, 270, P.yellow, { scale: 1, smooth: true, outline: P.ink })
+    drawTextC(ctx, (touch ? 'BOUTON SON EN BAS À DROITE' : 'M : SON  •  P : PAUSE') + '  •  DUMB GAMES', GW / 2, 310, P.grey)
   }
   function drawGameOver() {
     const r = g.result
     const blink = Math.floor(clock * 2) % 2 === 0
-    drawPanel(60, 20, 520, 320)
-    drawTextC(ctx, 'FULL TIME — SIUUUUUU !', GW / 2, 30, P.lime, { scale: 3, outline: P.ink })
-    drawTextC(ctx, fmt(r.score), GW / 2, 64, P.white, { scale: 6, outline: P.ink, shadow: P.red2 })
-    if (r.score > 0 && r.score >= r.best) drawTextC(ctx, 'NOUVEAU RECORD !', GW / 2, 128, blink ? P.yellow : P.orange, { scale: 2, outline: P.ink })
-    else drawTextC(ctx, 'RECORD : ' + fmt(r.best), GW / 2, 128, P.yellow, { scale: 2 })
+    drawPanel(60, 18, 520, 324)
+    drawTextC(ctx, 'FULL TIME — SIUUUUUU !', GW / 2, 28, P.lime, { scale: 2, smooth: true, outline: P.ink, extrude: ['#2F7D4F'] })
+    drawTextC(ctx, fmt(r.score), GW / 2, 60, P.white, { scale: 3, smooth: true, outline: P.ink, extrude: ['#8C94A6', '#4F65A0', '#1E2A4A'] })
+    if (r.score > 0 && r.score >= r.best) drawTextC(ctx, 'NOUVEAU RECORD !', GW / 2, 130, blink ? P.yellow : P.orange, { scale: 2, outline: P.ink })
+    else drawTextC(ctx, 'RECORD : ' + fmt(r.best), GW / 2, 130, P.yellow, { scale: 2 })
     const lines = [
       ['SIUUU RÉUSSIS', r.siuuus],
       ['PERFECT', r.perfects],
@@ -1443,17 +1284,19 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       ['GAMELLES', r.fails],
     ]
     lines.forEach(([k, v], i) => {
-      const y = 158 + i * 22
+      const y = 160 + i * 22
       drawText(ctx, k, 150, y, P.cream, { scale: 2 })
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'
+      ctx.fillRect(150, y + 18, 340, 1)
       drawTextR(ctx, String(v), 490, y, P.white, { scale: 2 })
     })
-    drawTextC(ctx, 'RANG : ' + r.rank, GW / 2, 272, P.yellow, { scale: 2, outline: P.ink })
-    drawTextC(ctx, touch ? 'TAP — REJOUER' : 'ESPACE — REJOUER', GW / 2, 304, blink ? P.lime : P.green, { scale: 3, outline: P.ink })
+    drawTextC(ctx, 'RANG : ' + r.rank, GW / 2, 274, P.yellow, { scale: 2, outline: P.ink })
+    drawTextC(ctx, touch ? 'TAP — REJOUER' : 'ESPACE — REJOUER', GW / 2, 306, blink ? P.lime : P.green, { scale: 2, smooth: true, outline: P.ink, extrude: ['#2F7D4F'] })
   }
   function drawMute() {
     const x = 608
     const y = 338
-    ctx.fillStyle = P.ink
+    ctx.fillStyle = 'rgba(10,10,20,0.8)'
     ctx.fillRect(x, y, 26, 18)
     ctx.fillStyle = P.white
     ctx.fillRect(x + 4, y + 6, 4, 6)
@@ -1475,16 +1318,15 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   function draw() {
     drawScene()
     if (state === 'TITLE') drawTitle()
-    else if (state === 'GAME_OVER') {
-      drawGameOver()
-    } else {
+    else if (state === 'GAME_OVER') drawGameOver()
+    else {
       drawHUD()
       drawPopups()
       if (paused) {
-        ctx.fillStyle = 'rgba(22,20,35,0.7)'
+        ctx.fillStyle = 'rgba(10,10,20,0.7)'
         ctx.fillRect(0, 0, GW, GH)
-        drawTextC(ctx, 'PAUSE', GW / 2, 140, P.white, { scale: 5, outline: P.ink })
-        drawTextC(ctx, 'P OU ÉCHAP POUR REPRENDRE', GW / 2, 200, P.cream, { scale: 2 })
+        drawTextC(ctx, 'PAUSE', GW / 2, 140, P.white, { scale: 3, smooth: true, outline: P.ink })
+        drawTextC(ctx, 'P OU ÉCHAP POUR REPRENDRE', GW / 2, 210, P.cream, { scale: 2 })
       }
     }
     if (flash > 0) {
@@ -1493,6 +1335,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
       ctx.fillRect(0, 0, GW, GH)
       ctx.globalAlpha = 1
     }
+    ctx.drawImage(scanLayer, 0, 0)
     drawMute()
     if (debug && g) {
       const c = g.cycle
@@ -1578,6 +1421,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
   draw()
   return { start, stop, input, unlock, get state() { return state }, get snapshot() { return g } }
 }
+
 
 /* ---------- module contract helpers ---------- */
 export function validate(result) {
