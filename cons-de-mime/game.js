@@ -1284,7 +1284,7 @@ export function create(canvas) {
     text3C('VOUS INCARNEZ SERGE KARAMAZOV. AUCUN LIEN, FILS UNIQUE.', GW / 2, 40, P.grey1)
     const panel = (x, y, w, h, fill = P.slateD) => { ctx.fillStyle = P.ink; ctx.fillRect(x - 2, y - 2, w + 4, h + 4); ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); ctx.fillStyle = P.slate; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y, 1, h) }
     panel(20, 56, 440, 112)
-    text5C("LE COMBO, C'EST TOUT LE JEU", GW / 2, 60, P.yellow, {})
+    text5C('ÉVITEZ LA FOULE ET ATTRAPEZ LE SERIAL KILLER !', GW / 2, 60, P.yellow, {})
     const f = Math.floor(S.clock * 8) % 4
     const cards = [
       { x: 30, title: 'FRÔLE', key: pointerTouch ? 'JOYSTICK' : 'HAUT / BAS', what: 'PASSE TOUT PRÈS', bonus: '+1 COMBO', draw: (cx, cy) => { blit(SPR.ped.jeune[0][Math.floor(S.clock * 6) % 2], cx - 6, cy, true); blit(SPR.serge[f], cx + 12, cy + 2); ctx.fillStyle = P.yellow; ctx.fillRect(cx + 2, cy - 24, 2, 26) } },
