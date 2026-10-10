@@ -124,12 +124,12 @@ function runner(a, frame, legRamp, bootRamp = R.rubber) {
  */
 export function sergeSprite(frame, { look = false, trip = false, boost = false, jump = false } = {}) {
   const SUIT = [P.slateD, P.slate, P.grey3, P.grey2] // costume gris
-  const lg = legend({ G: [R.hairBrown, 1], g: [R.hairBrown, 0], H: [R.hairBrown, 2], s: [R.skinTan, 2], S: [R.skinTan, 3], z: [R.skinTan, 1], E: [P.ink], L: [P.grey1], J: [SUIT, 3], j: [SUIT, 2], i: [SUIT, 1], W: [P.white], w: [P.grey1], T: [P.redD], t: [P.amber], B: [P.cyan], D: [SUIT, 2], d: [SUIT, 1], M: [P.red] })
+  const lg = legend({ G: [R.hairBrown, 1], g: [R.hairBrown, 0], H: [R.hairBrown, 2], s: [R.skinPale, 2], S: [R.skinPale, 3], z: [R.skinPale, 1], E: [P.ink], L: [P.grey1], J: [SUIT, 3], j: [SUIT, 2], i: [SUIT, 1], W: [P.white], w: [P.grey1], T: [P.redD], t: [P.amber], B: [P.cyan], D: [SUIT, 2], d: [SUIT, 1], M: [P.red] })
   if (trip) {
     // À plat ventre, les lunettes de travers, le papier qui s'échappe.
     return sprite(22, 10, 11, 8, (a) => {
       a.map(['..JJjjji.....', '.sJJjjjiiGGg.', 'sSJjjjiiGSEzL', '..DDddi..zsz.'], lg, -8, -7)
-      a.rect(-10, -4, 2, 1, R.skinTan[2])
+      a.rect(-10, -4, 2, 1, R.skinPale[2])
       a.rect(4, -3, 3, 1, P.plum)
       a.rect(6, -9, 3, 2, P.white)
       a.px(7, -8, P.grey1)
@@ -152,8 +152,8 @@ export function sergeSprite(frame, { look = false, trip = false, boost = false, 
     // Bras : balancier, manches grises, et le rouleau de papier dans la main avant.
     const arms = frame % 2 ? [[-4, -13, 1, 3], [3, -13, 1, 2], [4, -11, 1, 1]] : [[-5, -12, 2, 1], [-4, -13, 1, 1], [3, -13, 1, 3]]
     for (const [x, y, w, h] of arms) a.shaded(x, y + bob, w, h, SUIT)
-    a.px(frame % 2 ? -4 : -5, -10 + bob, R.skinTan[2])
-    a.px(frame % 2 ? 4 : 3, -10 + bob, R.skinTan[2])
+    a.px(frame % 2 ? -4 : -5, -10 + bob, R.skinPale[2])
+    a.px(frame % 2 ? 4 : 3, -10 + bob, R.skinPale[2])
     const px = frame % 2 ? 4 : 3
     a.rect(px, -9 + bob, 3, 2, P.white)
     a.px(px + 1, -8 + bob, P.grey1)
@@ -824,82 +824,59 @@ export function palaisSprite(C) {
 
 /* ---------- la tapette géante, avec le tueur dedans ---------- */
 export function tapetteSprite() {
-  // Une tapette classique vue de dessus, en grand : planche de bois bordée, le gros ressort à
-  // spires au milieu, l'arceau de cuivre épais rabattu en U sur le tueur couché, la pédale et
-  // son morceau de fromage au bout. Ancre : milieu du bord bas.
+  // Une tapette classique vue de dessus, à taille humaine : planche de bois bordée, le ressort
+  // à spires, l'arceau de cuivre rabattu en U sur le tueur couché, la pédale et son fromage.
+  // Ancre : milieu du bord bas.
   const COP = [P.brown, P.rust, P.tan, P.amber]
   const DEN = [P.ink, P.slateD, P.blueD, P.blue]
-  const W = 128
-  const H = 50
+  const W = 60
+  const H = 24
   return sprite(W + 4, H + 6, Math.round(W / 2) + 2, H + 2, (a) => {
     const x0 = -Math.round(W / 2)
-    // La planche : bois clair, bord épais, veines, et le biseau du bas.
     a.rect(x0, -H, W, H, R.wood[3])
-    a.rect(x0, -H, W, 2, R.wood[4])
-    a.rect(x0, -3, W, 3, R.wood[1])
-    a.rect(x0, -H, 2, H, R.wood[4])
-    a.rect(x0 + W - 2, -H, 2, H, R.wood[2])
-    for (let y = -H + 6; y < -6; y += 7) for (let x = x0 + 4; x < x0 + W - 4; x += 1) if ((x * 7 + y * 3) % 23 < 12) a.px(x, y, R.wood[2])
-    // Le ressort : un gros cylindre de spires au milieu de la planche, dans le sens de la largeur.
-    const sx = x0 + 46
-    for (let i = 0; i < 9; i++) {
-      const x = sx + i * 4
-      a.rect(x, -H + 8, 3, H - 16, i % 2 ? COP[1] : COP[3])
-      a.rect(x + 2, -H + 8, 1, H - 16, COP[0])
-      a.px(x, -H + 8, COP[3])
-      a.px(x, -9, COP[0])
+    a.rect(x0, -H, W, 1, R.wood[4])
+    a.rect(x0, -2, W, 2, R.wood[1])
+    a.rect(x0, -H, 1, H, R.wood[4])
+    a.rect(x0 + W - 1, -H, 1, H, R.wood[2])
+    for (let y = -H + 4; y < -4; y += 5) a.rect(x0 + 2, y, W - 4, 1, R.wood[2])
+    // Le ressort : spires serrées au milieu.
+    const sx = x0 + 20
+    for (let i = 0; i < 5; i++) {
+      a.rect(sx + i * 2, -H + 4, 1, H - 8, i % 2 ? COP[1] : COP[3])
+      a.px(sx + i * 2 + 1, -H + 4, COP[0])
     }
-    a.rect(sx - 2, -H + 10, 2, H - 20, COP[1]) // l'axe
-    a.rect(sx + 36, -H + 10, 2, H - 20, COP[1])
-    // Le tueur, couché sur le dos en travers de la moitié droite, les jambes sur le ressort.
-    const bx = sx + 8
-    a.shaded(bx, -H + 18, 46, 12, DEN) // le corps
-    a.shaded(bx + 10, -H + 14, 6, 4, DEN) // les bras en l'air
-    a.shaded(bx + 30, -H + 14, 6, 4, DEN)
-    a.rect(bx + 10, -H + 12, 6, 2, R.skinTan[2])
-    a.rect(bx + 30, -H + 12, 6, 2, R.skinTan[2])
-    a.shaded(bx - 16, -H + 20, 16, 4, DEN) // les jambes
-    a.shaded(bx - 16, -H + 26, 16, 4, DEN)
-    a.rect(bx - 22, -H + 19, 6, 5, P.ink) // les chaussures
-    a.rect(bx - 22, -H + 26, 6, 5, P.ink)
-    a.rect(bx + 20, -H + 22, 14, 4, P.ink) // la ceinture
-    a.px(bx + 26, -H + 23, P.amber)
-    // Le casque carré, de travers, les yeux rouges.
-    a.rect(bx + 46, -H + 16, 14, 14, P.grey2)
-    a.rect(bx + 46, -H + 16, 14, 1, P.grey1)
-    a.rect(bx + 59, -H + 16, 1, 14, P.grey3)
-    a.rect(bx + 46, -H + 29, 14, 1, P.grey3)
-    a.rect(bx + 48, -H + 21, 10, 2, P.ink)
-    a.rect(bx + 50, -H + 21, 2, 2, P.red)
-    a.rect(bx + 54, -H + 21, 2, 2, P.red)
-    a.rect(bx + 51, -H + 25, 4, 2, P.ink)
-    // L'arceau : un U de cuivre épais (3 px), rabattu du ressort jusqu'au bout droit.
-    const ux0 = sx + 2
-    const ux1 = x0 + W - 8
-    const uy0 = -H + 7
-    const uy1 = -7
-    a.rect(ux0, uy0, ux1 - ux0, 4, COP[2])
-    a.rect(ux0, uy0, ux1 - ux0, 1, COP[3])
-    a.rect(ux0, uy0 + 3, ux1 - ux0, 1, COP[0])
-    a.rect(ux0, uy1 - 3, ux1 - ux0, 4, COP[2])
-    a.rect(ux0, uy1 - 3, ux1 - ux0, 1, COP[3])
-    a.rect(ux0, uy1, ux1 - ux0, 1, COP[0])
-    a.rect(ux1 - 4, uy0, 4, uy1 - uy0 + 1, COP[2])
-    a.rect(ux1 - 4, uy0, 1, uy1 - uy0 + 1, COP[3])
-    a.rect(ux1 - 1, uy0, 1, uy1 - uy0 + 1, COP[0])
-    // La pédale et le fromage, sous l'arceau au bout droit.
-    a.rect(ux1 - 26, -19, 12, 9, COP[1])
-    a.rect(ux1 - 25, -18, 10, 7, P.yellow)
-    a.px(ux1 - 23, -16, P.amber)
-    a.px(ux1 - 19, -13, P.amber)
-    a.px(ux1 - 21, -14, P.amber)
-    // La tige de déclenchement, de la pédale à l'arceau.
-    a.line(ux1 - 14, -16, ux1 - 6, -9, COP[1])
-    // Les outils tombés à côté, sur le trottoir.
-    a.map(['.LL', 'L..', 'L..'], { L: P.grey1 }, x0 + W + 2, -12)
-    a.rect(x0 + W + 2, -9, 1, 5, R.wood[2])
-    a.rect(x0 - 8, -8, 6, 2, P.grey3)
-    a.rect(x0 - 6, -6, 1, 5, R.wood[2])
+    // Le tueur sur le dos, les jambes sur le ressort, la tête vers la pédale.
+    const bx = sx + 6
+    a.shaded(bx, -H + 8, 22, 7, DEN)
+    a.rect(bx - 8, -H + 9, 8, 2, DEN[2])
+    a.rect(bx - 8, -H + 12, 8, 2, DEN[2])
+    a.rect(bx - 11, -H + 9, 3, 2, P.ink)
+    a.rect(bx - 11, -H + 12, 3, 2, P.ink)
+    a.rect(bx + 4, -H + 6, 3, 2, R.skinTan[2]) // les mains en l'air
+    a.rect(bx + 14, -H + 6, 3, 2, R.skinTan[2])
+    a.rect(bx + 22, -H + 7, 7, 8, P.grey2) // le casque
+    a.rect(bx + 22, -H + 7, 7, 1, P.grey1)
+    a.rect(bx + 23, -H + 10, 5, 1, P.ink)
+    a.px(bx + 24, -H + 10, P.red)
+    a.px(bx + 26, -H + 10, P.red)
+    // L'arceau en U (2 px), du ressort au bout droit.
+    const ux0 = sx + 1
+    const ux1 = x0 + W - 4
+    a.rect(ux0, -H + 3, ux1 - ux0, 2, COP[2])
+    a.rect(ux0, -H + 3, ux1 - ux0, 1, COP[3])
+    a.rect(ux0, -5, ux1 - ux0, 2, COP[2])
+    a.rect(ux0, -5, ux1 - ux0, 1, COP[3])
+    a.rect(ux1 - 2, -H + 3, 2, H - 6, COP[2])
+    a.rect(ux1 - 1, -H + 3, 1, H - 6, COP[0])
+    // La pédale et le fromage, sous le corps.
+    a.rect(ux1 - 12, -9, 6, 4, COP[1])
+    a.rect(ux1 - 11, -8, 4, 2, P.yellow)
+    a.px(ux1 - 10, -8, P.amber)
+    // La faucille et le marteau, tombés à côté.
+    a.map(['.LL', 'L..', 'L..'], { L: P.grey1 }, x0 + W + 1, -8)
+    a.rect(x0 + W + 1, -5, 1, 3, R.wood[2])
+    a.rect(x0 - 6, -5, 4, 2, P.grey3)
+    a.rect(x0 - 5, -3, 1, 3, R.wood[2])
   })
 }
 
@@ -934,8 +911,8 @@ export function odileSprite() {
 }
 
 /* ---------- effets ---------- */
-export function boomSprite(frame, big = false) {
-  const r = (big ? 10 : 6) + frame * (big ? 5 : 3)
+export function boomSprite(frame, big = false, small = false) {
+  const r = (big ? 10 : small ? 3 : 6) + frame * (big ? 5 : small ? 2 : 3)
   return sprite(r * 2 + 4, r * 2 + 4, r + 2, r + 2, (a) => {
     const cols = [P.white, P.yellow, P.orange, P.red, P.redD]
     a.disc(0, 0, r, r * 0.8, cols[Math.min(4, frame + 1)])
@@ -1061,6 +1038,7 @@ export function buildSprites(C) {
   S.facade = { palais: facadeSprite('palais', 160), carlton: facadeSprite('carlton', 160), hotel: [150, 151, 152].map((w) => facadeSprite('hotel', w)), boutique: facadeSprite('boutique', 150) }
   S.boom = [0, 1, 2, 3].map((f) => boomSprite(f))
   S.boomBig = [0, 1, 2, 3].map((f) => boomSprite(f, true))
+  S.boomSmall = [0, 1, 2, 3].map((f) => boomSprite(f, false, true))
   S.gas = [0, 1, 2, 3].map(gasSprite)
   S.shadow = { s: shadowSprite(8), m: shadowSprite(12), l: shadowSprite(20) }
   S.debris = ['shoe', 'glasses', 'hat', 'phone', 'bit'].map(debrisSprite)
