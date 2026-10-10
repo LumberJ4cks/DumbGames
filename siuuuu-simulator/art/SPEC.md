@@ -31,9 +31,17 @@ Si tu me donnes les images sources, je lance l'ingestion et je règle la palette
   short blanc, chaussettes blanches, crampons noirs, cheveux bruns courts gominés, tête un
   peu grosse (caricature), peau mate.
 
-## Ronaldo (12 poses, `ronaldo-<pose>.png`)
+## Ronaldo (`ronaldo-<pose>.png`)
 
-Hauteur dans le jeu : 96 px debout. Vue de trois quarts arrière, caméra légèrement au-dessus.
+Hauteur dans le jeu : 88 px pour la pose SIUUU debout ; toutes les poses partagent la même
+échelle. Vue de trois quarts arrière, caméra légèrement au-dessus.
+
+État actuel : `sources/` contient les neuf images découpées de la planche
+`ronaldo-sheet-original.webp` (maillot rouge du Portugal) : quatre images de course,
+trois de saut, deux de réception. Les poses manquantes sont fabriquées par le script à
+partir des autres : `idle` = `siuuu`, `crouch` = `run4`, `bad` = `good` inclinée, `fail1` =
+`run2` couchée, `fail2` = `jumpBack` sur le dos. Fournir une vraie image pour l'une d'elles
+remplace la version fabriquée.
 
 | Fichier | Pose |
 |---|---|
@@ -44,7 +52,7 @@ Hauteur dans le jeu : 96 px debout. Vue de trois quarts arrière, caméra légè
 | `ronaldo-jumpside.png` | En l'air, de profil (face à gauche), bras levés, genoux repliés. |
 | `ronaldo-jumpfront.png` | En l'air, de face, bouche grande ouverte (il crie), bras levés. |
 | `ronaldo-run1.png` | Course vers la droite, foulée ouverte (jambe avant tendue). |
-| `ronaldo-run2.png` | Course vers la droite, jambes croisées (passage). |
+| `ronaldo-run2.png` à `ronaldo-run4.png` | Course vers la droite, quatre temps de la foulée (deux suffisent). |
 | `ronaldo-crouch.png` | Accroupi avant le saut, bras en arrière, face à droite. |
 | `ronaldo-fail1.png` | À plat ventre dans l'herbe, une jambe en l'air (image large, moitié de hauteur). |
 | `ronaldo-fail2.png` | Sur le dos, jambes en l'air (image large, moitié de hauteur). |

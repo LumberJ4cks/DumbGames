@@ -798,7 +798,7 @@ export function create({ canvas, settings = {}, onState, onEnd }) {
     if (state === 'RUNUP') {
       const k = smooth(clamp(c.t / CONFIG.RUN_TIME, 0, 1))
       r.x = lerp(RUN_START_X, RUN_END_X, k)
-      r.pose = Math.floor(clock * 10) % 2 ? 'run1' : 'run2'
+      r.pose = ['run1', 'run2', 'run3', 'run4'][Math.floor(clock * 12) % 4]
       if (c.t >= CONFIG.GAUGE_DELAY) {
         c.gaugeT += dt
         const timeout = CONFIG.GAUGE_SWEEPS * 2 * diff().sweep

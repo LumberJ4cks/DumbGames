@@ -1160,7 +1160,8 @@ export function drawRonaldo(ctx, pose, x, y, flip = false) {
     ctx.restore()
     return
   }
-  const sp = sprite(POSES[pose], pose, flip)
+  const key = POSES[pose] ? pose : { run3: 'run1', run4: 'run2' }[pose] || 'good'
+  const sp = sprite(POSES[key], key, flip)
   ctx.drawImage(sp, Math.round(x) - 33, Math.round(y) - 81)
 }
 /** Draws a supporter with the given variant index (sheet) or description (code), top-left at (x, y). */
