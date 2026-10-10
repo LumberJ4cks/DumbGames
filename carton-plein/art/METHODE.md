@@ -1,5 +1,15 @@
 # CARTON PLEIN — méthode de création des joueurs
 
+> **Mise à jour (direction cartoon).** Après les planches de référence fournies (Bad Football),
+> la direction des personnages change : **grosse tête expressive** (la moitié de la hauteur),
+> chevelure en masse avec mèches, **sourcils froncés et grands yeux blancs**, **cerne d'un pixel**
+> en encre autour de tout et entre les parties, aplats avec **une seule ombre** par matière, corps
+> court, jambes fines, crampons de la couleur du kit. Chaque vue est une carte écrite à la main
+> (`art/figures3.mjs` : face, profil, dos). Les sections 3 et 4 ci-dessous (briques, calques de
+> tons) ne s'appliquent plus aux personnages ; elles restent valables pour le décor. Le gabarit
+> est 24 × 32, tête 18 de large sur 17 de haut, torse 10 de large sur 6, jambes de 4 rangées.
+> Les références sont dans `art/ref-*.jpg`.
+
 Document de travail, à discuter avant de produire la moindre image. Objectif : une base de
 départ solide pour que les premières planches soient déjà bonnes, au lieu d'itérer à l'œil.
 
