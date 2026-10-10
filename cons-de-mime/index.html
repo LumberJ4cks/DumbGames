@@ -24,7 +24,7 @@
 <div id="stage"><canvas id="c"></canvas></div>
 <div id="shell">
   <span><b>CONS DE MIME !</b> · v1</span>
-  <span>↑↓ couloir · →← avancer/reculer · <b>ESPACE</b> prout · <b>R</b> regarder · <b>Entrée</b> rejouer</span>
+  <span>↑↓ couloir · →← avancer/reculer · <b>ESPACE</b> prout · <b>R</b> regarder · <b>M</b> son · <b>Entrée</b> rejouer</span>
   <span><code>?seed=42</code> rejoue la même partie · <code>?debug=1</code> hitboxes</span>
 </div>
 <script type="module">
@@ -60,6 +60,7 @@
     ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
     KeyW: 'up', KeyZ: 'up', KeyS: 'down', KeyA: 'left', KeyQ: 'left', KeyD: 'right',
     Space: 'fart', KeyR: 'look', Enter: 'start', ShiftLeft: 'look', ShiftRight: 'look',
+    KeyM: 'mute',
   }
   addEventListener('keydown', (e) => {
     const a = keymap[e.code]
