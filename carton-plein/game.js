@@ -219,7 +219,7 @@ const FORMATION = [[-0.42, 0], [-0.2, -0.3], [-0.2, -0.1], [-0.2, 0.1], [-0.2, 0
 
 function makeFrench(i, look) {
   const gk = i === 0
-  return { x: 0, y: 0, vx: 0, vy: 0, dir: 'e', anim: 'idle', frame: 0, ft: 0, team: 'fra', gk, slot: i, atlas: gk ? 'gardien' : 'france-0', number: gk ? 1 : 2 + i, hp: 3, stun: 0, down: 0, state: 'play', card: 0, r: 10, speed: 135 + rnd() * 50, z: 0, vz: 0, jx: rr(-36, 36), jy: rr(-28, 28), phase: rnd() * Math.PI * 2, spin: rr(0.5, 1.1) * (rnd() < 0.5 ? -1 : 1), cardBob: rnd() * 6, sub: false, fly: null }
+  return { x: 0, y: 0, vx: 0, vy: 0, dir: 'e', anim: 'idle', frame: 0, ft: 0, team: 'fra', gk, slot: i, atlas: gk ? 'gardien' : 'france-' + (i % 6), number: gk ? 1 : 2 + i, hp: 3, stun: 0, down: 0, state: 'play', card: 0, r: 10, speed: 135 + rnd() * 50, z: 0, vz: 0, jx: rr(-36, 36), jy: rr(-28, 28), phase: rnd() * Math.PI * 2, spin: rr(0.5, 1.1) * (rnd() < 0.5 ? -1 : 1), cardBob: rnd() * 6, sub: false, fly: null }
 }
 function resetTeam() {
   french = []
@@ -951,7 +951,7 @@ function updateFrench(dt) {
     if (S.phase === 'goal' && f.carryBack) {
       if (!ball.owner && !ball.inStands && dist(f, ball) < 16) { ball.owner = f; ball.z = 0; ball.vz = 0; ball.out = false; ball.vx = ball.vy = 0 }
       if (ball.owner === f) {
-        ball.x = f.x; ball.y = f.y - 2; ball.z = 30; ball.vx = ball.vy = 0
+        ball.x = f.x; ball.y = f.y - 2; ball.z = 14; ball.vx = ball.vy = 0
         if (dist(f, { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 }) < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; ball.z = 0; f.carryBack = false; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') }
       }
       continue
@@ -1017,7 +1017,7 @@ function substitute(f) {
   if (bench) {
     // Il se lève du banc, même sonné, et entre en jeu (la France fait entrer n'importe qui).
     npcs.splice(npcs.indexOf(bench), 1)
-    n = Object.assign(bench, { team: 'fra', role: undefined, slot: f.slot, gk: f.gk, atlas: f.gk ? 'gardien' : 'france-0', state: 'play', hp: 3, stun: 0, down: 0, anim: 'run', card: 0, intruder: false })
+    n = Object.assign(bench, { team: 'fra', role: undefined, slot: f.slot, gk: f.gk, atlas: f.gk ? 'gardien' : 'france-' + ((f.slot + 3) % 6), state: 'play', hp: 3, stun: 0, down: 0, anim: 'run', card: 0, intruder: false })
   } else { n = makeFrench(f.slot, nextLook++); n.x = FIELD.x + FIELD.w / 2; n.y = FIELD.y + FIELD.h + 40; n.number = 11 + subsUsed }
   if (idx >= 0) french[idx] = n; else french.push(n)
   banner('ENTREE DU N°' + n.number + (subsUsed >= 11 ? ' (LE DERNIER DU BANC)' : ''), PAL.grey1)
@@ -1448,7 +1448,7 @@ function updateRef(dt) {
   if (S.phase === 'goal' && !french.some((f) => f.carryBack && f.state === 'play')) {
     // Il va chercher le ballon au fond des filets, le ramène au centre et le pose. Pas de coupure.
     if (ball.owner !== ref && !ball.inStands && d < 16) { ball.owner = ref; ball.z = 0; ball.vz = 0; ball.out = false; ball.vx = ball.vy = 0 }
-    if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 30; ball.vx = ball.vy = 0; if (d < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') } }
+    if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 14; ball.vx = ball.vy = 0; if (d < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') } }
   }
   const moving = Math.hypot(ref.vx, ref.vy) > 15
   const nd = dirOf(ref.vx, ref.vy)
@@ -1497,7 +1497,7 @@ function update(dt) {
     if (d > 4) { ref.x += (dx / d) * Math.min(d, 150 * dt); ref.y += (dy / d) * Math.min(d, 150 * dt); const nd = dirOf(dx, dy); if (nd) ref.dir = nd; if (ref.anim !== 'walk') { ref.anim = 'walk'; ref.ft = 0 }; ref.ft += dt; ref.frame = Math.floor(ref.ft * 8) }
     else if (S.kickStage === 'carry') { ball.owner = null; ball.x = cx0; ball.y = cy0; ball.z = 0; ball.vz = 0; S.kickStage = 'leave'; beep('bounce') }
     else { S.kickStage = 'count'; S.phaseT = 3.9; ref.anim = 'idle'; ref.dir = 's' }
-    if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 30 }
+    if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 14 }
     return
   }
   if (S.phase === 'kickoff' && !S.goals) { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } else if (n <= 0) { beep('whistle'); S.shake = Math.max(S.shake, 8) } } }
@@ -2005,7 +2005,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }

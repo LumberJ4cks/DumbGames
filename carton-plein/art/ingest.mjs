@@ -135,8 +135,8 @@ const allDirs = (list) => Object.fromEntries(SHORT.map((d) => [d, list]))
 const pick = (...names) => Object.fromEntries(names.map((n) => [n, A[n]]))
 
 // Onze Français : peau × cheveux seulement (pas de changement de coupe pour l'instant).
-// Onze Français au même design : peau pâle, tous blonds.
-const FR = [{ skin: 'skinPale', hair: 'hairBlond' }]
+// Équipe de France : six variantes peau × cheveux, réparties sur les 22 joueurs.
+const FR = [{ skin: 'skinPale', hair: 'hairBlond' }, { skin: 'skinDark', hair: 'hairBlack' }, { skin: 'skinTan', hair: 'hairBrown' }, { skin: 'skinPale', hair: 'hairRed' }, { skin: 'skinDark', hair: 'hairBrown' }, { skin: 'skinPale', hair: 'hairBlack' }]
 const paintLook = (look) => (p) => recolor(p, look, { nearest })
 FR.forEach((look, i) => atlas('france-' + i, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), paintLook(look)))
 // Le n°4.
