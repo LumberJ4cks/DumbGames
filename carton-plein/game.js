@@ -352,15 +352,24 @@ function startFire() {
   banner('¡ EN FEU !', PAL.orange)
   beep('fire')
 }
+const SAYAN = { frames: 17, fps: 5, flameFrames: 9, flameFps: 6.7, outro: 0.5 }
 function startFury() {
-  S.fury = 12
   S.furies++
   S.furyCharge = 0
-  S.fire = 12
-  S.stopAll = 0.9
-  S.freeze = 0.12
-  S.shake = 16
   hero.act = null; hero.stun = 0
+  // Cinématique SUPA FOOT SAYAN, jouée une fois, tout figé ; la furie démarre à la fin.
+  S.sayanPrev = S.phase
+  S.phase = 'sayan'
+  S.sayanT = 0
+  S.banners = []
+  S.freeze = 0; S.stopAll = 0
+  beep('fire')
+}
+function endSayan() {
+  S.phase = S.sayanPrev && S.sayanPrev !== 'sayan' ? S.sayanPrev : 'play'
+  S.fury = 12
+  S.fire = 12
+  S.shake = 16
   banner('¡¡ FURIE !!  TOUT CE QUE TU TOUCHES S\'ENVOLE', PAL.yellow)
   for (let i = 0; i < 40; i++) S.particles.push({ x: hero.x + rr(-30, 30), y: hero.y - rr(0, 50), vx: rr(-200, 200), vy: rr(-300, -60), t: 0, life: 0.8, c: i % 3 ? PAL.yellow : PAL.white })
   // La foule arrive : c'est maintenant qu'il faut du monde.
@@ -1039,6 +1048,46 @@ function updateVar(dt) {
     }
   }
 }
+function drawSayan() {
+  const t = S.sayanT
+  const total = SAYAN.frames / SAYAN.fps
+  const fi = Math.min(SAYAN.frames - 1, Math.floor(t * SAYAN.fps))
+  const boom = fi >= 15 // les deux dernières images : l'explosion
+  // Fond : motion design, rayons qui tournent de plus en plus vite, anneaux qui pulsent.
+  g.fillStyle = boom ? PAL.yellow : PAL.ink; g.fillRect(0, 0, W, H)
+  const cx = W / 2, cy = H / 2 + 10
+  const spin = t * (0.6 + t * 0.5)
+  g.save(); g.translate(cx, cy)
+  for (let i = 0; i < 24; i++) {
+    const a0 = spin + (i / 24) * Math.PI * 2, a1 = a0 + (Math.PI * 2 / 24) * 0.5
+    g.fillStyle = boom ? (i % 2 ? PAL.white : PAL.amber) : i % 3 === 0 ? 'rgba(254,174,52,0.35)' : i % 3 === 1 ? 'rgba(254,231,97,0.22)' : 'rgba(247,118,34,0.18)'
+    g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 520, a0, a1); g.closePath(); g.fill()
+  }
+  for (let r = 0; r < 5; r++) { const rad = ((t * 160 + r * 90) % 450); g.strokeStyle = `rgba(254,231,97,${0.35 * (1 - rad / 450)})`; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, rad, 0, Math.PI * 2); g.stroke() }
+  g.restore()
+  // Secousse qui monte avec la tension.
+  const sh = Math.min(6, t * 1.5) * (boom ? 2 : 1)
+  g.save(); g.translate(Math.round(rr(-sh, sh)), Math.round(rr(-sh, sh)))
+  // La flamme derrière lui, grossie quatre fois, en boucle, qui grandit.
+  const fl = IMG['sayan-flamme']
+  if (fl) { const ff = Math.floor(t * SAYAN.flameFps) % SAYAN.flameFrames; const k = 3 + Math.min(2.5, t * 0.9) + (boom ? 2 : 0); const fw = 64 * k, fh = 64 * k; g.globalAlpha = Math.min(1, t * 2); g.drawImage(fl, ff * 64, 0, 64, 64, cx - fw / 2, cy - fh + 60, fw, fh); g.globalAlpha = 1 }
+  // Le personnage au centre, grossi trois fois, image par image.
+  const pe = IMG['sayan-perso']
+  if (pe) { const k = boom ? 3.6 : 3; const pw = 68 * k, ph = 68 * k; g.drawImage(pe, fi * 68, 0, 68, 68, cx - pw / 2, cy - ph / 2 + 10, pw, ph) }
+  g.restore()
+  // Le titre qui claque, puis qui vibre.
+  if (t > 0.3) {
+    const a = t - 0.3, k = a < 0.15 ? 1 + (0.15 - a) * 10 : 1
+    g.save(); g.translate(W / 2, 34); g.scale(k, k); g.rotate(Math.sin(t * 30) * 0.015)
+    g.font = 'bold 30px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    g.fillStyle = PAL.ink; for (const [dx, dy] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [2, -2], [-2, 2], [0, 5], [4, 4]]) g.fillText('SUPA FOOT SAYAN', dx, dy)
+    g.fillStyle = Math.floor(t * 12) % 2 ? PAL.yellow : PAL.white; g.fillText('SUPA FOOT SAYAN', 0, 0)
+    g.restore()
+  }
+  // Flash blanc à l'explosion, puis fondu vers le jeu.
+  if (boom) { g.fillStyle = `rgba(255,255,255,${clamp(1 - (t - 15 / SAYAN.fps) * 2, 0, 0.9)})`; g.fillRect(0, 0, W, H) }
+  if (t > total) { g.fillStyle = `rgba(255,255,255,${clamp(1 - (t - total) / SAYAN.outro, 0, 1)})`; g.fillRect(0, 0, W, H) }
+}
 function drawVar() {
   const v = S.var
   const f = v.victim
@@ -1324,6 +1373,7 @@ function startMatch() {
   beep('whistle')
 }
 function update(dt) {
+  if (S.phase === 'sayan') { S.sayanT += dt; S.t += dt; attackPressed = false; if (S.sayanT >= SAYAN.frames / SAYAN.fps + SAYAN.outro) endSayan(); return }
   if (S.phase === 'var') { updateVar(dt); return }
   if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) startMatch() } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
@@ -1710,6 +1760,7 @@ function drawHUD() {
   if (ref.patience <= 0 && Math.floor(S.t * 4) % 2) text('IL CRAQUE', W - 60, H - 21, { size: 8, color: PAL.white, align: 'center' })
   if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
   if (S.phase === 'var' && S.var) drawVar()
+  if (S.phase === 'sayan') drawSayan()
   if (S.phase === 'kickoff' && !S.goals) drawCountdown()
   // Bandeaux : texte cerné, sans bande, qui glisse depuis le haut.
   S.banners.forEach((b, i) => {
@@ -1816,7 +1867,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
