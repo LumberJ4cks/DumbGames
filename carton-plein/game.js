@@ -13,7 +13,7 @@
 /* ---------- réglages ---------- */
 const W = 640
 const H = 360
-const FIELD = { x: 64, y: 56, w: 1160, h: 620 } // monde, en pixels
+const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré pour que ça se bouscule
 const GOAL_H = 120
 const MATCH_SECONDS = 90
 const DIRS = ['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']
@@ -34,6 +34,8 @@ const FOULS = {
   POING: { pts: 100, big: false }, GENOU: { pts: 150, big: false }, 'COUP DE PIED': { pts: 300, big: true }, PROJECTION: { pts: 300, big: true },
   TACLE: { pts: 200, big: false }, 'PAR DERRIERE': { pts: 400, big: true }, SEMELLE: { pts: 500, big: true }, ACHARNEMENT: { pts: 50, big: true },
   PERCUTE: { pts: 200, big: false }, 'FAUTE SUR LE GARDIEN': { pts: 600, big: true }, "FAUTE SUR L'ARBITRE": { pts: 2000, big: true },
+  'BALLON DEGAGE': { pts: 150, big: false, noWhistle: true }, CASSE: { pts: 250, big: false, noWhistle: true }, 'FAUTE SUR LE BANC': { pts: 800, big: true },
+  'LA CAGE EST PAR TERRE': { pts: 3000, big: true }, 'FAUTE SUR LE STAFF': { pts: 1500, big: true },
 }
 const COMBO_STEPS = [0, 2, 4, 7, 10] // seuils pour ×1..×5
 
@@ -49,8 +51,8 @@ async function loadAtlas(name) {
 function drawSprite(g, name, anim, dir, frame, x, y, flip = false) {
   const a = ATLAS[name]
   if (!a) return
-  const an = a.anims[anim] || a.anims.idle
-  const list = an[dir] || an.s
+  const an = a.anims[anim] || a.anims.idle || a.anims.stance || Object.values(a.anims)[0]
+  const list = an[dir] || an.s || Object.values(an)[0]
   const idx = list[((frame % list.length) + list.length) % list.length]
   const sx = (idx % a.cols) * a.cell
   const sy = Math.floor(idx / a.cols) * a.cell
@@ -87,21 +89,21 @@ const S = {
   t: 0, clock: 0, added: 0, addedShown: false,
   score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0,
   combo: 0, comboT: 0, fuego: 0, fire: 0, refDown: 0,
-  popups: [], banners: [], particles: [], log: [],
+  popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
   phaseT: 0,
 }
-const hero = { x: 0, y: 0, vx: 0, vy: 0, dir: 's', anim: 'stance', frame: 0, ft: 0, act: null, actT: 0, chain: 0, chainT: 0, stun: 0, speed: 115, atlas: 'paraguay', team: 'par', isHero: true, r: 10 }
+const hero = { x: 0, y: 0, vx: 0, vy: 0, dir: 's', anim: 'stance', frame: 0, ft: 0, act: null, actT: 0, chain: 0, chainT: 0, stun: 0, speed: 175, atlas: 'paraguay', team: 'par', isHero: true, r: 10 }
 const ball = { x: 0, y: 0, vx: 0, vy: 0, owner: null, r: 4 }
 const ref = { x: 0, y: 0, vx: 0, vy: 0, dir: 's', anim: 'idle', frame: 0, ft: 0, patience: 100, calm: 0, down: 0, flee: 0, hits: 0, atlas: 'arbitre', team: 'ref', r: 10, stun: 0, hp: 3, card: 0 }
 let french = []
 let subsUsed = 0
 let nextLook = 0
-const FORMATION = [[-0.42, 0], [-0.26, -0.28], [-0.26, -0.1], [-0.26, 0.1], [-0.26, 0.28], [-0.08, -0.3], [-0.08, -0.1], [-0.08, 0.1], [-0.08, 0.3], [0.12, -0.12], [0.12, 0.12]]
+const FORMATION = [[-0.42, 0], [-0.2, -0.3], [-0.2, -0.1], [-0.2, 0.1], [-0.2, 0.3], [0.02, -0.32], [0.02, -0.11], [0.02, 0.11], [0.02, 0.32], [0.2, -0.14], [0.2, 0.14]]
 
 function makeFrench(i, look) {
   const gk = i === 0
-  return { x: 0, y: 0, vx: 0, vy: 0, dir: 'e', anim: 'idle', frame: 0, ft: 0, team: 'fra', gk, slot: i, atlas: gk ? 'gardien' : 'france-' + (look % 11), number: gk ? 1 : 2 + i, hp: 3, stun: 0, down: 0, state: 'play', card: 0, r: 10, speed: 92 + rnd() * 10, cardBob: rnd() * 6, sub: false, fly: null }
+  return { x: 0, y: 0, vx: 0, vy: 0, dir: 'e', anim: 'idle', frame: 0, ft: 0, team: 'fra', gk, slot: i, atlas: gk ? 'gardien' : 'france-' + (look % 11), number: gk ? 1 : 2 + i, hp: 3, stun: 0, down: 0, state: 'play', card: 0, r: 10, speed: 128 + rnd() * 14, cardBob: rnd() * 6, sub: false, fly: null }
 }
 function resetTeam() {
   french = []
@@ -109,12 +111,12 @@ function resetTeam() {
 }
 function slotPos(f, ballX) {
   const [fx, fy] = FORMATION[f.slot]
-  const cx = FIELD.x + FIELD.w * 0.5 + clamp(ballX - (FIELD.x + FIELD.w * 0.5), -FIELD.w * 0.25, FIELD.w * 0.25) * 0.6
+  const cx = FIELD.x + FIELD.w * 0.5 + clamp(ballX - (FIELD.x + FIELD.w * 0.5), -FIELD.w * 0.3, FIELD.w * 0.3) * 0.7
   return { x: f.gk ? FIELD.x + 30 : cx + fx * FIELD.w, y: FIELD.y + FIELD.h * 0.5 + fy * FIELD.h }
 }
 function kickoff() {
   S.phase = 'kickoff'
-  S.phaseT = 1.4
+  S.phaseT = 0.9
   ball.x = FIELD.x + FIELD.w / 2
   ball.y = FIELD.y + FIELD.h / 2
   ball.vx = ball.vy = 0
@@ -208,15 +210,16 @@ function foul(name, victim, extra = {}) {
   popup(vx, vy - 42, '+' + pts, PAL.yellow)
   S.log.push({ t: S.clock, name, pts })
   // Arbitre : patience et cartons.
-  if (S.refDown <= 0 && name !== "FAUTE SUR L'ARBITRE") {
+  if (S.refDown <= 0 && name !== "FAUTE SUR L'ARBITRE" && !def.noWhistle) {
     ref.patience = Math.max(0, ref.patience - (def.big ? 18 : 8) * (ref.strict || 1))
     ref.calm = 5
     if (ref.patience <= 0 && def.big && victim && victim.team === 'fra') giveCard(victim)
   }
-  beep('whistle')
   S.freeze = Math.max(S.freeze, def.big ? 0.08 : 0.04)
-  S.shake = Math.max(S.shake, def.big ? 4 : 2)
-  freeKick(vx, vy, victim)
+  S.shake = Math.max(S.shake, def.big ? 6 : 3)
+  if (def.noWhistle) { beep('hit'); return }
+  beep('whistle')
+  if (victim && victim.team === 'fra') freeKick(vx, vy, victim)
 }
 function giveCard(victim) {
   if (victim.card === 0) {
@@ -246,22 +249,126 @@ function startFire() {
 function freeKick(x, y, victim) {
   if (S.phase !== 'play') return
   S.phase = 'freekick'
-  S.phaseT = 1.2
+  S.phaseT = 0.7
   ball.vx = ball.vy = 0
   ball.owner = null
   ball.x = clamp(x + rr(-6, 6), FIELD.x + 20, FIELD.x + FIELD.w - 20)
   ball.y = clamp(y + rr(-6, 6), FIELD.y + 20, FIELD.y + FIELD.h - 20)
 }
 
+/* ---------- décor cassable, banc, staff ---------- */
+let props = []
+let npcs = []
+const SPONSORS = ['BIERE', 'BANQUE', 'CRYPTO', 'KEBAB', 'ASSURANCE', 'VOITURE', 'SODA', 'PARIS SPORTIFS', 'TELEPHONE', 'MOUSSE']
+function makeProps() {
+  props = []
+  npcs = []
+  // Panneaux publicitaires le long des deux touches.
+  for (let x = FIELD.x; x < FIELD.x + FIELD.w - 10; x += 84) {
+    props.push({ kind: 'board', x, y: FIELD.y - 20, w: 80, h: 12, hp: 1, label: SPONSORS[((x / 84) | 0) % SPONSORS.length], color: [PAL.red, PAL.blue, PAL.amber, PAL.cyan, PAL.pink][((x / 84) | 0) % 5] })
+    props.push({ kind: 'board', x, y: FIELD.y + FIELD.h + 10, w: 80, h: 12, hp: 1, label: SPONSORS[((x / 84) | 0 + 3) % SPONSORS.length], color: [PAL.blue, PAL.amber, PAL.red, PAL.pink, PAL.cyan][((x / 84) | 0) % 5] })
+  }
+  // Drapeaux de corner, cages, banc, glacière, caméra.
+  for (const [cx, cy] of [[FIELD.x, FIELD.y], [FIELD.x + FIELD.w, FIELD.y], [FIELD.x, FIELD.y + FIELD.h], [FIELD.x + FIELD.w, FIELD.y + FIELD.h]]) props.push({ kind: 'flag', x: cx - 3, y: cy - 24, w: 6, h: 24, hp: 1 })
+  props.push({ kind: 'goal', x: FIELD.x - 28, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 3, side: 0 })
+  props.push({ kind: 'goal', x: FIELD.x + FIELD.w, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 3, side: 1 })
+  props.push({ kind: 'bench', x: FIELD.x + FIELD.w / 2 - 150, y: FIELD.y + FIELD.h + 34, w: 130, h: 16, hp: 1 })
+  props.push({ kind: 'cooler', x: FIELD.x + FIELD.w / 2 - 20, y: FIELD.y + FIELD.h + 36, w: 12, h: 14, hp: 1 })
+  props.push({ kind: 'camera', x: FIELD.x + FIELD.w / 2 + 60, y: FIELD.y - 44, w: 14, h: 22, hp: 1 })
+  // Remplaçants assis, sélectionneur, kiné.
+  for (let i = 0; i < 3; i++) npcs.push({ ...makeFrench(5, nextLook++), x: FIELD.x + FIELD.w / 2 - 130 + i * 44, y: FIELD.y + FIELD.h + 44, team: 'staff', role: 'sub', dir: 'n', anim: 'idle' })
+  npcs.push({ ...makeFrench(5, 10), x: FIELD.x + FIELD.w / 2 + 40, y: FIELD.y + FIELD.h + 46, team: 'staff', role: 'coach', atlas: 'france-10', dir: 'w', anim: 'idle', speed: 70, name: 'LE SELECTIONNEUR' })
+  npcs.push({ ...makeFrench(5, 8), x: FIELD.x + FIELD.w / 2 + 120, y: FIELD.y + FIELD.h + 46, team: 'staff', role: 'kine', atlas: 'france-8', dir: 'w', anim: 'idle', speed: 150, name: 'LE KINE' })
+}
+function propCenter(p) { return { x: p.x + p.w / 2, y: p.y + p.h / 2 } }
+function propDist(from, p) { const dx = Math.max(p.x - from.x, 0, from.x - p.x - p.w), dy = Math.max(p.y - from.y, 0, from.y - p.y - p.h); return Math.hypot(dx, dy) }
+function nearestProp(from, maxD) { let best = null, bd = maxD; for (const p of props) { if (p.hp <= 0) continue; const d = propDist(from, p); if (d < bd) { bd = d; best = p } } if (best) best.prop = true; return best }
+function hitProps(how) { for (const p of props) if (p.hp > 0 && propDist(hero, p) < 10) { breakProp(p, how); hero.propHit = true } }
+function breakProp(p, how) {
+  p.hp -= how === 'tackle' ? 1 : 1
+  const c = propCenter(p)
+  for (let i = 0; i < 10; i++) S.debris.push({ x: c.x + rr(-p.w / 2, p.w / 2), y: c.y, vx: rr(-120, 120), vy: rr(-160, -40), z: 0, color: p.kind === 'goal' ? PAL.white : p.kind === 'board' ? p.color : p.kind === 'flag' ? PAL.yellow : PAL.clay, t: 0 })
+  S.shake = Math.max(S.shake, 6)
+  if (p.hp > 0) { popup(c.x, c.y - 20, 'CRAC', PAL.grey1); beep('hit'); return }
+  p.broken = true
+  if (p.kind === 'goal') foul('LA CAGE EST PAR TERRE', null)
+  else if (p.kind === 'bench') { foul('FAUTE SUR LE BANC', null); for (const n of npcs) if (n.role === 'sub' && n.state === 'play') { n.vx = rr(-150, 150); n.vy = rr(-120, -60); knockDown(n, 0.4) } }
+  else { foul('CASSE', null); popup(c.x, c.y - 30, p.kind === 'board' ? p.label + ' PAR TERRE' : p.kind === 'flag' ? 'DRAPEAU ARRACHE' : p.kind === 'camera' ? 'CAMERA AU SOL' : 'GLACIERE RENVERSEE', PAL.white, true) }
+}
+function hitBoard(b) {
+  const p = props.filter((q) => q.kind === 'board' && q.hp > 0).sort((a, c) => propDist(b, a) - propDist(b, c))[0]
+  if (p && propDist(b, p) < 30 && Math.hypot(b.vx, b.vy) > 300) breakProp(p, 'ball')
+}
+function updateNpcs(dt) {
+  for (const n of npcs) {
+    n.ft += dt
+    if (n.state === 'fall') { n.fly -= dt; n.x += n.vx * dt; n.y += n.vy * dt; n.vx *= 0.9; n.vy *= 0.9; n.frame = Math.floor(n.ft * 14); if (n.fly <= 0) { n.state = 'ko'; n.anim = 'ko'; n.koDir = n.dir } continue }
+    if (n.state === 'ko') { n.down -= dt; if (n.down <= 0) { n.state = 'play'; n.hp = 3; n.anim = 'idle' } continue }
+    if (n.stun > 0) { n.stun -= dt; n.x += n.vx * dt; n.y += n.vy * dt; n.vx *= 0.85; n.vy *= 0.85; n.frame = Math.floor(n.ft * 14); continue }
+    let target = null
+    if (n.role === 'kine') {
+      const hurt = french.find((f) => f.state === 'ko')
+      target = hurt ? { x: hurt.x + 20, y: hurt.y } : { x: n.home ? n.home.x : n.x, y: n.home ? n.home.y : n.y }
+      if (!n.home) n.home = { x: n.x, y: n.y }
+    } else if (n.role === 'coach') {
+      if (!n.home) n.home = { x: n.x, y: n.y }
+      // Il fait les cent pas, et entre sur la pelouse quand l'arbitre craque.
+      target = ref.patience <= 0 ? { x: ref.x - 30, y: ref.y + 20 } : { x: n.home.x + Math.sin(S.t * 0.7) * 60, y: n.home.y }
+    }
+    if (target) {
+      const dx = target.x - n.x, dy = target.y - n.y, d = Math.hypot(dx, dy)
+      if (d > 6) { n.vx = (dx / d) * n.speed; n.vy = (dy / d) * n.speed; n.x += n.vx * dt; n.y += n.vy * dt; const nd = dirOf(dx, dy); if (nd) n.dir = nd; n.anim = 'run' } else { n.vx = n.vy = 0; n.anim = 'idle' }
+      n.frame = Math.floor(n.ft * (n.anim === 'run' ? 12 : 6))
+    } else n.frame = Math.floor(n.ft * 6)
+  }
+}
+function drawProp(p, cx, cy) {
+  if (p.kind === 'board') {
+    if (p.broken) { g.fillStyle = PAL.slateD; g.fillRect(p.x + cx, p.y + cy + 8, p.w, 5); g.fillStyle = p.color; g.fillRect(p.x + cx + 4, p.y + cy + 9, p.w - 8, 3); return }
+    g.fillStyle = PAL.ink; g.fillRect(p.x + cx - 1, p.y + cy - 1, p.w + 2, p.h + 2)
+    g.fillStyle = p.color; g.fillRect(p.x + cx, p.y + cy, p.w, p.h)
+    text(p.label, p.x + cx + p.w / 2, p.y + cy + 2, { size: 8, align: 'center', color: PAL.white })
+  } else if (p.kind === 'flag') {
+    if (p.broken) { g.fillStyle = PAL.grey1; g.fillRect(p.x + cx - 10, p.y + cy + 22, 22, 2); g.fillStyle = PAL.yellow; g.fillRect(p.x + cx + 8, p.y + cy + 18, 6, 5); return }
+    g.fillStyle = PAL.grey1; g.fillRect(p.x + cx + 2, p.y + cy, 2, p.h)
+    g.fillStyle = PAL.yellow; g.beginPath(); g.moveTo(p.x + cx + 4, p.y + cy); g.lineTo(p.x + cx + 14, p.y + cy + 4); g.lineTo(p.x + cx + 4, p.y + cy + 8); g.fill()
+  } else if (p.kind === 'goal') {
+    const gx = p.x + cx, gy = p.y + cy
+    if (p.broken) { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(gx - 6, gy + GOAL_H - 16, 40, 18); g.fillStyle = PAL.white; g.fillRect(gx - 8, gy + GOAL_H - 6, 44, 3); g.fillRect(gx + 10, gy + 20, 3, GOAL_H - 30); return }
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(gx, gy, 28, GOAL_H)
+    g.strokeStyle = PAL.grey1; g.lineWidth = 1
+    for (let i = 0; i <= 28; i += 6) { g.beginPath(); g.moveTo(gx + i, gy); g.lineTo(gx + i, gy + GOAL_H); g.stroke() }
+    for (let j = 0; j <= GOAL_H; j += 6) { g.beginPath(); g.moveTo(gx, gy + j); g.lineTo(gx + 28, gy + j); g.stroke() }
+    g.fillStyle = PAL.white; g.fillRect(p.side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
+    if (p.hp < 3) { g.fillStyle = PAL.ink; for (let k = 0; k < 3 - p.hp; k++) g.fillRect(gx + 6 + k * 8, gy + 30 + k * 25, 2, 14) }
+  } else if (p.kind === 'bench') {
+    g.fillStyle = PAL.ink; g.fillRect(p.x + cx - 1, p.y + cy - 1, p.w + 2, p.h + 2)
+    g.fillStyle = p.broken ? PAL.slate : PAL.clay; g.fillRect(p.x + cx, p.y + cy + (p.broken ? 8 : 0), p.w, p.broken ? 6 : p.h)
+    if (!p.broken) { g.fillStyle = PAL.sand; g.fillRect(p.x + cx, p.y + cy, p.w, 3) }
+  } else if (p.kind === 'cooler') {
+    g.fillStyle = PAL.ink; g.fillRect(p.x + cx - 1, p.y + cy - 1, p.w + 2, p.h + 2)
+    if (p.broken) { g.fillStyle = PAL.cyan; g.fillRect(p.x + cx - 6, p.y + cy + 10, 24, 5) }
+    g.fillStyle = PAL.blue; g.fillRect(p.x + cx, p.y + cy + (p.broken ? 9 : 0), p.w, p.broken ? 5 : p.h)
+    g.fillStyle = PAL.white; g.fillRect(p.x + cx + 2, p.y + cy + 2, p.w - 4, 3)
+  } else if (p.kind === 'camera') {
+    g.fillStyle = PAL.ink
+    if (p.broken) { g.fillRect(p.x + cx - 4, p.y + cy + 16, 22, 6); return }
+    g.fillRect(p.x + cx + 6, p.y + cy + 8, 2, 14); g.fillRect(p.x + cx + 2, p.y + cy + 20, 10, 2)
+    g.fillStyle = PAL.slate; g.fillRect(p.x + cx, p.y + cy, 14, 9)
+    g.fillStyle = PAL.cyan; g.fillRect(p.x + cx + 10, p.y + cy + 2, 3, 4)
+  }
+}
+
 /* ---------- héros ---------- */
-function nearestFrench(from, maxD, pred = () => true) {
+function nearestFrench(from, maxD, pred = () => true, withStaff = true) {
   let best = null, bd = maxD
-  for (const f of french) { if (f.state !== 'play' || !pred(f)) continue; const d = dist(from, f); if (d < bd) { bd = d; best = f } }
+  for (const f of withStaff ? [...french, ...npcs] : french) { if (f.state !== 'play' || !pred(f)) continue; const d = dist(from, f); if (d < bd) { bd = d; best = f } }
   return best
 }
 function hitFrench(f, name, { throwIt = false, knock = 0 } = {}) {
   if (f.hp <= 0) { foul('ACHARNEMENT', f); return }
-  if (f.gk && name !== "FAUTE SUR L'ARBITRE") name = 'FAUTE SUR LE GARDIEN'
+  if (f.team === 'staff') name = f.role === 'sub' ? 'FAUTE SUR LE BANC' : 'FAUTE SUR LE STAFF'
+  else if (f.gk && name !== "FAUTE SUR L'ARBITRE") name = 'FAUTE SUR LE GARDIEN'
   f.hp -= 1
   f.stun = 0.45
   f.anim = 'hit'; f.frame = 0; f.ft = 0
@@ -279,7 +386,7 @@ function knockDown(f, flight) {
   f.fly = flight
   f.hp = 0
   f.anim = 'fall'; f.frame = 0; f.ft = 0
-  f.down = 2.6
+  f.down = 1.8
   if (ball.owner === f) ball.owner = null
 }
 function inBox(p) { return (p.x < FIELD.x + 165 || p.x > FIELD.x + FIELD.w - 165) && Math.abs(p.y - (FIELD.y + FIELD.h / 2)) < 200 }
@@ -292,11 +399,17 @@ function heroAttack() {
     hero.hitTarget = ref
     return
   }
+  const prop = nearestProp(hero, 44)
+  if (!f && prop) {
+    hero.act = 'punch'; hero.actT = 0.2; hero.hitTarget = prop; hero.hitDone = false
+    hero.dir = dirOf(prop.x + prop.w / 2 - hero.x, prop.y + prop.h / 2 - hero.y) || hero.dir
+    return
+  }
   if (f) {
     const chain = ['punch', 'knee', 'kick', 'throw']
     const step = hero.chainT > 0 ? Math.min(hero.chain, 3) : 0
     hero.act = chain[step]
-    hero.actT = step === 3 ? 0.5 : 0.3
+    hero.actT = step === 3 ? 0.36 : 0.2
     hero.chain = step + 1
     hero.chainT = 0.9
     hero.dir = dirOf(f.x - hero.x, f.y - hero.y) || hero.dir
@@ -304,13 +417,13 @@ function heroAttack() {
     hero.hitDone = false
   } else {
     hero.act = 'tackle'
-    hero.actT = 0.45
+    hero.actT = 0.34
     hero.tackled = new Set()
     const v = inputVector()
     const dx = v.dx || (hero.dir.includes('e') ? 1 : hero.dir.includes('w') ? -1 : 0)
     const dy = v.dy || (hero.dir.includes('s') ? 1 : hero.dir.includes('n') ? -1 : 0)
     const d = Math.hypot(dx, dy) || 1
-    hero.tvx = (dx / d) * (S.fire > 0 ? 440 : 245); hero.tvy = (dy / d) * (S.fire > 0 ? 440 : 245)
+    hero.tvx = (dx / d) * (S.fire > 0 ? 560 : 380); hero.tvy = (dy / d) * (S.fire > 0 ? 560 : 380)
     hero.dir = dirOf(dx, dy) || hero.dir
     hero.chain = 0
   }
@@ -322,30 +435,36 @@ function updateHero(dt) {
   else if (hero.act === 'tackle') {
     hero.vx = hero.tvx; hero.vy = hero.tvy
     hero.x += hero.vx * dt; hero.y += hero.vy * dt
-    for (const f of french) {
+    for (const f of [...french, ...npcs]) {
       if (f.state !== 'play' || hero.tackled.has(f)) continue
       if (dist(hero, f) < 26) {
         hero.tackled.add(f)
         const behind = (f.dir.includes('e') && hero.x < f.x) || (f.dir.includes('w') && hero.x > f.x)
-        const late = hero.actT < 0.22
+        const late = hero.actT < 0.15
         hitFrench(f, late ? 'SEMELLE' : behind ? 'PAR DERRIERE' : 'TACLE')
         if (hero.tackled.size === 2) { S.score += 300 * comboMult(); popup(hero.x, hero.y - 70, 'CISEAUX +300', PAL.orange, true) }
       }
     }
     if (S.refDown <= 0 && !hero.tackled.has(ref) && dist(hero, ref) < 22) { hero.tackled.add(ref); hitRef() }
     hero.actT -= dt
+    hitProps('tackle')
     if (hero.actT <= 0) {
       hero.act = null
-      if (hero.tackled.size === 0) { hero.stun = 0.8; S.combo = 0; popup(hero.x, hero.y - 50, 'GLISSADE', PAL.grey1) }
+      if (hero.tackled.size === 0 && !hero.propHit) { hero.stun = 0.22; S.combo = 0; popup(hero.x, hero.y - 50, 'GLISSADE', PAL.grey1) }
+      hero.propHit = false
     }
   } else if (hero.act) {
-    hero.vx = hero.vy = 0
+    // On peut continuer d'avancer (lentement) pendant un coup : jamais bloqué.
+    hero.vx = v.dx * speed * 0.35; hero.vy = v.dy * speed * 0.35
+    hero.x += hero.vx * dt; hero.y += hero.vy * dt
     hero.actT -= dt
-    const dur = hero.act === 'throw' ? 0.5 : 0.3
-    if (!hero.hitDone && hero.actT < dur - 0.1) {
+    const dur = hero.act === 'throw' ? 0.36 : hero.act === 'ballthrow' ? 0.4 : 0.2
+    if (!hero.hitDone && hero.actT < dur - 0.08) {
       hero.hitDone = true
       const t = hero.hitTarget
-      if (t === ref) hitRef()
+      if (hero.act === 'ballthrow') throwBall()
+      else if (t === ref) hitRef()
+      else if (t && t.prop) breakProp(t, 'punch')
       else if (t && t.state === 'play' && dist(hero, t) < 52) hitFrench(t, { punch: 'POING', knee: 'GENOU', kick: 'COUP DE PIED', throw: 'PROJECTION' }[hero.act], { throwIt: hero.act === 'throw' })
       else if (t && t.state !== 'play' && t.hp <= 0 && dist(hero, t) < 52) foul('ACHARNEMENT', t)
     }
@@ -356,6 +475,9 @@ function updateHero(dt) {
     const d = dirOf(v.dx, v.dy)
     if (d) hero.dir = d
     if (S.fire > 0) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(hero, f) < 24) { hitFrench(f, 'PERCUTE'); f.vx *= 2.5; f.vy *= 2.5 }
+    if (S.fire > 0) hitProps('tackle')
+    // Le ballon à portée : on le ramasse et on le balance loin, comme une brute.
+    if (S.phase === 'play' && dist(hero, ball) < 18 && (!ball.owner || ball.owner.stun > 0)) { hero.act = 'ballthrow'; hero.actT = 0.4; hero.hitDone = false; ball.owner = hero }
   }
   hero.chainT -= dt
   if (hero.chainT <= 0) hero.chain = 0
@@ -363,11 +485,23 @@ function updateHero(dt) {
   hero.y = clamp(hero.y, FIELD.y - 10, FIELD.y + FIELD.h + 10)
   // Animation.
   const moving = Math.hypot(hero.vx, hero.vy) > 5
-  const anim = hero.act === 'tackle' ? 'tackle' : hero.act ? hero.act : moving ? 'run' : 'stance'
+  const anim = hero.act === 'tackle' ? 'tackle' : hero.act === 'ballthrow' ? 'throw' : hero.act ? hero.act : moving ? 'run' : 'stance'
   if (anim !== hero.anim) { hero.anim = anim; hero.frame = 0; hero.ft = 0 }
   hero.ft += dt
   const fps = anim === 'run' ? 12 : anim === 'throw' ? 14 : 8
   hero.frame = Math.floor(hero.ft * fps)
+}
+function throwBall() {
+  ball.owner = null
+  const dx = hero.dir.includes('e') ? 1 : hero.dir.includes('w') ? -1 : 0
+  const dy = hero.dir.includes('s') ? 1 : hero.dir.includes('n') ? -1 : 0
+  const d = Math.hypot(dx, dy) || 1
+  ball.vx = (dx / d) * 820; ball.vy = (dy / d) * 820
+  ball.x = hero.x + (dx / d) * 14; ball.y = hero.y + (dy / d) * 14 - 6
+  ball.spin = 1
+  foul('BALLON DEGAGE', null)
+  ref.patience = Math.max(0, ref.patience - 4)
+  for (const f of french) if (f.state === 'play' && f.stun <= 0) f.react = 0.4
 }
 function hitRef() {
   S.refHits++
@@ -426,9 +560,9 @@ function updateFrench(dt) {
       target = { x: goal.x, y: goal.y + (f.slot % 2 ? -30 : 30) }
       // Passe quand le n°4 approche, tir dans la surface.
       const threat = dist(hero, f)
-      if (f.x > FIELD.x + FIELD.w - 170 && Math.abs(f.y - goal.y) < 180 && rnd() < 0.05) shoot(f, goal)
-      else if (threat < 85 && rnd() < 0.2) {
-        const mate = french.filter((g) => g !== f && g.state === 'play' && !g.gk && dist(g, hero) > 90).sort((a, b) => dist(a, f) - dist(b, f))[0]
+      if (f.x > FIELD.x + FIELD.w - 280 && Math.abs(f.y - goal.y) < 200 && rnd() < 0.12) shoot(f, goal)
+      else if (threat < 95 && rnd() < 0.3) {
+        const mate = french.filter((g) => g !== f && g.state === 'play' && !g.gk && dist(g, hero) > 80 && g.x > f.x - 60).sort((a, b) => dist(a, goal) - dist(b, goal))[0]
         if (mate) pass(f, mate)
       }
     } else if (!ball.owner && !f.gk) {
@@ -463,7 +597,7 @@ function pass(from, to) {
   ball.owner = null
   const dx = to.x - from.x, dy = to.y - from.y
   const d = Math.hypot(dx, dy) || 1
-  const v = Math.min(360, 160 + d * 1.2)
+  const v = Math.min(480, 220 + d * 1.4)
   ball.vx = (dx / d) * v; ball.vy = (dy / d) * v
   ball.x = from.x + (dx / d) * 10; ball.y = from.y + (dy / d) * 10
   from.stun = 0.15
@@ -473,7 +607,7 @@ function shoot(from, goal) {
   const ty = goal.y + rr(-GOAL_H / 2 + 12, GOAL_H / 2 - 12)
   const dx = goal.x + 30 - from.x, dy = ty - from.y
   const d = Math.hypot(dx, dy) || 1
-  ball.vx = (dx / d) * 520; ball.vy = (dy / d) * 520
+  ball.vx = (dx / d) * 680; ball.vy = (dy / d) * 680
   from.stun = 0.2
 }
 function substitute(f, stretcher = false) {
@@ -491,20 +625,26 @@ function substitute(f, stretcher = false) {
 
 /* ---------- ballon et buts ---------- */
 function updateBall(dt) {
-  if (ball.owner) return
+  if (ball.owner || S.phase === 'goal' || S.phase === 'kickoff') return
   ball.x += ball.vx * dt; ball.y += ball.vy * dt
-  ball.vx *= Math.pow(0.4, dt); ball.vy *= Math.pow(0.4, dt)
+  ball.vx *= Math.pow(0.5, dt); ball.vy *= Math.pow(0.5, dt)
   const gy = FIELD.y + FIELD.h / 2
   if (ball.x > FIELD.x + FIELD.w + 4 && Math.abs(ball.y - gy) < GOAL_H / 2) { goalScored(); return }
-  if (ball.x < FIELD.x + 4) { ball.x = FIELD.x + 4; ball.vx = Math.abs(ball.vx) * 0.5 }
-  if (ball.x > FIELD.x + FIELD.w - 4) { ball.x = FIELD.x + FIELD.w - 4; ball.vx = -Math.abs(ball.vx) * 0.5 }
-  if (ball.y < FIELD.y + 4) { ball.y = FIELD.y + 4; ball.vy = Math.abs(ball.vy) * 0.5 }
-  if (ball.y > FIELD.y + FIELD.h - 4) { ball.y = FIELD.y + FIELD.h - 4; ball.vy = -Math.abs(ball.vy) * 0.5 }
+  // Les panneaux renvoient le ballon, fort : ça rebondit dans tous les sens.
+  if (ball.x < FIELD.x + 4) { ball.x = FIELD.x + 4; ball.vx = Math.abs(ball.vx) * 0.7; hitBoard(ball) }
+  if (ball.x > FIELD.x + FIELD.w - 4) { ball.x = FIELD.x + FIELD.w - 4; ball.vx = -Math.abs(ball.vx) * 0.7; hitBoard(ball) }
+  if (ball.y < FIELD.y + 4) { ball.y = FIELD.y + 4; ball.vy = Math.abs(ball.vy) * 0.7; hitBoard(ball) }
+  if (ball.y > FIELD.y + FIELD.h - 4) { ball.y = FIELD.y + FIELD.h - 4; ball.vy = -Math.abs(ball.vy) * 0.7; hitBoard(ball) }
+  // Le ballon fauche un Français qui le prend en pleine tête.
+  const sp = Math.hypot(ball.vx, ball.vy)
+  if (sp > 500) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(f, ball) < 12) { f.stun = 0.5; f.vx = ball.vx * 0.3; f.vy = ball.vy * 0.3; f.anim = 'hit'; f.ft = 0; popup(f.x, f.y - 50, 'EN PLEINE TETE', PAL.white); ball.vx *= -0.4; ball.vy *= -0.4; beep('hit') }
 }
 function goalScored() {
   S.goals++
+  ball.vx = ball.vy = 0
+  ball.x = FIELD.x + FIELD.w + 14
   S.phase = 'goal'
-  S.phaseT = 1.6
+  S.phaseT = 1.1
   banner('BUT POUR LA FRANCE (SANS IMPORTANCE)', PAL.grey1)
   beep('goal')
 }
@@ -535,12 +675,13 @@ function updateRef(dt) {
 
 /* ---------- boucle ---------- */
 function startMatch() {
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, combo: 0, comboT: 0, fuego: 0, fire: 0, refDown: 0, popups: [], banners: [], particles: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, combo: 0, comboT: 0, fuego: 0, fire: 0, refDown: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle' })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance' })
   subsUsed = 0
   nextLook = 0
   resetTeam()
+  makeProps()
   kickoff()
   beep('whistle')
 }
@@ -560,6 +701,8 @@ function update(dt) {
   updateFrench(dt)
   updateBall(dt)
   updateRef(dt)
+  updateNpcs(dt)
+  for (const d of S.debris) { if (d.t < 0) continue; d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 300 * dt; if (d.t > 0.6) { d.t = -1; d.vx = d.vy = 0 } }
   // Combo, feu.
   if (S.comboT > 0 && S.fire <= 0) { S.comboT -= dt; if (S.comboT <= 0) S.combo = 0 }
   if (S.fire > 0) { S.fire -= dt; if (S.fire <= 0) { banner('FIN DU FEU', PAL.grey1) } }
@@ -573,9 +716,9 @@ function update(dt) {
   S.particles = S.particles.filter((p) => p.t < p.life)
   S.shake *= Math.pow(0.02, dt)
   // Caméra : suit le ballon, tirée vers le héros.
-  const tx = ball.x * 0.6 + hero.x * 0.4 - W / 2, ty = ball.y * 0.6 + hero.y * 0.4 - H / 2
-  S.cam.x += (clamp(tx, 0, FIELD.x * 2 + FIELD.w - W) - S.cam.x) * Math.min(1, dt * 4)
-  S.cam.y += (clamp(ty, 0, FIELD.y * 2 + FIELD.h - H) - S.cam.y) * Math.min(1, dt * 4)
+  const tx = ball.x * 0.45 + hero.x * 0.55 - W / 2, ty = ball.y * 0.45 + hero.y * 0.55 - H / 2
+  S.cam.x += (clamp(tx, 0, FIELD.x * 2 + FIELD.w - W) - S.cam.x) * Math.min(1, dt * 6)
+  S.cam.y += (clamp(ty, 0, FIELD.y * 2 + FIELD.h - H) - S.cam.y) * Math.min(1, dt * 6)
 }
 function endMatch() {
   S.phase = 'end'
@@ -612,8 +755,7 @@ function drawPitch() {
   g.beginPath(); g.ellipse(FIELD.x + FIELD.w / 2 + cx, FIELD.y + FIELD.h / 2 + cy, 70, 52, 0, 0, Math.PI * 2); g.stroke()
   g.strokeRect(FIELD.x + cx, FIELD.y + FIELD.h / 2 - 200 + cy, 165, 400)
   g.strokeRect(FIELD.x + FIELD.w - 165 + cx, FIELD.y + FIELD.h / 2 - 200 + cy, 165, 400)
-  // Cages : poteaux et filet.
-  for (const side of [0, 1]) {
+  if (false) for (const side of [0, 1]) {
     const gx = side ? FIELD.x + FIELD.w + cx : FIELD.x + cx - 28
     const gy = FIELD.y + FIELD.h / 2 - GOAL_H / 2 + cy
     g.fillStyle = 'rgba(255,255,255,0.35)'
@@ -657,18 +799,21 @@ function render() {
   drawPitch()
   const cx = -Math.round(S.cam.x), cy = -Math.round(S.cam.y)
   if (S.phase === 'title') { g.restore(); drawTitle(); return }
-  // Tri par profondeur.
-  const ents = [...french, ref, hero]
+  // Débris au sol, puis tri par profondeur de tout ce qui est debout (joueurs, staff, décor).
+  for (const d of S.debris) { g.fillStyle = d.color; g.fillRect(Math.round(d.x + cx), Math.round(d.y + cy), 3, 2) }
+  const ents = [...french, ...npcs, ref, hero]
+  for (const p of props) ents.push({ isProp: true, p, y: p.y + p.h, x: p.x })
   ents.sort((a, b) => a.y - b.y)
   // Ombres et marquage.
-  for (const e of ents) if (e.state !== 'ko') drawShadow(e.x + cx, e.y + cy + 1, e.state === 'fall' ? 14 : 12)
+  for (const e of ents) if (!e.isProp && e.state !== 'ko') drawShadow(e.x + cx, e.y + cy + 1, e.state === 'fall' ? 14 : 12)
   if (!ball.owner || true) drawShadow(ball.x + cx, ball.y + cy + 2, 4)
   if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy, S.t)
   for (const e of ents) {
+    if (e.isProp) { drawProp(e.p, cx, cy); continue }
     if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
     if (e.state === 'fall') { drawSprite(g, e.atlas, 'fall', e.dir, e.frame, e.x + cx, e.y + cy); continue }
     let anim = e.anim
-    if (e === hero && hero.act && hero.act !== 'tackle' && hero.act !== 'throw') anim = hero.act
+    if (e === hero && hero.act && hero.act !== 'tackle') anim = hero.act === 'ballthrow' ? 'throw' : hero.act
     drawSprite(g, e.atlas, anim, e.dir, e.frame, e.x + cx, e.y + cy)
     if (e.card === 1) drawCard(e.x + cx, e.y + cy - 58 + Math.round(Math.sin(S.t * 6 + e.cardBob)), dist(e, hero) < 60 && Math.floor(S.t * 6) % 2 === 0)
     if (e.stun > 0 && e.team === 'fra') drawStars(e.x + cx, e.y + cy - 52, S.t, 2)
@@ -777,8 +922,7 @@ let last = performance.now()
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000)
   last = now
-  update(dt)
-  render()
+  try { update(dt); render() } catch (e) { console.error(e) }
   requestAnimationFrame(frame)
 }
 function fit() {
@@ -790,6 +934,6 @@ addEventListener('resize', fit)
 fit()
 Promise.all(['paraguay', 'arbitre', 'gardien', ...Array.from({ length: 11 }, (_, i) => 'france-' + i)].map(loadAtlas)).then(() => {
   fontReady = true
-  window.__carton = { S, hero, french, ref, ball, startMatch, foul }
+  window.__carton = { S, hero, french, ref, ball, startMatch, foul, get props() { return props } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
