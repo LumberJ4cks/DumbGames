@@ -203,13 +203,13 @@ function foul(name, victim, extra = {}) {
   const mods = []
   if (victim && ball.owner === victim) { pts *= 1.5; mods.push('PORTEUR') }
   if (victim && victim.card === 1) { pts *= 1.5; mods.push('CIBLE') }
-  if (victim && french.some((g) => g.role === 'press' && g.atlas === 'commentateur' && g.state === 'play' && dist(g, victim) < 130)) { pts *= 1.25; mods.push('EN DIRECT'); S.shake = Math.max(S.shake, 5) }
+  if (victim && french.some((g) => g.atlas === 'commentateur' && g.state === 'play' && dist(g, victim) < 130)) { pts *= 1.25; mods.push('EN DIRECT'); S.shake = Math.max(S.shake, 5) }
   if (S.fire > 0) { pts *= 2; mods.push('FEU') }
   if (S.clock > RUN) { pts *= 2; mods.push('ARRETS DE JEU') }
   if (S.refDown > 0 && name !== "FAUTE SUR L'ARBITRE") { pts *= 0.5; mods.push('PAS VU') }
   if (extra.penalty) { pts += 250; mods.push('PENALTY') }
   S.combo++
-  S.comboT = 3
+  S.comboT = 3.2 - comboMult() * 0.35 // ×5 : 1,45 s pour trouver la prochaine victime
   const m = comboMult()
   S.comboAt = 0
   if (m > S.tier) { S.tier = m; S.shake = Math.max(S.shake, 8) }
@@ -348,7 +348,7 @@ function updateNpcs(dt) {
     n.ft += dt
     if (n.state === 'fall') { updateFall(n, dt); continue }
     if (n.state === 'ko') { if (dist(n, hero) > 70) n.down -= dt; if (n.down <= 0) { n.state = 'play'; n.hp = 3; n.anim = 'idle' } continue }
-    if (n.stun > 0) { n.stun -= dt; n.x += n.vx * dt; n.y += n.vy * dt; n.vx *= 0.85; n.vy *= 0.85; n.frame = Math.floor(n.ft * 10); continue }
+    if (n.stun > 0) { n.stun -= dt; n.x += n.vx * dt; n.y += n.vy * dt; n.vx *= 0.85; n.vy *= 0.85; if (n.vz || n.z > 0) { n.z += n.vz * dt; n.vz -= 900 * dt; if (n.z <= 0) { n.z = 0; n.vz = 0 } } n.frame = Math.floor(n.ft * 10); continue }
     let target = null
     if (n.role === 'kine') {
       const hurt = french.find((f) => f.state === 'ko')
@@ -412,11 +412,12 @@ function nearestFrench(from, maxD, pred = () => true, withStaff = true) {
 function hitFrench(f, name, { throwIt = false, knock = 0 } = {}) {
   if (f.hp <= 0) { foul('ACHARNEMENT', f); return }
   if (f.absurd) name = f.absurd.name
-  else if (f.team === 'staff') name = f.role === 'sub' ? 'FAUTE SUR LE BANC' : f.role === 'press' ? 'FAUTE SUR UN JOURNALISTE' : f.role === 'fan' ? 'FAUTE SUR UN SUPPORTER' : 'FAUTE SUR LE STAFF'
+  else if (f.team === 'staff') { const k = f.kind || f.role; name = k === 'sub' ? 'FAUTE SUR LE BANC' : k === 'press' ? 'FAUTE SUR UN JOURNALISTE' : k === 'fan' ? 'FAUTE SUR UN SUPPORTER' : 'FAUTE SUR LE STAFF' }
   else if (f.gk && name !== "FAUTE SUR L'ARBITRE") name = 'FAUTE SUR LE GARDIEN'
   f.hp -= 1
   f.stun = 0.45
-  f.anim = 'hit'; f.frame = 0; f.ft = 0
+  f.anim = 'knocked'; f.frame = 0; f.ft = 0
+  f.z = 0; f.vz = 170
   if (ball.owner === f) { ball.owner = null; ball.vx = (f.x - hero.x) * 2; ball.vy = (f.y - hero.y) * 2 }
   const dx = f.x - hero.x, dy = f.y - hero.y
   const d = Math.hypot(dx, dy) || 1
@@ -425,7 +426,7 @@ function hitFrench(f, name, { throwIt = false, knock = 0 } = {}) {
   f.vx = (dx / d) * push; f.vy = (dy / d) * push
   foul(name, f, { penalty: inBox(f) })
   if (f.absurd && f.absurd.debris) for (let i = 0; i < 8; i++) S.debris.push({ x: f.x + rr(-10, 10), y: f.y - 20, vx: rr(-150, 150), vy: rr(-200, -60), z: 0, color: f.absurd.debris[i % f.absurd.debris.length], t: 0 })
-  if (f.role === 'calm') { ref.patience = 0; banner('LE PRESIDENT EST PAR TERRE, L\'ARBITRE CRAQUE', PAL.red) }
+  if (f.atlas === 'president') { ref.patience = 0; banner('LE PRESIDENT EST PAR TERRE, L\'ARBITRE CRAQUE', PAL.red) }
   if (f.carrying) { f.carrying.carriedBy = null; f.carrying.down = 2; f.carrying = null; popup(f.x, f.y - 70, 'PLOUF', PAL.white, true) }
   if (f.hp <= 0 || throwIt || air) knockDown(f, air ? 0.9 : 0.35, air)
   for (let i = 0; i < 6; i++) S.particles.push({ x: f.x, y: f.y - 30, vx: rr(-60, 60), vy: rr(-80, -20), t: 0, life: 0.5, c: i % 2 ? PAL.yellow : PAL.white })
@@ -469,7 +470,15 @@ function updateFall(f, dt) {
 }
 function inBox(p) { return (p.x < FIELD.x + 165 || p.x > FIELD.x + FIELD.w - 165) && Math.abs(p.y - (FIELD.y + FIELD.h / 2)) < 200 }
 function heroAttack() {
-  if (hero.act || hero.stun > 0) return
+  if (hero.stun > 0) return
+  if (hero.act) {
+    // Appuyer pendant le coup : trop tôt, ça casse l'enchaînement ; dans la fenêtre de fin, ça enchaîne.
+    if (hero.act !== 'tackle' && hero.act !== 'flykick' && hero.act !== 'header' && hero.act !== 'ballthrow') {
+      if (hero.actT > 0.07) hero.early = true
+      else hero.buffered = true
+    }
+    return
+  }
   const refNear = S.refDown <= 0 && dist(hero, ref) <= 40 && ref.flee <= 0
   const f = nearestFrench(hero, 40)
   if (refNear && (!f || dist(hero, ref) < dist(hero, f))) {
@@ -503,7 +512,8 @@ function heroAttack() {
     hero.act = chain[step]
     hero.actT = step === 3 ? 0.36 : 0.2
     hero.chain = step + 1
-    hero.chainT = 0.9
+    hero.chainT = 0.55 // fenêtre courte : il faut le rythme, pas le spam
+    if (hero.linked) { S.score += 50 * comboMult(); hero.linked = false }
     hero.dir = dirOf(f.x - hero.x, f.y - hero.y) || hero.dir
     hero.hitTarget = f
     hero.hitDone = false
@@ -511,6 +521,7 @@ function heroAttack() {
     hero.act = 'tackle'
     hero.actT = 0.3
     hero.tackled = new Set()
+    hero.tackleFrom = { x: hero.x, y: hero.y }
     const v = inputVector()
     const dx = v.dx || (hero.dir.includes('e') ? 1 : hero.dir.includes('w') ? -1 : 0)
     const dy = v.dy || (hero.dir.includes('s') ? 1 : hero.dir.includes('n') ? -1 : 0)
@@ -529,6 +540,16 @@ function updateHero(dt) {
     hero.x += hero.vx * dt; hero.y += hero.vy * dt
     for (const f of [...french, ...npcs]) {
       if (f.state !== 'play' || hero.tackled.has(f)) continue
+      if (dist(hero, f) < 34 && f.stun <= 0 && !f.intruder && !f.gk && S.fury <= 0 && dist(hero, hero.tackleFrom) > 70 && rnd() < 0.3) {
+        // Il a vu venir : saut de côté, et le n°4 glisse dans le vide.
+        hero.tackled.add(f)
+        const px = -hero.tvy, py = hero.tvx, d = Math.hypot(px, py) || 1
+        const sg = rnd() < 0.5 ? 1 : -1
+        f.vx = (px / d) * 260 * sg; f.vy = (py / d) * 260 * sg
+        f.stun = 0.35; f.z = 0; f.vz = 200; f.anim = 'knocked'; f.ft = 0; f.dodged = true
+        popup(f.x, f.y - 56, 'ESQUIVE', PAL.cyan, true)
+        continue
+      }
       if (dist(hero, f) < 26) {
         hero.tackled.add(f)
         const behind = (f.dir.includes('e') && hero.x < f.x) || (f.dir.includes('w') && hero.x > f.x)
@@ -542,7 +563,7 @@ function updateHero(dt) {
     hitProps('tackle')
     if (hero.actT <= 0) {
       hero.act = null
-      if (hero.tackled.size === 0 && !hero.propHit) { hero.stun = 0.22; S.combo = Math.floor(S.combo / 2); S.tier = comboMult(); popup(hero.x, hero.y - 50, 'GLISSADE', PAL.grey1) }
+      if ([...hero.tackled].every((t) => t.dodged) && !hero.propHit) { for (const t of hero.tackled) t.dodged = false; hero.stun = 0.22; S.combo = Math.floor(S.combo / 2); S.tier = comboMult(); popup(hero.x, hero.y - 50, 'GLISSADE', PAL.grey1) }
       hero.propHit = false
     }
   } else if (hero.act === 'flykick' || hero.act === 'header') {
@@ -575,7 +596,11 @@ function updateHero(dt) {
       else if (t && t.state === 'play' && dist(hero, t) < 52) hitFrench(t, { punch: 'POING', knee: 'GENOU', kick: 'COUP DE PIED', throw: 'PROJECTION' }[hero.act], { throwIt: hero.act === 'throw' })
       else if (t && t.state !== 'play' && t.hp <= 0 && dist(hero, t) < 52) foul('ACHARNEMENT', t)
     }
-    if (hero.actT <= 0) hero.act = null
+    if (hero.actT <= 0) {
+      hero.act = null
+      if (hero.early) { hero.early = false; hero.buffered = false; hero.stun = 0.4; hero.chain = 0; hero.chainT = 0; S.combo = Math.max(0, S.combo - 2); S.tier = comboMult(); popup(hero.x, hero.y - 56, 'TROP TOT', PAL.grey1, true) }
+      else if (hero.buffered) { hero.buffered = false; hero.linked = true; heroAttack() }
+    }
   } else {
     hero.vx = v.dx * speed; hero.vy = v.dy * speed
     hero.x += hero.vx * dt; hero.y += hero.vy * dt
@@ -688,9 +713,11 @@ function updateFrench(dt) {
       f.stun -= dt
       f.x += f.vx * dt; f.y += f.vy * dt
       f.vx *= 0.85; f.vy *= 0.85
+      if (f.vz || f.z > 0) { f.z += f.vz * dt; f.vz -= 900 * dt; if (f.z <= 0) { f.z = 0; f.vz = 0 } }
       f.frame = Math.floor(f.ft * 10)
       continue
     }
+    if (f.z > 0 && !f.flying) { f.z = 0; f.vz = 0 }
     if (frozen) { f.vx = f.vy = 0; f.anim = 'idle'; f.frame = Math.floor(f.ft * 4); if (ref.cardTarget) { const nd = dirOf(ref.x - f.x, ref.y - f.y); if (nd && dist(f, ref) < 160) f.dir = nd } continue }
     // Cible de déplacement.
     let target
@@ -847,7 +874,8 @@ const MARIEE = { atlas: 'mariee', name: 'FAUTE SUR LA MARIEE', behave: 'couple',
 function spawnAbsurd(kind, near) {
   const f = makeFrench(11 + S.intruders, nextLook++)
   S.intruders++
-  Object.assign(f, { intruder: true, absurd: kind, team: 'staff', role: kind.behave, atlas: kind.atlas, number: 12 + S.intruders, speed: kind.speed * rr(0.9, 1.15), wanderT: 0 })
+  const role = ['bird', 'stretcher', 'ballboy'].includes(kind.behave) ? kind.behave : 'player'
+  Object.assign(f, { intruder: true, absurd: kind, team: 'staff', role, atlas: kind.atlas, number: 12 + S.intruders, speed: kind.speed * rr(0.9, 1.15), wanderT: 0 })
   const side = rnd() < 0.5
   f.x = clamp((near ? near.x : ball.x) + rr(-220, 220), FIELD.x + 20, FIELD.x + FIELD.w - 20)
   f.y = side ? FIELD.y - 30 - rr(0, 40) : FIELD.y + FIELD.h + 30 + rr(0, 40)
@@ -875,7 +903,8 @@ function spawnIntruder(role, k) {
   const f = makeFrench(11 + S.intruders, nextLook++)
   S.intruders++
   f.intruder = true
-  f.role = role
+  f.role = 'player'
+  f.kind = role
   f.team = 'staff'
   f.number = 12 + S.intruders
   f.speed = role === 'fan' ? 120 + rnd() * 90 : role === 'press' ? 110 + rnd() * 40 : 140 + rnd() * 40
@@ -1158,7 +1187,8 @@ function render() {
   for (const d of S.debris) { g.fillStyle = d.color; g.fillRect(Math.round(d.x + cx), Math.round(d.y + cy), 3, 2) }
   const ents = [...french, ...npcs, ref, hero]
   for (const p of props) ents.push({ isProp: true, p, y: p.y + p.h, x: p.x })
-  ents.sort((a, b) => a.y - b.y)
+  const flat = (e) => !e.isProp && (e.state === 'ko' || e.state === 'fade' || (e === ref && ref.landed && ref.down > 0))
+  ents.sort((a, b) => (flat(a) ? 0 : 1) - (flat(b) ? 0 : 1) || a.y - b.y)
   // Ombres et marquage.
   for (const e of ents) if (!e.isProp && e.state !== 'ko' && e.state !== 'fade' && !(e === ref && ref.landed && ref.down > 0)) drawShadow(e.x + cx, e.y + cy + 1, Math.max(6, (e.state === 'fall' ? 14 : 12) - (e.z || 0) * 0.15))
   drawShadow(ball.x + cx, ball.y + cy + 2, Math.max(2, 4 - (ball.z || 0) / 40))
@@ -1231,7 +1261,7 @@ function drawHUD() {
     const pop = Math.max(0, 1 - S.comboAt * 5)
     const col = m >= 5 ? PAL.orange : m >= 4 ? PAL.red : m >= 3 ? PAL.amber : m >= 2 ? PAL.yellow : PAL.white
     const cx = W / 2, cy = 30
-    const frac = S.fire > 0 ? 1 : S.comboT / 3
+    const frac = S.fire > 0 ? 1 : S.comboT / (3.2 - m * 0.35)
     // Anneau de temps.
     g.lineWidth = 4; g.strokeStyle = PAL.ink; g.beginPath(); g.arc(cx, cy, 26, 0, Math.PI * 2); g.stroke()
     g.lineWidth = 2; g.strokeStyle = PAL.slate; g.beginPath(); g.arc(cx, cy, 26, 0, Math.PI * 2); g.stroke()
