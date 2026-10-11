@@ -86,6 +86,7 @@ const music = { buf: null, src: null, gain: null, loading: false, wanted: false 
 function ctx() { if (!audio.ctx) audio.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {}); return audio.ctx }
 function startMusic() {
   music.wanted = true
+  loadSfx()
   try {
     const c = ctx()
     if (music.src) return
@@ -98,6 +99,42 @@ function startMusic() {
     music.gain = c.createGain(); music.gain.gain.value = audio.muted ? 0 : 0.55; music.gain.connect(c.destination)
     music.src = c.createBufferSource(); music.src.buffer = music.buf; music.src.loop = true; music.src.connect(music.gain); music.src.start()
   } catch (e) { /* pas de musique */ }
+}
+/* ---------- échantillons : coups, tacles, sifflets, passes, foule (audio/sfx) ---------- */
+const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6 }
+const sfx = { bank: {}, loaded: false, loading: false, crowd: null, crowdGain: null, crowdBuf: null }
+function loadSfx() {
+  if (sfx.loading || sfx.loaded) return
+  sfx.loading = true
+  try {
+    const c = ctx()
+    const jobs = []
+    for (const [name, n] of Object.entries(SFX_LIST)) { sfx.bank[name] = []; for (let i = 1; i <= n; i++) jobs.push(fetch(`audio/sfx/${n === 1 ? name : name + '-' + i}.mp3`).then((r) => r.arrayBuffer()).then((ab) => c.decodeAudioData(ab)).then((b) => { sfx.bank[name].push(b) }).catch(() => {})) }
+    jobs.push(fetch('audio/sfx/crowd.mp3').then((r) => r.arrayBuffer()).then((ab) => c.decodeAudioData(ab)).then((b) => { sfx.crowdBuf = b; startCrowd() }).catch(() => {}))
+    Promise.all(jobs).then(() => { sfx.loaded = true })
+  } catch (e) { /* pas d'échantillons */ }
+}
+/** Joue un échantillon au hasard dans la famille, avec une légère variation de hauteur. */
+function sample(name, { gain = 1, rate = 1, vary = 0.08 } = {}) {
+  const list = sfx.bank[name]
+  if (!list || !list.length) return false
+  const c = ctx()
+  const src = c.createBufferSource(); src.buffer = list[Math.floor(Math.random() * list.length)]
+  src.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * vary)
+  const gn = c.createGain(); gn.gain.value = gain; src.connect(gn); gn.connect(c.destination); src.start()
+  return true
+}
+/** Ambiance de stade en boucle, discrète, qui enfle sur les grands moments. */
+function startCrowd() {
+  if (sfx.crowd || !sfx.crowdBuf) return
+  const c = ctx()
+  sfx.crowdGain = c.createGain(); sfx.crowdGain.gain.value = audio.muted ? 0 : 0.14; sfx.crowdGain.connect(c.destination)
+  sfx.crowd = c.createBufferSource(); sfx.crowd.buffer = sfx.crowdBuf; sfx.crowd.loop = true; sfx.crowd.connect(sfx.crowdGain); sfx.crowd.start()
+}
+function crowdSwell(level = 0.5, dur = 2.5) {
+  if (!sfx.crowdGain || audio.muted) return
+  const g = sfx.crowdGain.gain, t = ctx().currentTime
+  g.cancelScheduledValues(t); g.setValueAtTime(Math.max(g.value, 0.14), t); g.linearRampToValueAtTime(level, t + 0.15); g.setTargetAtTime(0.14, t + dur, 0.6)
 }
 let noiseBuf = null
 function noise(c) {
@@ -123,6 +160,15 @@ function beep(kind) {
   try {
     const c = ctx()
     const t = c.currentTime
+    if (kind === 'hit' && sample('punch', { gain: 0.9 })) return
+    if (kind === 'hitBig' && sample(Math.random() < 0.5 ? 'impact' : 'tackle', { gain: 1, rate: 0.95 })) return
+    if (kind === 'land' && sample('tackle', { gain: 0.45, rate: 0.85 })) return
+    if (kind === 'pass' && sample('pass', { gain: 0.8 })) return
+    if (kind === 'shoot' && sample('pass', { gain: 1.2, rate: 0.8, vary: 0.04 })) return
+    if (kind === 'bounce' && sample('pass', { gain: 0.3, rate: 1.3 })) return
+    if (kind === 'whistle' && sample('whistle', { gain: 0.7, vary: 0.03 })) return
+    if (kind === 'goal') crowdSwell(0.7, 3.5)
+    if (kind === 'fire') crowdSwell(0.45, 2)
     if (kind === 'hit') return thud(c, t, { low: 160, drop: 50, body: 0.1, bodyGain: 0.45, air: 0.05, airGain: 0.3, airFreq: 1100 })
     if (kind === 'hitBig') return thud(c, t, { low: 110, drop: 35, body: 0.2, bodyGain: 0.7, air: 0.09, airGain: 0.45, airFreq: 700, q: 0.6 })
     if (kind === 'pass') return thud(c, t, { low: 320, drop: 160, body: 0.05, bodyGain: 0.25, air: 0.03, airGain: 0.18, airFreq: 2400, q: 1.5 }) // petit « poc » de cuir
@@ -224,7 +270,7 @@ addEventListener('keydown', (e) => {
   keys[e.code] = true
   if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
-  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0'); if (music.gain) music.gain.gain.value = audio.muted ? 0 : 0.55 }
+  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0'); if (music.gain) music.gain.gain.value = audio.muted ? 0 : 0.55; if (sfx.crowdGain) sfx.crowdGain.gain.value = audio.muted ? 0 : 0.14 }
 })
 addEventListener('keyup', (e) => { keys[e.code] = false })
 addEventListener('contextmenu', (e) => e.preventDefault())
@@ -1963,6 +2009,6 @@ Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), l
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, sfx, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
