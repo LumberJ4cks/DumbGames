@@ -38,7 +38,7 @@ const FOULS = {
   'LA CAGE EST PAR TERRE': { pts: 3000, big: true }, 'FAUTE SUR LE STAFF': { pts: 1500, big: true },
   'PIED SAUTE': { pts: 450, big: true }, 'COUP DE BOULE': { pts: 500, big: true }, DOMINO: { pts: 150, big: false, noWhistle: true }, 'VOL DE BALLON': { pts: 100, big: false, noWhistle: true },
   'FAUTE SUR UN JOURNALISTE': { pts: 1200, big: true }, 'FAUTE SUR UN SUPPORTER': { pts: 900, big: true },
-  'FAUTE SUR LA BANANE': { pts: 1000, big: true }, 'FAUTE SUR LA POULE': { pts: 1500, big: true }, 'FAUTE SUR LA MASCOTTE': { pts: 1200, big: true }, 'FAUTE SUR UN CRS': { pts: 1800, big: true }, 'FAUTE SUR LE STREAKER': { pts: 1300, big: true }, 'FAUTE SUR UNE MAMIE': { pts: 2500, big: true },
+  'FAUTE SUR LA BANANE': { pts: 1000, big: true }, 'FAUTE SUR LE VENDEUR DE HOT-DOGS': { pts: 1100, big: true }, 'FAUTE SUR LE MARIE': { pts: 1400, big: true }, 'FAUTE SUR LA MARIEE': { pts: 1600, big: true }, 'FAUTE SUR LE COMMENTATEUR': { pts: 1300, big: true }, 'FAUTE SUR UN PIGEON': { pts: 2000, big: false, noWhistle: true }, 'FAUTE SUR LE GENDARME A CHEVAL': { pts: 3000, big: true }, 'FAUTE SUR LE KINE': { pts: 1500, big: true }, 'FAUTE SUR LE RAMASSEUR DE BALLES': { pts: 1700, big: true }, 'FAUTE SUR LE PRESIDENT': { pts: 5000, big: true }, 'FAUTE SUR LA FANFARE': { pts: 900, big: true }, 'FAUTE SUR LE DINOSAURE': { pts: 1200, big: true }, SOUFFLE: { pts: 300, big: false, noWhistle: true }, 'FAUTE SUR LA POULE': { pts: 1500, big: true }, 'FAUTE SUR LA MASCOTTE': { pts: 1200, big: true }, 'FAUTE SUR UN CRS': { pts: 1800, big: true }, 'FAUTE SUR LE STREAKER': { pts: 1300, big: true }, 'FAUTE SUR UNE MAMIE': { pts: 2500, big: true },
 }
 const TIERS = ['', 'CHAUD', 'BAGARRE', 'EMEUTE', 'CARTON PLEIN']
 const COMBO_STEPS = [0, 2, 4, 7, 10] // seuils pour ×1..×5
@@ -83,6 +83,9 @@ function beep(kind) {
     else if (kind === 'hit') { o.type = 'sawtooth'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12); gn.gain.setValueAtTime(0.25, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.14); o.start(t); o.stop(t + 0.15) }
     else if (kind === 'card') { o.type = 'triangle'; o.frequency.setValueAtTime(660, t); o.frequency.setValueAtTime(990, t + 0.1); gn.gain.setValueAtTime(0.15, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.4); o.start(t); o.stop(t + 0.4) }
     else if (kind === 'fire') { o.type = 'sawtooth'; o.frequency.setValueAtTime(80, t); o.frequency.exponentialRampToValueAtTime(640, t + 0.5); gn.gain.setValueAtTime(0.2, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.7); o.start(t); o.stop(t + 0.7) }
+    else if (kind === 'drum') { o.type = 'sine'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.25); gn.gain.setValueAtTime(0.4, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.start(t); o.stop(t + 0.3) }
+    else if (kind === 'cymbal') { o.type = 'square'; o.frequency.setValueAtTime(3200, t); o.frequency.exponentialRampToValueAtTime(1800, t + 0.3); gn.gain.setValueAtTime(0.08, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.start(t); o.stop(t + 0.5) }
+    else if (kind === 'trumpet') { o.type = 'sawtooth'; o.frequency.setValueAtTime(440, t); o.frequency.setValueAtTime(554, t + 0.12); o.frequency.setValueAtTime(659, t + 0.24); gn.gain.setValueAtTime(0.12, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.start(t); o.stop(t + 0.5) }
     else if (kind === 'goal') { o.type = 'square'; o.frequency.setValueAtTime(330, t); o.frequency.setValueAtTime(440, t + 0.12); o.frequency.setValueAtTime(550, t + 0.24); gn.gain.setValueAtTime(0.08, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.6); o.start(t); o.stop(t + 0.6) }
   } catch (e) { /* pas de son */ }
 }
@@ -92,7 +95,7 @@ const S = {
   phase: 'title', // title | play | kickoff | freekick | goal | end
   t: 0, clock: 0, added: 0, addedShown: false,
   score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0,
-  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
+  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
   popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
   phaseT: 0,
@@ -196,6 +199,7 @@ function foul(name, victim, extra = {}) {
   const mods = []
   if (victim && ball.owner === victim) { pts *= 1.5; mods.push('PORTEUR') }
   if (victim && victim.card === 1) { pts *= 1.5; mods.push('CIBLE') }
+  if (victim && french.some((g) => g.role === 'press' && g.atlas === 'commentateur' && g.state === 'play' && dist(g, victim) < 130)) { pts *= 1.25; mods.push('EN DIRECT'); S.shake = Math.max(S.shake, 5) }
   if (S.fire > 0) { pts *= 2; mods.push('FEU') }
   if (S.clock > RUN) { pts *= 2; mods.push('ARRETS DE JEU') }
   if (S.refDown > 0 && name !== "FAUTE SUR L'ARBITRE") { pts *= 0.5; mods.push('PAS VU') }
@@ -212,8 +216,12 @@ function foul(name, victim, extra = {}) {
   if (def.big) S.bigFouls++
   if (m >= 3) S.fuego = Math.min(100, S.fuego + (def.big ? 14 : 8))
   if (S.fuego >= 100 && S.fire <= 0) startFire()
+  // En feu, chaque faute charge la FURIE ; à 100, transformation.
+  if (S.fire > 0 && S.fury <= 0) { S.furyCharge = Math.min(100, S.furyCharge + (def.big ? 12 : 7)); S.fire = Math.max(S.fire, 2.5); if (S.furyCharge >= 100) startFury() }
   const vx = victim ? victim.x : hero.x, vy = victim ? victim.y : hero.y
-  const bam = def.big ? 'BOOM' : rnd() < 0.5 ? 'BAM' : 'BIM'
+  const fanfare = victim && victim.atlas === 'musicien'
+  const bam = fanfare ? ['POUM', 'TSOIN', 'TUUUT'][(victim.marchRank || 0) % 3] : def.big ? 'BOOM' : rnd() < 0.5 ? 'BAM' : 'BIM'
+  if (fanfare) beep(['drum', 'cymbal', 'trumpet'][(victim.marchRank || 0) % 3])
   popup(vx + rr(-6, 6), vy - 56, bam, def.big ? PAL.orange : m >= 3 ? PAL.yellow : PAL.white, def.big || m >= 4)
   S.log.push({ t: S.clock, name, pts })
   // Arbitre : patience et cartons.
@@ -261,6 +269,21 @@ function startFire() {
   S.fuego = 0
   banner('¡ EN FEU !', PAL.orange)
   beep('fire')
+}
+function startFury() {
+  S.fury = 12
+  S.furies++
+  S.furyCharge = 0
+  S.fire = 12
+  S.stopAll = 0.9
+  S.freeze = 0.12
+  S.shake = 16
+  hero.act = null; hero.stun = 0
+  banner('¡¡ FURIE !!  TOUT CE QUE TU TOUCHES S\'ENVOLE', PAL.yellow)
+  for (let i = 0; i < 40; i++) S.particles.push({ x: hero.x + rr(-30, 30), y: hero.y - rr(0, 50), vx: rr(-200, 200), vy: rr(-300, -60), t: 0, life: 0.8, c: i % 3 ? PAL.yellow : PAL.white })
+  // La foule arrive : c'est maintenant qu'il faut du monde.
+  S.waveT = Math.min(S.waveT, 0.5)
+  beep('fire'); beep('card')
 }
 function freeKick(x, y, victim) {
   if (S.phase !== 'play' || ref.cardTarget) return
@@ -396,6 +419,9 @@ function hitFrench(f, name, { throwIt = false, knock = 0 } = {}) {
   const push = air ? 220 + air * 0.4 : 120
   f.vx = (dx / d) * push; f.vy = (dy / d) * push
   foul(name, f, { penalty: inBox(f) })
+  if (f.absurd && f.absurd.debris) for (let i = 0; i < 8; i++) S.debris.push({ x: f.x + rr(-10, 10), y: f.y - 20, vx: rr(-150, 150), vy: rr(-200, -60), z: 0, color: f.absurd.debris[i % f.absurd.debris.length], t: 0 })
+  if (f.role === 'calm') { ref.patience = 0; banner('LE PRESIDENT EST PAR TERRE, L\'ARBITRE CRAQUE', PAL.red) }
+  if (f.carrying) { f.carrying.carriedBy = null; f.carrying.down = 2; f.carrying = null; popup(f.x, f.y - 70, 'PLOUF', PAL.white, true) }
   if (f.hp <= 0 || throwIt || air) knockDown(f, air ? 0.9 : 0.35, air)
   for (let i = 0; i < 6; i++) S.particles.push({ x: f.x, y: f.y - 30, vx: rr(-60, 60), vy: rr(-80, -20), t: 0, life: 0.5, c: i % 2 ? PAL.yellow : PAL.white })
   beep('hit')
@@ -491,7 +517,7 @@ function heroAttack() {
 }
 function updateHero(dt) {
   const v = inputVector()
-  const speed = hero.speed * (S.fire > 0 ? 1.6 : 1)
+  const speed = hero.speed * (S.fury > 0 ? 1.9 : S.fire > 0 ? 1.6 : 1)
   if (hero.stun > 0) { hero.stun -= dt; hero.vx = hero.vy = 0 }
   else if (hero.act === 'tackle') {
     hero.vx = hero.tvx; hero.vy = hero.tvy
@@ -550,7 +576,8 @@ function updateHero(dt) {
     hero.x += hero.vx * dt; hero.y += hero.vy * dt
     const d = dirOf(v.dx, v.dy)
     if (d) hero.dir = d
-    if (S.fire > 0) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(hero, f) < 24) { hitFrench(f, 'PERCUTE'); f.vx *= 2.5; f.vy *= 2.5 }
+    if (S.fury > 0) { for (const f of [...french, ...npcs]) if (f.state === 'play' && dist(hero, f) < 30) hitFrench(f, 'SOUFFLE', { knock: 340 }); if (S.refDown <= 0 && dist(hero, ref) < 28) hitRef() }
+    else if (S.fire > 0) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(hero, f) < 24) { hitFrench(f, 'PERCUTE'); f.vx *= 2.5; f.vy *= 2.5 }
     if (S.fire > 0) hitProps('tackle')
     // Le ballon à portée : on le ramasse et on le balance loin, comme une brute.
     const wants = v.dx || v.dy // c'est le n°4 qui va au ballon, jamais l'inverse
@@ -640,9 +667,10 @@ function updateFrench(dt) {
     }
     if (f.state === 'fall') { updateFall(f, dt); continue }
     if (f.state === 'ko') {
+      if (f.carriedBy) { if (french.includes(f.carriedBy) && f.carriedBy.state === 'play') { f.x = f.carriedBy.x; f.y = f.carriedBy.y + 6; continue } f.carriedBy = null }
       // Personne ne se relève tant que le n°4 rôde : les corps s'empilent.
       f.down -= dt * (dist(f, hero) > 70 ? 1 : 0.35) // il reste au sol plus longtemps si le n°4 rôde
-      if (f.down <= 0) { f.state = 'fade'; f.fadeT = 0.9; f.ft = 0 }
+      if (f.down <= 0) { if (f.absurd && f.absurd.bounce && !f.bounced) { f.bounced = true; f.state = 'play'; f.hp = 3; f.anim = 'idle'; f.z = 0; f.vz = 0; knockDown(f, 0.5, 260); f.state = 'fall'; f.hp = 1; popup(f.x, f.y - 60, 'REBONDIT', PAL.green, true); f.down = 1.5 } else { f.state = 'fade'; f.fadeT = 0.9; f.ft = 0 } }
       continue
     }
     if (f.state === 'fade') {
@@ -671,7 +699,7 @@ function updateFrench(dt) {
       f.holdT = (f.holdT || 0) + dt
       // Il conduit un peu, puis passe (vite si le n°4 approche), et tire dès qu'il est dans la surface.
       const threat = dist(hero, f)
-      const mates = french.filter((g) => g !== f && g.state === 'play' && !g.gk && g.role !== 'fan' && g.role !== 'press' && g.role !== 'wander' && dist(g, hero) > 70 && g.x > f.x - 80 && dist(g, f) > 50 && dist(g, f) < 320)
+      const mates = french.filter((g) => g !== f && g.state === 'play' && !g.gk && !(g.intruder && g.role !== 'player') && dist(g, hero) > 70 && g.x > f.x - 80 && dist(g, f) > 50 && dist(g, f) < 320)
       if (f.x > FIELD.x + FIELD.w - 260 && Math.abs(f.y - goal.y) < 180 && (rnd() < dt * 1.5 || (f.holdT > 0.4 && f.x > FIELD.x + FIELD.w - 90))) { shoot(f, goal); f.holdT = 0 }
       else if (mates.length && f.holdT > 0.25 && (f.holdT > rr(0.9, 1.6) || (threat < 110 && rnd() < 0.35))) {
         // Le mieux placé : le plus avancé, avec un bonus pour celui qui est démarqué.
@@ -683,13 +711,25 @@ function updateFrench(dt) {
       const o = ball.owner
       target = { x: Math.min(FIELD.x + FIELD.w - 60, o.x + 150), y: clamp(o.y + (f.runner === 1 ? -90 : 90), FIELD.y + 30, FIELD.y + FIELD.h - 30) }
     } else if (!ball.owner && !f.gk) {
-      const chasers = french.filter((g) => g.state === 'play' && !g.gk && g.role !== 'fan' && g.role !== 'press' && g.role !== 'wander').sort((a, b) => dist(a, ball) - dist(b, ball)).slice(0, 2)
+      const chasers = french.filter((g) => g.state === 'play' && !g.gk && !(g.intruder && g.role !== 'player')).sort((a, b) => dist(a, ball) - dist(b, ball)).slice(0, 2)
       target = chasers.includes(f) ? { x: ball.x + ball.vx * 0.25, y: ball.y + ball.vy * 0.25, exact: true } : slotPos(f, ball.x)
     } else target = slotPos(f, ball.x)
     if (f.intruder && !carrier && !regroup) {
       if (f.role === 'fan') target = { x: ball.x + Math.cos(S.t * f.spin + f.phase) * 150, y: ball.y + Math.sin(S.t * f.spin + f.phase) * 95 } // ils tournent autour du ballon en chantant
       else if (f.role === 'press') target = { x: hero.x + Math.cos(f.phase + S.t * 0.2) * 120, y: hero.y + Math.sin(f.phase + S.t * 0.2) * 80 } // ils suivent le n°4 à distance
       else if (f.role === 'staff') { const ko = french.find((g) => g.state === 'ko'); if (ko) target = { x: ko.x + 18, y: ko.y + 4 } } // ils vont voir les blessés
+      else if (f.role === 'couple') { const pt = f.partner; if (pt && french.includes(pt)) target = pt.state === 'play' ? { x: pt.x + (f.atlas === 'marie' ? -18 : 18) + Math.sin(S.t * 0.8 + f.phase) * 40, y: pt.y + Math.cos(S.t * 0.6 + f.phase) * 30 } : { x: pt.x + 22, y: pt.y } } // ils ne se lâchent pas
+      else if (f.role === 'bird') { const dh = dist(f, hero); f.wanderT -= dt; if (dh < 110) { target = { x: f.x + (f.x - hero.x) * 3, y: f.y + (f.y - hero.y) * 3 }; f.z = Math.abs(Math.sin(S.t * 18)) * 10; f.flying = true } else { f.flying = false; f.z = 0; if (f.wanderT <= 0 || !f.wander) { f.wanderT = rr(1.5, 4); f.wander = rnd() < 0.5 ? { x: f.x, y: f.y } : { x: rr(FIELD.x + 30, FIELD.x + FIELD.w - 30), y: rr(FIELD.y + 30, FIELD.y + FIELD.h - 30) } } target = f.wander } } // ils s'envolent quand on approche
+      else if (f.role === 'patrol') { f.wanderT -= dt; if (f.wanderT <= 0 || !f.wander) { f.wanderT = rr(3, 6); f.wander = { x: rr(FIELD.x + 60, FIELD.x + FIELD.w - 60), y: rr(FIELD.y + 60, FIELD.y + FIELD.h - 60) } } target = f.wander } // le cheval patrouille lentement
+      else if (f.role === 'stretcher') {
+        // Il va chercher un blessé, le charge sur la civière et l'emmène hors du terrain.
+        if (f.carrying && (!french.includes(f.carrying) || f.carrying.state !== 'ko')) f.carrying = null
+        if (f.carrying) { const ty = f.y < FIELD.y + FIELD.h / 2 ? FIELD.y - 20 : FIELD.y + FIELD.h + 20; target = { x: f.x, y: ty }; if (Math.abs(f.y - ty) < 14) { removePlayer(f.carrying); f.carrying = null } }
+        else { const hurt = french.filter((g) => g.state === 'ko' && !g.carriedBy && g !== f).sort((a, b) => dist(a, f) - dist(b, f))[0]; if (hurt) { target = { x: hurt.x, y: hurt.y }; if (dist(f, hurt) < 14) { f.carrying = hurt; hurt.carriedBy = f } } }
+      }
+      else if (f.role === 'ballboy') { if (ball.out) target = { x: ball.x, y: ball.y, exact: true }; else { const side = f.y < FIELD.y + FIELD.h / 2 ? FIELD.y + 14 : FIELD.y + FIELD.h - 14; target = { x: clamp(ball.x, FIELD.x + 40, FIELD.x + FIELD.w - 40), y: side } } } // il longe la touche et bondit sur les ballons sortis
+      else if (f.role === 'calm') { const dh = dist(f, hero); target = dh > 50 ? { x: hero.x, y: hero.y } : { x: f.x, y: f.y }; if (dh < 70) { const nd = dirOf(hero.x - f.x, hero.y - f.y); if (nd) f.dir = nd } } // il vient te raisonner, les mains en avant
+      else if (f.role === 'march') { f.marchX += f.marchDir * 45 * dt; if (f.marchX > FIELD.x + FIELD.w - 30 || f.marchX < FIELD.x + 30) f.marchDir *= -1; target = { x: f.marchX - (f.marchRank || 0) * 22 * f.marchDir, y: f.marchY } } // la fanfare traverse au pas
       else if (f.role === 'wander') { f.wanderT -= dt; if (f.wanderT <= 0 || !f.wander) { f.wanderT = rr(0.6, 1.6); f.wander = { x: rr(FIELD.x + 30, FIELD.x + FIELD.w - 30), y: rr(FIELD.y + 30, FIELD.y + FIELD.h - 30) } } target = f.wander } // la poule et le streaker courent n'importe où
     }
     if (!carrier && !regroup && !target.exact) { target = { x: target.x + f.jx, y: target.y + f.jy } }
@@ -702,9 +742,9 @@ function updateFrench(dt) {
     const sp = f.speed * (carrier ? 0.95 : 1) * (regroup ? (S.phase === 'goal' ? 0.8 : 1.3) : 1)
     if (d > 6) { f.vx = (dx / d) * sp; f.vy = (dy / d) * sp } else { f.vx = f.vy = 0 }
     // Séparation entre Français.
-    for (const g of french) if (g !== f && g.state === 'play') { const dd = dist(f, g); if (dd < 26 && dd > 0) { f.vx += ((f.x - g.x) / dd) * 110; f.vy += ((f.y - g.y) / dd) * 110 } }
+    for (const g of french) if (g !== f && g.state === 'play') { const dd = dist(f, g); const rad = (g.r > 12 ? g.r + 14 : 26); if (dd < rad && dd > 0) { const k = g.r > 12 ? 260 : 110; f.vx += ((f.x - g.x) / dd) * k; f.vy += ((f.y - g.y) / dd) * k } }
     f.x += f.vx * dt; f.y += f.vy * dt
-    const m = ball.out && target.exact ? -16 : 8
+    const m = ball.out && target.exact ? -16 : f.role === 'ballboy' ? 2 : 8
     f.x = clamp(f.x, FIELD.x + m, FIELD.x + FIELD.w - m)
     f.y = clamp(f.y, FIELD.y + m, FIELD.y + FIELD.h - m)
     const moving = Math.hypot(f.vx, f.vy) > 15
@@ -714,10 +754,11 @@ function updateFrench(dt) {
     if (anim !== f.anim) { f.anim = anim; f.ft = 0 }
     f.frame = Math.floor(f.ft * (moving ? 8 : 4))
     // Prise de balle.
-    if (ball.out && !ball.owner && dist(f, ball) < 16 && !f.gk) {
+    if (ball.out && !ball.owner && dist(f, ball) < 16 && !f.gk && f.role !== 'bird') {
       // Remise en jeu : à deux mains, vers un coéquipier ou le centre, bien moins fort que le n°4.
       const mate = french.filter((g) => g !== f && g.state === 'play' && !g.gk && dist(g, f) < 300).sort((a, b) => dist(a, f) - dist(b, f))[0]
-      const tx = mate ? mate.x : FIELD.x + FIELD.w / 2, ty = mate ? mate.y : FIELD.y + FIELD.h / 2
+      const anywhere = f.role === 'ballboy'
+      const tx = anywhere ? rr(FIELD.x + 40, FIELD.x + FIELD.w - 40) : mate ? mate.x : FIELD.x + FIELD.w / 2, ty = anywhere ? rr(FIELD.y + 40, FIELD.y + FIELD.h - 40) : mate ? mate.y : FIELD.y + FIELD.h / 2
       const dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy) || 1
       ball.out = false; ball.noTake = 0.3; ball.vx = (dx / d) * 380; ball.vy = (dy / d) * 380; ball.z = 20; ball.vz = 240; ball.air = 0.5
       ball.x = clamp(f.x, FIELD.x + 6, FIELD.x + FIELD.w - 6); ball.y = clamp(f.y, FIELD.y + 6, FIELD.y + FIELD.h - 6)
@@ -759,7 +800,7 @@ function removePlayer(f) {
   else {
     if (i >= 0) french.splice(i, 1)
     // À partir du 12e défoncé, c'est n'importe qui qui entre : un absurde pour chaque sortant.
-    if (S.koCount >= 12 && french.filter((g) => g.state === 'play').length < 16) spawnAbsurd(ABSURD[S.intruders % ABSURD.length], f)
+    if (S.koCount >= 12 && french.filter((g) => g.state === 'play').length < (S.fury > 0 ? 44 : 16)) spawnAbsurd(ABSURD[S.intruders % ABSURD.length], f)
   }
 }
 function substitute(f) {
@@ -786,7 +827,18 @@ const ABSURD = [
   { atlas: 'crs', name: 'FAUTE SUR UN CRS', behave: 'press', speed: 140, overlay: 'casque', banner: 'LES CRS INTERVIENNENT' },
   { atlas: 'streaker', name: 'FAUTE SUR LE STREAKER', behave: 'wander', speed: 240, overlay: 'censure', banner: 'UN STREAKER !' },
   { atlas: 'mamie', name: 'FAUTE SUR UNE MAMIE', behave: 'player', speed: 55, overlay: 'chignon', banner: 'UNE MAMIE ENTRE EN JEU' },
+  { atlas: 'hotdog', name: 'FAUTE SUR LE VENDEUR DE HOT-DOGS', behave: 'wander', speed: 140, banner: 'LE VENDEUR DE HOT-DOGS TRAVERSE', debris: [PAL.redD, PAL.tan, PAL.amber] },
+  { atlas: 'marie', name: 'FAUTE SUR LE MARIE', behave: 'couple', speed: 90, banner: 'LES MARIES SE SONT TROMPES DE SALLE', group: 'couple' },
+  { atlas: 'commentateur', name: 'FAUTE SUR LE COMMENTATEUR', behave: 'press', speed: 120, banner: 'LE COMMENTATEUR DESCEND SUR LA PELOUSE' },
+  { atlas: 'pigeon', name: 'FAUTE SUR UN PIGEON', behave: 'bird', speed: 250, banner: 'DES PIGEONS', group: 3, hp: 1, r: 7 },
+  { atlas: 'cheval', name: 'FAUTE SUR LE GENDARME A CHEVAL', behave: 'patrol', speed: 65, banner: 'LA GENDARMERIE A CHEVAL', hp: 6, r: 18 },
+  { atlas: 'civiere', name: 'FAUTE SUR LE KINE', behave: 'stretcher', speed: 150, banner: 'LE KINE ARRIVE AVEC LA CIVIERE' },
+  { atlas: 'ramasseur', name: 'FAUTE SUR LE RAMASSEUR DE BALLES', behave: 'ballboy', speed: 240, banner: 'UN RAMASSEUR DE BALLES TROP RAPIDE' },
+  { atlas: 'president', name: 'FAUTE SUR LE PRESIDENT', behave: 'calm', speed: 60, banner: 'LE PRESIDENT DE LA FEDERATION DESCEND CALMER LE JEU' },
+  { atlas: 'musicien', name: 'FAUTE SUR LA FANFARE', behave: 'march', speed: 50, banner: 'LA FANFARE ENTRE AU PAS', group: 3 },
+  { atlas: 'dino', name: 'FAUTE SUR LE DINOSAURE', behave: 'wander', speed: 170, banner: 'UN DINOSAURE GONFLABLE', bounce: true },
 ]
+const MARIEE = { atlas: 'mariee', name: 'FAUTE SUR LA MARIEE', behave: 'couple', speed: 90 }
 function spawnAbsurd(kind, near) {
   const f = makeFrench(11 + S.intruders, nextLook++)
   S.intruders++
@@ -795,8 +847,13 @@ function spawnAbsurd(kind, near) {
   f.x = clamp((near ? near.x : ball.x) + rr(-220, 220), FIELD.x + 20, FIELD.x + FIELD.w - 20)
   f.y = side ? FIELD.y - 30 - rr(0, 40) : FIELD.y + FIELD.h + 30 + rr(0, 40)
   f.dir = side ? 's' : 'n'
+  if (kind.hp) f.hp = kind.hp
+  if (kind.r) f.r = kind.r
   french.push(f)
-  banner(kind.banner, PAL.pink)
+  if (kind.banner) banner(kind.banner, PAL.pink)
+  if (kind.group === 'couple') { const m = spawnAbsurd(MARIEE, f); m.x = f.x + 18; m.y = f.y; f.partner = m; m.partner = f }
+  else if (typeof kind.group === 'number') for (let k = 1; k < kind.group; k++) { const g2 = spawnAbsurd({ ...kind, group: 0, banner: null }, f); g2.x = f.x + k * 22; g2.y = f.y; g2.marchRank = k }
+  if (kind.behave === 'march') { f.marchX = f.x; f.marchY = clamp(f.y, FIELD.y + 60, FIELD.y + FIELD.h - 60); f.marchDir = f.x < FIELD.x + FIELD.w / 2 ? 1 : -1 }
   return f
 }
 
@@ -828,11 +885,15 @@ function updateWaves(dt) {
   if (S.koCount < 12) return // les onze premiers tombent, puis n'importe qui entre
   S.waveT -= dt
   const alive = french.filter((f) => f.state === 'play').length
-  if (S.waveT > 0 || alive > 16) return
+  const late = S.clock > RUN * 0.65
+  const crowd = S.fury > 0 || late
+  if (S.waveT > 0 || alive > (crowd ? 44 : 16)) return
   const w = WAVES[Math.min(S.wave, WAVES.length - 1)]
   S.wave++
-  S.waveT = Math.max(8, 15 - S.wave)
-  for (let k = 0; k < w.n; k++) { if (k % 2) spawnIntruder(w.role, k); else spawnAbsurd(ABSURD[(S.intruders + k) % ABSURD.length]) }
+  S.waveT = crowd ? rr(1.2, 2.5) : Math.max(8, 15 - S.wave)
+  const n = crowd ? w.n + 4 : w.n
+  for (let k = 0; k < n; k++) { if (k % 2) spawnIntruder(w.role, k); else spawnAbsurd(ABSURD[(S.intruders + k) % ABSURD.length]) }
+  if (crowd && S.wave % 3 === 0) banner('LA FOULE DESCEND SUR LA PELOUSE', PAL.pink)
   S.shake = Math.max(S.shake, 5)
 }
 
@@ -939,7 +1000,7 @@ function updateRef(dt) {
 
 /* ---------- boucle ---------- */
 function startMatch() {
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -972,7 +1033,8 @@ function update(dt) {
   // Combo, feu.
   S.comboAt += dt
   if (S.comboT > 0 && S.fire <= 0) { S.comboT -= dt; if (S.comboT <= 0) { S.combo = 0; S.tier = 1 } }
-  if (S.fire > 0) { S.fire -= dt; if (S.fire <= 0) { banner('FIN DU FEU', PAL.grey1) } }
+  if (S.fury > 0) { S.fury -= dt; S.fire = Math.max(S.fire, S.fury); if (S.fury <= 0) { banner('FIN DE LA FURIE', PAL.grey1); S.fire = 0 } }
+  if (S.fire > 0) { S.fire -= dt; if (S.fire <= 0) { banner('FIN DU FEU', PAL.grey1); S.furyCharge = 0 } }
   else S.fuego = Math.max(0, S.fuego - 2 * dt)
   // Effets.
   for (const p of S.popups) p.t += dt
@@ -1040,14 +1102,15 @@ function drawPitch() {
   }
 }
 function drawShadow(x, y, rx = 12) { g.fillStyle = 'rgba(24,20,37,0.22)'; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), rx, 4, 0, 0, Math.PI * 2); g.fill() }
-function drawFlame(x, y, t) {
-  // Aura en briques derrière le n°4 : goutte, langues, particules.
-  const F = [PAL.redD, PAL.red, PAL.orange, PAL.amber, PAL.yellow]
+function drawFlame(x, y, t, fury = false) {
+  // Aura en briques derrière le n°4 : goutte, langues, particules. Dorée et deux fois plus haute en furie.
+  const F = fury ? [PAL.amber, PAL.yellow, PAL.yellow, PAL.white, PAL.white] : [PAL.redD, PAL.red, PAL.orange, PAL.amber, PAL.yellow]
   const fr = Math.floor(t * 12) % 4
-  for (let i = -16; i <= 16; i += 2) {
-    const h = 26 + 10 * Math.abs(Math.sin(i * 0.4 + fr)) + (Math.abs(i) < 6 ? 14 : 0)
+  const span = fury ? 24 : 16
+  for (let i = -span; i <= span; i += 2) {
+    const h = (fury ? 44 : 26) + 10 * Math.abs(Math.sin(i * 0.4 + fr)) + (Math.abs(i) < 6 ? (fury ? 26 : 14) : 0)
     for (let j = 0; j < h; j += 2) {
-      const d = Math.min(Math.abs(i) / 16, 1) * 0.6 + (j / h) * 0.6
+      const d = Math.min(Math.abs(i) / span, 1) * 0.6 + (j / h) * 0.6
       const c = F[clamp(4 - Math.floor(d * 5), 0, 4)]
       g.fillStyle = c
       g.fillRect(Math.round(x + i), Math.round(y - 4 - j), 2, 2)
@@ -1091,7 +1154,7 @@ function render() {
   // Ombres et marquage.
   for (const e of ents) if (!e.isProp && e.state !== 'ko' && e.state !== 'fade' && !(e === ref && ref.landed && ref.down > 0)) drawShadow(e.x + cx, e.y + cy + 1, Math.max(6, (e.state === 'fall' ? 14 : 12) - (e.z || 0) * 0.15))
   drawShadow(ball.x + cx, ball.y + cy + 2, Math.max(2, 4 - (ball.z || 0) / 40))
-  if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t)
+  if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t, S.fury > 0)
   for (const e of ents) {
     if (e.isProp) { drawProp(e.p, cx, cy); continue }
     if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
@@ -1100,7 +1163,7 @@ function render() {
     if (e === ref && ref.down > 0) { if (!ref.landed) { g.save(); g.translate(e.x + cx, e.y + cy - ref.z); g.rotate(Math.sin(e.ft * 9) * 0.6); drawSprite(g, 'arbitre', 'fall', e.dir, e.frame, 0, 0); g.restore() } else { drawSprite(g, 'arbitre', 'ko', e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t) } continue }
     let anim = e.anim
     if (e === hero && hero.act && hero.act !== 'tackle') anim = hero.act === 'ballthrow' ? 'throw' : hero.act
-    drawSprite(g, e.atlas, anim, e.dir, e.frame, e.x + cx, e.y + cy - (e.z || 0))
+    drawSprite(g, e === hero && S.fury > 0 && ATLAS['paraguay-furie'] ? 'paraguay-furie' : e.atlas, anim, e.dir, e.frame, e.x + cx, e.y + cy - (e.z || 0))
     if (e.card === 1) drawCard(e.x + cx, e.y + cy - 58 + Math.round(Math.sin(S.t * 6 + e.cardBob)), dist(e, hero) < 60 && Math.floor(S.t * 6) % 2 === 0)
     if (e.stun > 0 && e.team === 'fra') drawStars(e.x + cx, e.y + cy - 52, S.t, 2)
   }
@@ -1150,9 +1213,9 @@ function drawHUD() {
   // FUEGO et patience, en bas.
   g.fillStyle = 'rgba(24,20,37,0.85)'
   g.fillRect(6, H - 24, 150, 18)
-  text('FUEGO', 10, H - 19, { size: 7, color: PAL.orange })
+  text(S.fury > 0 ? 'FURIE' : S.fire > 0 ? 'FURIE ?' : 'FUEGO', 10, H - 19, { size: 7, color: S.fury > 0 ? PAL.white : S.fire > 0 ? PAL.yellow : PAL.orange })
   g.fillStyle = PAL.slateD; g.fillRect(44, H - 18, 104, 7)
-  g.fillStyle = S.fire > 0 ? PAL.yellow : PAL.orange; g.fillRect(45, H - 17, Math.round(102 * (S.fire > 0 ? S.fire / 6 : S.fuego / 100)), 5)
+  g.fillStyle = S.fury > 0 ? (Math.floor(S.t * 10) % 2 ? PAL.white : PAL.yellow) : S.fire > 0 ? PAL.yellow : PAL.orange; g.fillRect(45, H - 17, Math.round(102 * (S.fury > 0 ? S.fury / 12 : S.fire > 0 ? S.furyCharge / 100 : S.fuego / 100)), 5)
   g.fillStyle = 'rgba(24,20,37,0.85)'
   g.fillRect(W - 156, H - 24, 150, 18)
   text('ARBITRE', W - 152, H - 19, { size: 7, color: ref.patience <= 0 ? PAL.red : PAL.grey1 })
@@ -1199,7 +1262,7 @@ function drawEnd() {
   const lines = [
     ['Fautes sifflees', S.fouls], ['  dont grosses fautes', S.bigFouls], ["  dont sur l'arbitre", S.refHits],
     ['Cartons jaunes (France)', S.yellows], ['Cartons rouges (France)', S.reds], ['Francais defonces', S.koCount + '/22' + (S.teamDoneAt ? '   (equipe entiere en ' + S.teamDoneAt.toFixed(1) + ' s)' : '')],
-    ['Boosts EN FEU', S.fires], ['Combo maximum', '×' + S.maxCombo], ['Temps additionnel', '+' + S.added],
+    ['Boosts EN FEU', S.fires], ['Furies', S.furies], ['Combo maximum', '×' + S.maxCombo], ['Temps additionnel', '+' + S.added],
     ['Buts encaisses', S.goals + '   (sans importance)'],
   ]
   lines.forEach(([k, v], i) => { text(k, 90, 80 + i * 13, { size: 8, color: PAL.grey1 }); text(String(v), W - 90, 80 + i * 13, { size: 8, align: 'right' }) })
@@ -1228,8 +1291,10 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all(['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie'].map(loadAtlas)).then(() => {
+Promise.all(['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)).then(() => {
   fontReady = true
+  // Le n°4 en furie : même atlas, teinté or.
+  { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
   window.__carton = { S, hero, ref, ball, startMatch, foul, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
