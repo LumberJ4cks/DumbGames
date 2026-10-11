@@ -140,6 +140,18 @@ const paintLook = (look) => (p) => recolor(p, look, { nearest })
 FR.forEach((look, i) => atlas('france-' + i, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), paintLook(look)))
 // Le n°4.
 atlas('paraguay', pick('stance', 'run', 'throw', 'tackle', 'punch', 'knee', 'kick', 'flykick', 'header', 'hit'), (p) => paraguay(p, { nearest, look: { skin: 'skinTan', hair: 'hairBrown', band: true, beard: true } }))
+// Les absurdes, qui entrent à partir du 12e Français défoncé : même pantin, kits improbables.
+const ABSURD = {
+  banane: { kit: { jersey: 'yellow', shorts: 'yellow', socks: 'yellow', boots: 'yellow' }, look: { skin: 'skinPale', hair: 'yellow' } },
+  echarpe: { kit: { jersey: 'blueDark', shorts: 'navy', socks: 'white', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairBrown' } },
+  supporter: { kit: { jersey: 'grass', shorts: 'navy', socks: 'white', boots: 'white' }, look: { skin: 'skinTan', hair: 'hairBlack', beard: true } },
+  poule: { kit: { jersey: 'white', shorts: 'white', socks: 'yellow', boots: 'yellow' }, look: { skin: 'white', hair: 'red' } },
+  mascotte: { kit: { jersey: 'blueLight', shorts: 'blueLight', socks: 'red', boots: 'red' }, look: { skin: 'blueLight', hair: 'red' } },
+  crs: { kit: { jersey: 'navy', shorts: 'navy', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'black' } },
+  streaker: { kit: { jersey: 'skinPale', shorts: 'skinPale', socks: 'skinPale', boots: 'skinPale' }, look: { skin: 'skinPale', hair: 'hairRed' } },
+  mamie: { kit: { jersey: 'purple', shorts: 'black', socks: 'white', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } },
+}
+for (const [name, d] of Object.entries(ABSURD)) atlas(name, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), (p) => rekit(p, { nearest, kit: d.kit, look: d.look }))
 // L'arbitre : jaune fluo, cheveux gris. Le gardien : violet, chauve, barbu, avec son plongeon.
 atlas('arbitre', { ...pick('idle', 'run', 'walk', 'hit', 'fall', 'ko'), card: allDirs(CARD.map((p) => paintRefCard(p, RAMP.yellow))), redcard: allDirs(CARD.map((p) => paintRefCard(p, RAMP.red))) }, (p) => p.painted ? p : rekit(p, { nearest, kit: { jersey: 'yellow', shorts: 'black', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } }))
 atlas('gardien', { ...pick('idle', 'run', 'hit', 'fall', 'ko'), dive: A.dive }, (p) => rekit(p, { nearest, kit: { jersey: 'purple', shorts: 'black', socks: 'purple', boots: 'red' }, look: { skin: 'skinDark', hair: 'hairBlack', beard: true } }))
