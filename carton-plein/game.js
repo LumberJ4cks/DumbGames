@@ -885,6 +885,7 @@ function startMatch() {
   resetTeam()
   makeProps()
   kickoff()
+  S.cam.x = clamp(hero.x - W / 2, 0, FIELD.x * 2 + FIELD.w - W); S.cam.y = clamp(hero.y - H / 2, 0, FIELD.y * 2 + FIELD.h - H)
   beep('whistle')
 }
 function update(dt) {
@@ -922,10 +923,11 @@ function update(dt) {
   S.particles = S.particles.filter((p) => p.t < p.life)
   S.shake *= Math.pow(0.02, dt)
   // Caméra : suit le ballon, tirée vers le héros.
-  const kb = S.stopAll > 0 ? 0.8 : 0.45
-  const tx = ball.x * kb + hero.x * (1 - kb) - W / 2, ty = ball.y * kb + hero.y * (1 - kb) - H / 2
-  S.cam.x += (clamp(tx, 0, FIELD.x * 2 + FIELD.w - W) - S.cam.x) * Math.min(1, dt * 6)
-  S.cam.y += (clamp(ty, 0, FIELD.y * 2 + FIELD.h - H) - S.cam.y) * Math.min(1, dt * 6)
+  // Caméra accrochée au n°4, toujours au centre, avec un léger retard lissé de quelques pixels.
+  const tx = hero.x + hero.vx * 0.05 - W / 2, ty = hero.y + hero.vy * 0.05 - H / 2
+  const k = 1 - Math.pow(0.001, dt) // ~63 % du chemin en 0,14 s, jamais saccadé
+  S.cam.x += (clamp(tx, 0, FIELD.x * 2 + FIELD.w - W) - S.cam.x) * k
+  S.cam.y += (clamp(ty, 0, FIELD.y * 2 + FIELD.h - H) - S.cam.y) * k
 }
 function endMatch() {
   S.phase = 'end'
