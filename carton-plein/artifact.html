@@ -1,0 +1,10 @@
+<title>Carton plein</title>
+<style>
+  /* Jeu plein écran, pixel art, une seule ambiance : le noir de la collection DumbGames. */
+  :root { --bg: #181425; --fg: #ffffff; color-scheme: dark; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--fg); margin: 0; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; display: flex; align-items: center; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; outline: none; }
+</style>
+<canvas id="c" width="640" height="360" tabindex="0"></canvas>
+<script type="module" src="game.js"></script>
