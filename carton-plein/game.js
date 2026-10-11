@@ -114,7 +114,7 @@ function resetTeam() {
 }
 function slotPos(f, ballX) {
   const [fx, fy] = FORMATION[f.slot % FORMATION.length]
-  const cx = FIELD.x + FIELD.w * 0.5 + clamp(ballX - (FIELD.x + FIELD.w * 0.5), -FIELD.w * 0.3, FIELD.w * 0.3) * 0.7
+  const cx = FIELD.x + FIELD.w * 0.5 + clamp(ballX - (FIELD.x + FIELD.w * 0.5), -FIELD.w * 0.3, FIELD.w * 0.38) * 0.9 + (ball.owner && ball.owner.team === 'fra' ? 70 : 0)
   return { x: f.gk ? FIELD.x + 30 : cx + fx * FIELD.w, y: FIELD.y + FIELD.h * 0.5 + fy * FIELD.h }
 }
 function kickoff() {
@@ -603,6 +603,15 @@ function updateFrench(dt) {
   const goal = { x: FIELD.x + FIELD.w + 6, y: FIELD.y + FIELD.h / 2 }
   const regroup = S.phase === 'freekick' || S.phase === 'kickoff'
   const frozen = S.phase === 'card'
+  // Deux appels de balle devant le porteur, renouvelés à chaque changement de porteur.
+  const o = ball.owner
+  if (o && o.team === 'fra' && !o.intruder) {
+    if (S.lastOwner !== o) {
+      S.lastOwner = o
+      for (const g of french) g.runner = 0
+      french.filter((g) => g !== o && g.state === 'play' && !g.gk && !g.intruder && g.x > o.x - 120).sort((a, b) => dist(a, o) - dist(b, o)).slice(0, 2).forEach((g, i) => { g.runner = i + 1 })
+    }
+  } else if (S.lastOwner) { S.lastOwner = null; for (const g of french) g.runner = 0 }
   for (const f of french) {
     f.ft += dt
     if (f.state === 'leaving') {
@@ -638,19 +647,26 @@ function updateFrench(dt) {
       target = near.includes(f) ? { x: ball.x + (f.slot % 2 ? -1 : 1) * (16 + (f.slot % 3) * 14), y: ball.y + ((f.slot % 4) - 1.5) * 16 } : slotPos(f, ball.x)
     } else if (carrier) {
       target = { x: goal.x, y: goal.y + (f.slot % 2 ? -30 : 30) }
-      // Passe quand le n°4 approche, tir dans la surface.
+      f.holdT = (f.holdT || 0) + dt
+      // Il conduit un peu, puis passe (vite si le n°4 approche), et tire dès qu'il est dans la surface.
       const threat = dist(hero, f)
-      if (f.x > FIELD.x + FIELD.w - 300 && Math.abs(f.y - goal.y) < 200 && rnd() < 0.15) shoot(f, goal)
-      else if (threat < 95 && rnd() < 0.3) {
-        const mate = french.filter((g) => g !== f && g.state === 'play' && !g.gk && dist(g, hero) > 80 && g.x > f.x - 60).sort((a, b) => dist(a, goal) - dist(b, goal))[0]
-        if (mate) pass(f, mate)
+      const mates = french.filter((g) => g !== f && g.state === 'play' && !g.gk && !g.intruder && dist(g, hero) > 70 && g.x > f.x - 80 && dist(g, f) > 50 && dist(g, f) < 320)
+      if (f.x > FIELD.x + FIELD.w - 260 && Math.abs(f.y - goal.y) < 180 && (rnd() < dt * 1.5 || f.x > FIELD.x + FIELD.w - 90)) { shoot(f, goal); f.holdT = 0 }
+      else if (mates.length && (f.holdT > rr(0.9, 1.6) || (threat < 110 && rnd() < 0.35))) {
+        // Le mieux placé : le plus avancé, avec un bonus pour celui qui est démarqué.
+        const mate = mates.sort((a, b) => (b.x - dist(b, hero) * 0.3) - (a.x - dist(a, hero) * 0.3))[0]
+        pass(f, mate); f.holdT = 0
       }
+    } else if (ball.owner && ball.owner.team === 'fra' && !f.gk && !f.intruder && f.runner) {
+      // Appel : deux coureurs se projettent devant le porteur.
+      const o = ball.owner
+      target = { x: Math.min(FIELD.x + FIELD.w - 60, o.x + 150), y: clamp(o.y + (f.runner === 1 ? -90 : 90), FIELD.y + 30, FIELD.y + FIELD.h - 30) }
     } else if (f.intruder && dist(f, hero) < 260) {
       // Les intrus ne jouent pas au foot : ils foncent sur le n°4, et prennent cher.
       target = { x: hero.x + (f.slot % 2 ? -18 : 18), y: hero.y + ((f.slot % 3) - 1) * 14 }
     } else if (!ball.owner && !f.gk) {
-      const chaser = french.filter((g) => g.state === 'play' && !g.gk).sort((a, b) => dist(a, ball) - dist(b, ball))[0]
-      target = chaser === f ? { x: ball.x, y: ball.y } : slotPos(f, ball.x)
+      const chasers = french.filter((g) => g.state === 'play' && !g.gk && !g.intruder).sort((a, b) => dist(a, ball) - dist(b, ball)).slice(0, 2)
+      target = chasers.includes(f) ? { x: ball.x + ball.vx * 0.25, y: ball.y + ball.vy * 0.25 } : slotPos(f, ball.x)
     } else target = slotPos(f, ball.x)
     if (f.gk) target = { x: FIELD.x + 30, y: clamp(ball.y, FIELD.y + FIELD.h / 2 - 50, FIELD.y + FIELD.h / 2 + 50) }
     // Évitement léger du n°4 pour les non-porteurs.
@@ -678,15 +694,17 @@ function updateFrench(dt) {
 }
 function pass(from, to) {
   ball.owner = null
-  const dx = to.x - from.x, dy = to.y - from.y
+  S.passes = (S.passes || 0) + 1
+  const dx = to.x + to.vx * 0.25 - from.x, dy = to.y + to.vy * 0.25 - from.y
   const d = Math.hypot(dx, dy) || 1
-  const v = Math.min(480, 220 + d * 1.4)
+  const v = Math.min(640, 260 + d * 1.6)
   ball.vx = (dx / d) * v; ball.vy = (dy / d) * v
   ball.x = from.x + (dx / d) * 10; ball.y = from.y + (dy / d) * 10
   from.stun = 0.15
 }
 function shoot(from, goal) {
   ball.owner = null
+  S.shots = (S.shots || 0) + 1
   const ty = goal.y + rr(-GOAL_H / 2 + 12, GOAL_H / 2 - 12)
   const dx = goal.x + 30 - from.x, dy = ty - from.y
   const d = Math.hypot(dx, dy) || 1
