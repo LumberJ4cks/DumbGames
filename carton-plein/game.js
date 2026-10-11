@@ -91,7 +91,7 @@ const S = {
   phase: 'title', // title | play | kickoff | freekick | goal | end
   t: 0, clock: 0, added: 0, addedShown: false,
   score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0,
-  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, refDown: 0, wave: 0, waveT: 9, intruders: 0,
+  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, refDown: 0, wave: 0, waveT: 9, intruders: 0, stopAll: 0,
   popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
   phaseT: 0,
@@ -202,7 +202,7 @@ function foul(name, victim, extra = {}) {
   S.comboT = 3
   const m = comboMult()
   S.comboAt = 0
-  if (m > S.tier) { S.tier = m; if (m >= 2) { banner('COMBO ' + TIERS[m - 1] + ' ×' + m, m >= 4 ? PAL.orange : PAL.yellow); S.shake = Math.max(S.shake, 8) } }
+  if (m > S.tier) { S.tier = m; S.shake = Math.max(S.shake, 8) }
   S.maxCombo = Math.max(S.maxCombo, m)
   pts = Math.round(pts * m)
   S.score += pts
@@ -211,8 +211,8 @@ function foul(name, victim, extra = {}) {
   if (m >= 3) S.fuego = Math.min(100, S.fuego + (def.big ? 14 : 8))
   if (S.fuego >= 100 && S.fire <= 0) startFire()
   const vx = victim ? victim.x : hero.x, vy = victim ? victim.y : hero.y
-  popup(vx, vy - 54, name + (mods.length ? ' ' + mods.join(' ') : ''), def.big ? PAL.orange : PAL.white, def.big)
-  popup(vx, vy - 42, '+' + pts, PAL.yellow)
+  const bam = def.big ? 'BOOM' : rnd() < 0.5 ? 'BAM' : 'BIM'
+  popup(vx + rr(-6, 6), vy - 56, bam, def.big ? PAL.orange : m >= 3 ? PAL.yellow : PAL.white, def.big || m >= 4)
   S.log.push({ t: S.clock, name, pts })
   // Arbitre : patience et cartons.
   if (S.refDown <= 0 && name !== "FAUTE SUR L'ARBITRE" && !def.noWhistle) {
@@ -240,7 +240,6 @@ function giveCard(victim) {
     S.yellows++
     S.score += 1000
     banner('CARTON JAUNE POUR LA FRANCE', PAL.yellow)
-    popup(victim.x, victim.y - 66, 'SIMULATION !', PAL.yellow, true)
   } else {
     victim.card = 2
     S.reds++
@@ -308,7 +307,7 @@ function breakProp(p, how) {
   p.broken = true
   if (p.kind === 'goal') foul('LA CAGE EST PAR TERRE', null)
   else if (p.kind === 'bench') { foul('FAUTE SUR LE BANC', null); for (const n of npcs) if (n.role === 'sub' && n.state === 'play') { n.vx = rr(-150, 150); n.vy = rr(-120, -60); knockDown(n, 0.4) } }
-  else { foul('CASSE', null); popup(c.x, c.y - 30, p.kind === 'board' ? p.label + ' PAR TERRE' : p.kind === 'flag' ? 'DRAPEAU ARRACHE' : p.kind === 'camera' ? 'CAMERA AU SOL' : 'GLACIERE RENVERSEE', PAL.white, true) }
+  else { foul('CASSE', null); popup(c.x, c.y - 30, 'CRAC', PAL.white, true) }
 }
 function hitBoard(b) {
   const p = props.filter((q) => q.kind === 'board' && q.hp > 0).sort((a, c) => propDist(b, a) - propDist(b, c))[0]
@@ -319,7 +318,7 @@ function updateNpcs(dt) {
     n.ft += dt
     if (n.state === 'fall') { updateFall(n, dt); continue }
     if (n.state === 'ko') { if (dist(n, hero) > 70) n.down -= dt; if (n.down <= 0) { n.state = 'play'; n.hp = 3; n.anim = 'idle' } continue }
-    if (n.stun > 0) { n.stun -= dt; n.x += n.vx * dt; n.y += n.vy * dt; n.vx *= 0.85; n.vy *= 0.85; n.frame = Math.floor(n.ft * 14); continue }
+    if (n.stun > 0) { n.stun -= dt; n.x += n.vx * dt; n.y += n.vy * dt; n.vx *= 0.85; n.vy *= 0.85; n.frame = Math.floor(n.ft * 10); continue }
     let target = null
     if (n.role === 'kine') {
       const hurt = french.find((f) => f.state === 'ko')
@@ -333,8 +332,8 @@ function updateNpcs(dt) {
     if (target) {
       const dx = target.x - n.x, dy = target.y - n.y, d = Math.hypot(dx, dy)
       if (d > 6) { n.vx = (dx / d) * n.speed; n.vy = (dy / d) * n.speed; n.x += n.vx * dt; n.y += n.vy * dt; const nd = dirOf(dx, dy); if (nd) n.dir = nd; n.anim = 'run' } else { n.vx = n.vy = 0; n.anim = 'idle' }
-      n.frame = Math.floor(n.ft * (n.anim === 'run' ? 12 : 6))
-    } else n.frame = Math.floor(n.ft * 6)
+      n.frame = Math.floor(n.ft * (n.anim === 'run' ? 8 : 4))
+    } else n.frame = Math.floor(n.ft * 4)
   }
 }
 function drawProp(p, cx, cy) {
@@ -419,7 +418,6 @@ function dominoes(f) {
     g.vx = f.vx * 0.8 + rr(-40, 40); g.vy = f.vy * 0.8 + rr(-40, 40)
     knockDown(g, 0.5, f.z > 6 ? 160 : 0)
     foul('DOMINO', g)
-    popup(g.x, g.y - 60, 'DOMINO', PAL.white, true)
   }
 }
 function updateFall(f, dt) {
@@ -429,7 +427,7 @@ function updateFall(f, dt) {
     f.z += f.vz * dt; f.vz -= 900 * dt
     if (f.z <= 0 && f.vz < 0) { f.z = 0; f.vz = 0; f.vx *= 0.4; f.vy *= 0.4; S.shake = Math.max(S.shake, 4); for (let i = 0; i < 6; i++) S.particles.push({ x: f.x + rr(-8, 8), y: f.y, vx: rr(-50, 50), vy: rr(-40, -5), t: 0, life: 0.4, c: PAL.sand }) }
   } else { f.vx *= 0.92; f.vy *= 0.92 }
-  f.frame = Math.floor(f.ft * 14)
+  f.frame = Math.floor(f.ft * 10)
   dominoes(f)
   f.x = clamp(f.x, FIELD.x - 30, FIELD.x + FIELD.w + 30)
   f.y = clamp(f.y, FIELD.y - 40, FIELD.y + FIELD.h + 60)
@@ -502,7 +500,7 @@ function updateHero(dt) {
         const behind = (f.dir.includes('e') && hero.x < f.x) || (f.dir.includes('w') && hero.x > f.x)
         const late = hero.actT < 0.15
         hitFrench(f, late ? 'SEMELLE' : behind ? 'PAR DERRIERE' : 'TACLE')
-        if (hero.tackled.size === 2) { S.score += 300 * comboMult(); popup(hero.x, hero.y - 70, 'CISEAUX +300', PAL.orange, true) }
+        if (hero.tackled.size === 2) { S.score += 300 * comboMult(); popup(hero.x, hero.y - 70, 'BOOM BOOM', PAL.orange, true) }
       }
     }
     if (S.refDown <= 0 && !hero.tackled.has(ref) && dist(hero, ref) < 22) { hero.tackled.add(ref); hitRef() }
@@ -568,7 +566,7 @@ function updateHero(dt) {
   const anim = hero.act === 'tackle' ? 'tackle' : hero.act === 'ballthrow' ? 'throw' : hero.act ? hero.act : moving ? 'run' : 'stance'
   if (anim !== hero.anim) { hero.anim = anim; hero.frame = 0; hero.ft = 0 }
   hero.ft += dt
-  const fps = anim === 'run' ? 12 : anim === 'throw' ? 14 : 8
+  const fps = anim === 'run' ? 8 : anim === 'throw' ? 10 : 6
   hero.frame = Math.floor(hero.ft * fps)
 }
 function throwBall() {
@@ -576,11 +574,14 @@ function throwBall() {
   const dx = hero.dir.includes('e') ? 1 : hero.dir.includes('w') ? -1 : 0
   const dy = hero.dir.includes('s') ? 1 : hero.dir.includes('n') ? -1 : 0
   const d = Math.hypot(dx, dy) || 1
-  ball.vx = (dx / d) * 820; ball.vy = (dy / d) * 820
+  ball.vx = (dx / d) * 1500; ball.vy = (dy / d) * 1500
+  ball.air = 0.6
+  S.stopAll = 0.7
+  S.freeze = Math.max(S.freeze, 0.1)
+  S.shake = Math.max(S.shake, 4)
   ball.x = hero.x + (dx / d) * 14; ball.y = hero.y + (dy / d) * 14 - 6
   ball.spin = 1
   foul('BALLON DEGAGE', null)
-  popup(hero.x, hero.y - 66, 'DEGAGE !', PAL.cyan, true)
   ref.patience = Math.max(0, ref.patience - 4)
   for (const f of french) if (f.state === 'play' && f.stun <= 0) f.react = 0.4
 }
@@ -610,7 +611,7 @@ function updateFrench(dt) {
       const ty = f.y < FIELD.y + FIELD.h / 2 ? FIELD.y - 60 : FIELD.y + FIELD.h + 60
       f.dir = ty < f.y ? 'n' : 's'
       f.y += (ty < f.y ? -1 : 1) * 90 * dt
-      f.frame = Math.floor(f.ft * 12)
+      f.frame = Math.floor(f.ft * 8)
       if (Math.abs(f.y - ty) < 4) substitute(f)
       continue
     }
@@ -625,10 +626,10 @@ function updateFrench(dt) {
       f.stun -= dt
       f.x += f.vx * dt; f.y += f.vy * dt
       f.vx *= 0.85; f.vy *= 0.85
-      f.frame = Math.floor(f.ft * 14)
+      f.frame = Math.floor(f.ft * 10)
       continue
     }
-    if (frozen) { f.vx = f.vy = 0; f.anim = 'idle'; f.frame = Math.floor(f.ft * 6); if (ref.cardTarget) { const nd = dirOf(ref.x - f.x, ref.y - f.y); if (nd && dist(f, ref) < 160) f.dir = nd } continue }
+    if (frozen) { f.vx = f.vy = 0; f.anim = 'idle'; f.frame = Math.floor(f.ft * 4); if (ref.cardTarget) { const nd = dirOf(ref.x - f.x, ref.y - f.y); if (nd && dist(f, ref) < 160) f.dir = nd } continue }
     // Cible de déplacement.
     let target
     const carrier = ball.owner === f
@@ -669,7 +670,7 @@ function updateFrench(dt) {
     if (moving && nd) f.dir = nd
     const anim = moving ? 'run' : 'idle'
     if (anim !== f.anim) { f.anim = anim; f.ft = 0 }
-    f.frame = Math.floor(f.ft * (moving ? 12 : 6))
+    f.frame = Math.floor(f.ft * (moving ? 8 : 4))
     // Prise de balle.
     if (!regroup && !ball.owner && dist(f, ball) < 14 && !f.gk) { ball.owner = f }
     if (carrier) { const nx = f.x + (f.vx || 60) * 0.12, ny = f.y + f.vy * 0.12 + 6; ball.x = nx; ball.y = ny; ball.vx = ball.vy = 0 }
@@ -746,7 +747,7 @@ function updateWaves(dt) {
 function updateBall(dt) {
   if (ball.owner || S.phase === 'goal' || S.phase === 'kickoff' || S.phase === 'card') return
   ball.x += ball.vx * dt; ball.y += ball.vy * dt
-  ball.vx *= Math.pow(0.5, dt); ball.vy *= Math.pow(0.5, dt)
+  if (ball.air > 0) { ball.air -= dt; ball.vx *= Math.pow(0.9, dt); ball.vy *= Math.pow(0.9, dt) } else { ball.vx *= Math.pow(0.5, dt); ball.vy *= Math.pow(0.5, dt) }
   const gy = FIELD.y + FIELD.h / 2
   if (ball.x > FIELD.x + FIELD.w + 4 && Math.abs(ball.y - gy) < GOAL_H / 2) { goalScored(); return }
   // Les panneaux renvoient le ballon, fort : ça rebondit dans tous les sens.
@@ -756,7 +757,7 @@ function updateBall(dt) {
   if (ball.y > FIELD.y + FIELD.h - 4) { ball.y = FIELD.y + FIELD.h - 4; ball.vy = -Math.abs(ball.vy) * 0.7; hitBoard(ball) }
   // Le ballon fauche un Français qui le prend en pleine tête.
   const sp = Math.hypot(ball.vx, ball.vy)
-  if (sp > 500) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(f, ball) < 12) { f.stun = 0.5; f.vx = ball.vx * 0.3; f.vy = ball.vy * 0.3; f.anim = 'hit'; f.ft = 0; popup(f.x, f.y - 50, 'EN PLEINE TETE', PAL.white); ball.vx *= -0.4; ball.vy *= -0.4; beep('hit') }
+  if (sp > 500) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(f, ball) < 12) { f.stun = 0.5; f.vx = ball.vx * 0.3; f.vy = ball.vy * 0.3; f.anim = 'hit'; f.ft = 0; popup(f.x, f.y - 50, 'PAF', PAL.white, true); ball.vx *= -0.4; ball.vy *= -0.4; beep('hit') }
 }
 function goalScored() {
   S.goals++
@@ -771,7 +772,7 @@ function goalScored() {
 /* ---------- arbitre ---------- */
 function updateRef(dt) {
   ref.ft += dt
-  if (ref.down > 0) { ref.down -= dt; S.refDown = ref.down; ref.frame = Math.floor(ref.ft * 10); if (ref.down <= 0) { ref.flee = 5; ref.anim = 'run'; ref.ft = 0 } return }
+  if (ref.down > 0) { ref.down -= dt; S.refDown = ref.down; ref.frame = Math.floor(ref.ft * 8); if (ref.down <= 0) { ref.flee = 5; ref.anim = 'run'; ref.ft = 0 } return }
   S.refDown = 0
   ref.calm -= dt
   if (ref.cardShow > 0) ref.cardShow -= dt
@@ -787,14 +788,14 @@ function updateRef(dt) {
       ref.x += ref.vx * dt; ref.y += ref.vy * dt
       const nd = dirOf(dx, dy); if (nd) ref.dir = nd
       if (ref.anim !== 'run') { ref.anim = 'run'; ref.ft = 0 }
-      ref.frame = Math.floor(ref.ft * 12)
+      ref.frame = Math.floor(ref.ft * 8)
       ref.cardT = 0
     } else {
       ref.vx = ref.vy = 0
       const nd = dirOf(dx, dy); if (nd) ref.dir = nd
       if (ref.cardT === 0) { S.phase = 'card'; S.phaseT = 1.1; S.freeze = 0.05; beep('whistle'); ball.vx = ball.vy = 0; if (ball.owner && ball.owner !== hero) ball.owner = null; ref.ft = 0 }
       ref.cardT += dt
-      ref.anim = ct.card === 1 ? 'redcard' : 'card'; ref.frame = Math.floor(ref.ft * 10)
+      ref.anim = ct.card === 1 ? 'redcard' : 'card'; ref.frame = Math.floor(ref.ft * 8)
       if (ref.cardT > 0.6) { giveCard(ct); S.phase = 'play' }
     }
     return
@@ -813,12 +814,12 @@ function updateRef(dt) {
   if (moving && nd) ref.dir = nd
   const anim = moving ? (sp > 100 ? 'run' : 'walk') : 'idle'
   if (anim !== ref.anim) { ref.anim = anim; ref.ft = 0 }
-  ref.frame = Math.floor(ref.ft * (moving ? 10 : 6))
+  ref.frame = Math.floor(ref.ft * (moving ? 8 : 4))
 }
 
 /* ---------- boucle ---------- */
 function startMatch() {
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, refDown: 0, wave: 0, waveT: 9, intruders: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, refDown: 0, wave: 0, waveT: 9, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -842,11 +843,9 @@ function update(dt) {
   if (S.phase === 'freekick') { S.phaseT -= dt; if (S.phaseT <= 0) { S.phase = 'play'; const taker = nearestFrench(ball, 80, (f) => !f.gk); if (taker) ball.owner = taker } }
   if (attackPressed) { attackPressed = false; heroAttack() }
   updateHero(dt)
-  updateFrench(dt)
   updateBall(dt)
-  updateRef(dt)
-  updateNpcs(dt)
-  updateWaves(dt)
+  if (S.stopAll > 0) S.stopAll -= dt
+  else { updateFrench(dt); updateRef(dt); updateNpcs(dt); updateWaves(dt) }
   for (const d of S.debris) { if (d.t < 0) continue; d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 300 * dt; if (d.t > 0.6) { d.t = -1; d.vx = d.vy = 0 } }
   // Combo, feu.
   S.comboAt += dt
@@ -855,7 +854,7 @@ function update(dt) {
   else S.fuego = Math.max(0, S.fuego - 2 * dt)
   // Effets.
   for (const p of S.popups) p.t += dt
-  S.popups = S.popups.filter((p) => p.t < 1.0)
+  S.popups = S.popups.filter((p) => p.t < 0.7)
   if (S.popups.length > 14) S.popups.splice(0, S.popups.length - 14)
   for (const b of S.banners) b.t += dt
   S.banners = S.banners.filter((b) => b.t < 1.8)
@@ -864,7 +863,8 @@ function update(dt) {
   S.particles = S.particles.filter((p) => p.t < p.life)
   S.shake *= Math.pow(0.02, dt)
   // Caméra : suit le ballon, tirée vers le héros.
-  const tx = ball.x * 0.45 + hero.x * 0.55 - W / 2, ty = ball.y * 0.45 + hero.y * 0.55 - H / 2
+  const kb = S.stopAll > 0 ? 0.8 : 0.45
+  const tx = ball.x * kb + hero.x * (1 - kb) - W / 2, ty = ball.y * kb + hero.y * (1 - kb) - H / 2
   S.cam.x += (clamp(tx, 0, FIELD.x * 2 + FIELD.w - W) - S.cam.x) * Math.min(1, dt * 6)
   S.cam.y += (clamp(ty, 0, FIELD.y * 2 + FIELD.h - H) - S.cam.y) * Math.min(1, dt * 6)
 }
@@ -971,7 +971,7 @@ function render() {
   g.fillStyle = PAL.ink; g.fillRect(ball.x + cx - 1, ball.y + cy - 4, 2, 2)
   // Particules et popups.
   for (const p of S.particles) { g.fillStyle = p.c; g.fillRect(Math.round(p.x + cx), Math.round(p.y + cy), 2, 2) }
-  for (const p of S.popups) { const k = p.t < 0.12 ? 1 + (0.12 - p.t) * 6 : 1; text(p.text, Math.round(p.x + cx), Math.round(p.y + cy - p.t * 22), { size: Math.round((p.big ? 12 : 9) * k), color: p.color, align: 'center' }) }
+  for (const p of S.popups) { const k = p.t < 0.1 ? 1 + (0.1 - p.t) * 8 : 1; text(p.text, Math.round(p.x + cx), Math.round(p.y + cy - p.t * 16), { size: Math.round((p.big ? 16 : 11) * k), color: p.color, align: 'center' }) }
   if (DEBUG) {
     g.strokeStyle = PAL.cyan
     for (const e of ents) { g.beginPath(); g.arc(e.x + cx, e.y + cy, 40, 0, Math.PI * 2); if (e === hero) g.stroke() }
@@ -999,9 +999,8 @@ function drawHUD() {
     const m = comboMult()
     const pop = Math.max(0, 1 - S.comboAt * 5)
     const col = m >= 5 ? PAL.orange : m >= 3 ? PAL.amber : PAL.yellow
-    g.fillStyle = 'rgba(24,20,37,0.8)'; g.fillRect(W / 2 - 70, 4, 140, 44)
+    g.fillStyle = 'rgba(24,20,37,0.8)'; g.fillRect(W / 2 - 60, 4, 120, 44)
     text(`×${m}`, W / 2, 6 - Math.round(pop * 4), { size: Math.round(22 + pop * 10), color: col, align: 'center' })
-    text(S.combo + ' FAUTES' + (TIERS[m - 1] ? '  ' + TIERS[m - 1] : ''), W / 2, 30, { size: 7, color: m >= 3 ? col : PAL.grey1, align: 'center' })
     // Dix crans vers le prochain palier, puis le chrono qui fond.
     const next = COMBO_STEPS[Math.min(m, COMBO_STEPS.length - 1)]
     const prev = COMBO_STEPS[m - 1]
