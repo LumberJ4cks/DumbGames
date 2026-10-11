@@ -736,7 +736,7 @@ function updateHero(dt) {
   const anim = hero.act === 'tackle' ? 'tackle' : hero.act === 'ballthrow' ? 'throw' : hero.act ? hero.act : moving ? 'run' : 'stance'
   if (anim !== hero.anim) { hero.anim = anim; hero.frame = 0; hero.ft = 0 }
   hero.ft += dt
-  const fps = anim === 'run' ? 8 : anim === 'throw' ? 11 : 6
+  const fps = anim === 'run' ? 16 : anim === 'throw' ? 11 : 6 // sprint 8 images : deux fois plus vite que l'export
   hero.frame = Math.floor(hero.ft * fps)
 }
 function throwBall() {

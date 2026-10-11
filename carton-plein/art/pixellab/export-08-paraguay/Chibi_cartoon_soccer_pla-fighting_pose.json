@@ -1,0 +1,53 @@
+{
+  "character": {
+    "id": "68155cac-7255-47f6-82c5-29cde53dee36",
+    "name": "fighting pose",
+    "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+    "size": {
+      "width": 48,
+      "height": 48
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Chibi_cartoon_soccer_pla-fighting_pose.png",
+    "cell_size": {
+      "width": 68,
+      "height": 68
+    },
+    "sheet_size": {
+      "width": 1156,
+      "height": 136
+    },
+    "columns": 17,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 17,
+        "animation": "A giant halo beam is behind the character while he raises his arm and then The character is in super power pose, screaming. He becomes a sayan warrior with a giant white/yellow halo/fire around him. ",
+        "animation_group_id": "b6d57a06-4eff-403e-a6b2-4b518ba8a2b1",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-11T21:55:22.852402+00:00"
+}
