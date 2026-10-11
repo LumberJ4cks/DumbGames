@@ -666,14 +666,14 @@ function updateFrench(dt) {
       target = { x: Math.min(FIELD.x + FIELD.w - 60, o.x + 150), y: clamp(o.y + (f.runner === 1 ? -90 : 90), FIELD.y + 30, FIELD.y + FIELD.h - 30) }
     } else if (!ball.owner && !f.gk) {
       const chasers = french.filter((g) => g.state === 'play' && !g.gk && g.role !== 'fan' && g.role !== 'press').sort((a, b) => dist(a, ball) - dist(b, ball)).slice(0, 2)
-      target = chasers.includes(f) ? { x: ball.x + ball.vx * 0.25, y: ball.y + ball.vy * 0.25 } : slotPos(f, ball.x)
+      target = chasers.includes(f) ? { x: ball.x + ball.vx * 0.25, y: ball.y + ball.vy * 0.25, exact: true } : slotPos(f, ball.x)
     } else target = slotPos(f, ball.x)
     if (f.intruder && !carrier && !regroup) {
       if (f.role === 'fan') target = { x: ball.x + Math.cos(S.t * f.spin + f.phase) * 150, y: ball.y + Math.sin(S.t * f.spin + f.phase) * 95 } // ils tournent autour du ballon en chantant
       else if (f.role === 'press') target = { x: hero.x + Math.cos(f.phase + S.t * 0.2) * 120, y: hero.y + Math.sin(f.phase + S.t * 0.2) * 80 } // ils suivent le n°4 à distance
       else if (f.role === 'staff') { const ko = french.find((g) => g.state === 'ko'); if (ko) target = { x: ko.x + 18, y: ko.y + 4 } } // ils vont voir les blessés
     }
-    if (!carrier && !regroup) { target = { x: target.x + f.jx, y: target.y + f.jy } }
+    if (!carrier && !regroup && !target.exact) { target = { x: target.x + f.jx, y: target.y + f.jy } }
     if (f.gk) target = { x: FIELD.x + 30, y: clamp(ball.y, FIELD.y + FIELD.h / 2 - 50, FIELD.y + FIELD.h / 2 + 50) }
     // Évitement léger du n°4 pour les non-porteurs.
     const dh = dist(f, hero)
@@ -694,12 +694,13 @@ function updateFrench(dt) {
     if (anim !== f.anim) { f.anim = anim; f.ft = 0 }
     f.frame = Math.floor(f.ft * (moving ? 8 : 4))
     // Prise de balle.
-    if (!regroup && !ball.owner && dist(f, ball) < 14 && !f.gk && (ball.z || 0) < 10) { ball.owner = f; f.holdT = 0 }
+    if (!regroup && !ball.owner && !(ball.noTake > 0) && dist(f, ball) < 14 && !f.gk && (ball.z || 0) < 10) { ball.owner = f; f.holdT = 0 }
     if (carrier && ball.owner === f) { const nx = clamp(f.x + (f.vx || 60) * 0.12, FIELD.x + 6, FIELD.x + FIELD.w - 6), ny = f.y + f.vy * 0.12 + 6; ball.x = nx; ball.y = ny; ball.vx = ball.vy = 0; ball.z = Math.min(ball.z || 0, 4) }
   }
 }
 function pass(from, to) {
   ball.owner = null
+  ball.noTake = 0.25
   S.passes = (S.passes || 0) + 1
   const dx = to.x + to.vx * 0.25 - from.x, dy = to.y + to.vy * 0.25 - from.y
   const d = Math.hypot(dx, dy) || 1
@@ -710,6 +711,7 @@ function pass(from, to) {
 }
 function shoot(from, goal) {
   ball.owner = null
+  ball.noTake = 0.35
   S.shots = (S.shots || 0) + 1
   const ty = goal.y + rr(-GOAL_H / 2 - 50, GOAL_H / 2 + 50)
   const dx = goal.x + 30 - from.x, dy = ty - from.y
@@ -769,6 +771,7 @@ function updateWaves(dt) {
 
 /* ---------- ballon et buts ---------- */
 function updateBall(dt) {
+  if (ball.noTake > 0) ball.noTake -= dt
   if (ball.owner || S.phase === 'goal' || S.phase === 'kickoff' || S.phase === 'card') return
   ball.x += ball.vx * dt; ball.y += ball.vy * dt
   if (ball.z > 0 || ball.vz) {
