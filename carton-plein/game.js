@@ -49,6 +49,11 @@ const COMBO_STEPS = [0, 2, 4, 7, 10] // seuils pour ×1..×5
 
 /* ---------- sprites ---------- */
 const ATLAS = {}
+const IMG = {}
+function loadImage(name) { return new Promise((res) => { const i = new Image(); i.onload = () => { IMG[name] = i; res() }; i.onerror = () => res(); i.src = `sprites/${name}.png` }) }
+const START_BTN = { x: 229.5, y: 289.5, w: 184.5, h: 61 } // le bouton START dans l'image titre, à l'échelle du canvas
+const mouse = { x: -1, y: -1 }
+let startPress = 0
 async function loadAtlas(name) {
   const [meta, img] = await Promise.all([
     fetch(`sprites/${name}.json`).then((r) => r.json()),
@@ -217,19 +222,23 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { keys[e.code] = false })
 addEventListener('contextmenu', (e) => e.preventDefault())
 const canvas = document.getElementById('c')
+canvas.addEventListener('mousemove', (e) => { const { x, y } = canvasXY(e); mouse.x = x; mouse.y = y })
+canvas.addEventListener('mouseleave', () => { mouse.x = -1; mouse.y = -1 })
+const inStart = (x, y) => x >= START_BTN.x && x <= START_BTN.x + START_BTN.w && y >= START_BTN.y && y <= START_BTN.y + START_BTN.h
 addEventListener('mousedown', (e) => {
   if (music.wanted && !music.src) startMusic()
+  if (S.phase === 'title') { const { x, y } = canvasXY(e); if (inStart(x, y) && !startPress) { startPress = 0.16; beep('tick') } return }
   if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
-  if (e.button === 2 || S.phase === 'title') attackPressed = true
+  if (e.button === 2) attackPressed = true
 })
 canvas.addEventListener('pointerdown', (e) => {
   if (music.wanted && !music.src) startMusic()
   if (e.pointerType === 'mouse') return
   const { x, y } = canvasXY(e)
   if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
+  if (S.phase === 'title') { if (inStart(x, y) && !startPress) { startPress = 0.16; beep('tick') } return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
   else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
-  if (S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointermove', (e) => {
   if (!touch.joy || e.pointerId !== touch.joy.id) return
@@ -1216,7 +1225,7 @@ function startMatch() {
 }
 function update(dt) {
   if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) startMatch() } return }
-  if (S.phase === 'title') { restartPressed = false; if (attackPressed) { attackPressed = false; startMatch() } return }
+  if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('tick') } } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
@@ -1613,22 +1622,24 @@ function drawHUD() {
   if (S.paused) outlined('PAUSE', W / 2, H / 2 - 8, { size: 16 })
 }
 function drawTitle() {
-  g.fillStyle = 'rgba(24,20,37,0.75)'
-  g.fillRect(0, 0, W, H)
-  text('FC MMA', W / 2, 52, { size: 40, color: PAL.yellow, align: 'center' })
-  text('FRANCE – PARAGUAY, COUPE DU MONDE 2026', W / 2, 92, { size: 8, color: PAL.amber, align: 'center' })
-  text('UN PARAGUAYEN. ONZE FRANCAIS. ZERO INTENTION DE JOUER AU BALLON.', W / 2, 108, { size: 8, color: PAL.grey1, align: 'center' })
-  text('FLECHES : BOUGER   ESPACE / CLIC DROIT : FRAPPER', W / 2, 140, { size: 9, align: 'center' })
-  text('LOIN = TACLE GLISSE     COLLE = POING, GENOU, PIED, PROJECTION', W / 2, 156, { size: 9, align: 'center' })
-  text('A 30 FAUTES, LE BUS DES SUPPORTERS VIENT SE GARER DEVANT TON BUT.', W / 2, 168, { size: 8, color: PAL.cyan, align: 'center' })
-  text('TROIS BALLONS DE VIE : AU TROISIEME BUT ENCAISSE, C\'EST FINI.', W / 2, 180, { size: 8, color: PAL.grey1, align: 'center' })
-  text('FAIS UN MAXIMUM DE DEGATS AVANT. LA FRANCE ACCELERE AVEC LE TEMPS.', W / 2, 192, { size: 8, color: PAL.grey1, align: 'center' })
-  text("QUAND L'ARBITRE CRAQUE, UNE GROSSE FAUTE = CARTON POUR LA FRANCE", W / 2, 206, { size: 8, color: PAL.grey1, align: 'center' })
-  const blink = Math.floor(performance.now() / 500) % 2 === 0
-  if (blink) text('ESPACE POUR COMMENCER', W / 2, 250, { size: 12, color: PAL.yellow, align: 'center' })
-  text('RECORD ' + (localStorage.getItem('carton.record') || 0), W / 2, 300, { size: 8, color: PAL.grey2, align: 'center' })
-  drawSprite(g, 'paraguay', 'stance', 's', Math.floor(performance.now() / 120), W / 2 - 160, 300)
-  drawSprite(g, 'france-0', 'ko', 'e', 0, W / 2 + 160, 290)
+  // Fond : nuit de stade, projecteurs, et l'illustration par-dessus.
+  g.fillStyle = PAL.ink; g.fillRect(0, 0, W, H)
+  for (let i = 0; i < 3; i++) { const gx = W / 2 + Math.sin(S.t * 0.3 + i * 2.1) * 220; const gr = g.createRadialGradient(gx, -40, 0, gx, -40, 420); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H) }
+  if (IMG.title) g.drawImage(IMG.title, 0, 0, W, H)
+  else text('FC MMA', W / 2, 60, { size: 40, color: PAL.yellow, align: 'center' })
+  // Le bouton START : survol = un peu plus grand et lumineux ; clic = écrasé, puis départ.
+  const b = START_BTN
+  const hover = inStart(mouse.x, mouse.y)
+  const k = startPress > 0 ? 0.9 : hover ? 1.06 : 1 + Math.sin(S.t * 3) * 0.012
+  const cxb = b.x + b.w / 2, cyb = b.y + b.h / 2
+  if (hover || startPress > 0) { g.fillStyle = startPress > 0 ? 'rgba(255,255,255,0.35)' : 'rgba(254,231,97,0.22)'; g.beginPath(); g.ellipse(cxb, cyb, b.w * 0.62 * k, b.h * 0.9 * k, 0, 0, Math.PI * 2); g.fill() }
+  g.save(); g.translate(cxb, cyb + (startPress > 0 ? 3 : 0)); g.scale(k, k)
+  if (IMG.start) g.drawImage(IMG.start, -b.w / 2, -b.h / 2, b.w, b.h)
+  if (hover && !startPress) { g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(-b.w / 2 + 6, -b.h / 2 + 6, b.w - 12, b.h - 12); g.globalCompositeOperation = 'source-over' }
+  g.restore()
+  if (hover && !startPress) canvas.style.cursor = 'pointer'; else canvas.style.cursor = ''
+  text('ESPACE OU START', W / 2, H - 9, { size: 6, color: PAL.grey2, align: 'center' })
+  text('RECORD ' + (localStorage.getItem('carton.record') || 0), W - 8, H - 9, { size: 6, color: PAL.grey2, align: 'right' })
 }
 function drawEnd() {
   // Panneau récap : il se déplie, puis les lignes tombent une à une, puis le tampon claque.
@@ -1710,7 +1721,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all(['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
