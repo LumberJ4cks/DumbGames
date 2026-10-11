@@ -71,6 +71,22 @@ function drawSprite(g, name, anim, dir, frame, x, y, flip = false) {
 /* ---------- son (synthétisé) ---------- */
 const audio = { ctx: null, muted: localStorage.getItem('carton.muted') === '1' }
 const beepLast = {}
+let noiseBuf = null
+function noise(c) {
+  if (!noiseBuf) { noiseBuf = c.createBuffer(1, c.sampleRate * 0.5, c.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1 }
+  const n = c.createBufferSource(); n.buffer = noiseBuf; return n
+}
+/** Impact : un souffle filtré (le vêtement, l'air) + un coup sourd (le corps). */
+function thud(c, t, { low = 140, drop = 45, body = 0.12, bodyGain = 0.5, air = 0.06, airGain = 0.35, airFreq = 900, q = 0.8 }) {
+  const o = c.createOscillator(), g1 = c.createGain()
+  o.type = 'sine'; o.frequency.setValueAtTime(low, t); o.frequency.exponentialRampToValueAtTime(drop, t + body)
+  g1.gain.setValueAtTime(bodyGain, t); g1.gain.exponentialRampToValueAtTime(0.001, t + body)
+  o.connect(g1); g1.connect(c.destination); o.start(t); o.stop(t + body + 0.02)
+  const n = noise(c), f = c.createBiquadFilter(), g2 = c.createGain()
+  f.type = 'bandpass'; f.frequency.setValueAtTime(airFreq, t); f.frequency.exponentialRampToValueAtTime(airFreq * 0.4, t + air); f.Q.value = q
+  g2.gain.setValueAtTime(airGain, t); g2.gain.exponentialRampToValueAtTime(0.001, t + air)
+  n.connect(f); f.connect(g2); g2.connect(c.destination); n.start(t); n.stop(t + air + 0.02)
+}
 function beep(kind) {
   if (audio.muted) return
   const now = performance.now()
@@ -80,16 +96,29 @@ function beep(kind) {
     if (!audio.ctx) audio.ctx = new (window.AudioContext || window.webkitAudioContext)()
     const c = audio.ctx
     const t = c.currentTime
+    if (kind === 'hit') return thud(c, t, { low: 160, drop: 50, body: 0.1, bodyGain: 0.45, air: 0.05, airGain: 0.3, airFreq: 1100 })
+    if (kind === 'hitBig') return thud(c, t, { low: 110, drop: 35, body: 0.2, bodyGain: 0.7, air: 0.09, airGain: 0.45, airFreq: 700, q: 0.6 })
+    if (kind === 'pass') return thud(c, t, { low: 320, drop: 160, body: 0.05, bodyGain: 0.25, air: 0.03, airGain: 0.18, airFreq: 2400, q: 1.5 }) // petit « poc » de cuir
+    if (kind === 'shoot') return thud(c, t, { low: 190, drop: 70, body: 0.13, bodyGain: 0.55, air: 0.07, airGain: 0.4, airFreq: 1500, q: 1 }) // frappe pleine
+    if (kind === 'bounce') return thud(c, t, { low: 260, drop: 140, body: 0.05, bodyGain: 0.15, air: 0.02, airGain: 0.08, airFreq: 1800 })
+    if (kind === 'land') return thud(c, t, { low: 90, drop: 40, body: 0.14, bodyGain: 0.35, air: 0.1, airGain: 0.2, airFreq: 400, q: 0.5 })
     const o = c.createOscillator()
     const gn = c.createGain()
     o.connect(gn)
     gn.connect(c.destination)
-    if (kind === 'whistle') { o.type = 'square'; o.frequency.setValueAtTime(2200, t); o.frequency.linearRampToValueAtTime(2600, t + 0.05); gn.gain.setValueAtTime(0.08, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.35); o.start(t); o.stop(t + 0.35) }
-    else if (kind === 'hit') { o.type = 'sawtooth'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12); gn.gain.setValueAtTime(0.25, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.14); o.start(t); o.stop(t + 0.15) }
+    if (kind === 'whistle') {
+      // Sifflet à bille : deux partiels qui trillent.
+      const o2 = c.createOscillator(), g2 = c.createGain(); o2.connect(g2); g2.connect(c.destination)
+      o.type = 'square'; o2.type = 'square'
+      for (let i = 0; i < 14; i++) { const tt = t + i * 0.025; o.frequency.setValueAtTime(i % 2 ? 2350 : 2200, tt); o2.frequency.setValueAtTime(i % 2 ? 3540 : 3300, tt) }
+      gn.gain.setValueAtTime(0.07, t); gn.gain.setValueAtTime(0.07, t + 0.28); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.38)
+      g2.gain.setValueAtTime(0.025, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.38)
+      o.start(t); o.stop(t + 0.4); o2.start(t); o2.stop(t + 0.4)
+    }
     else if (kind === 'card') { o.type = 'triangle'; o.frequency.setValueAtTime(660, t); o.frequency.setValueAtTime(990, t + 0.1); gn.gain.setValueAtTime(0.15, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.4); o.start(t); o.stop(t + 0.4) }
-    else if (kind === 'fire') { o.type = 'sawtooth'; o.frequency.setValueAtTime(80, t); o.frequency.exponentialRampToValueAtTime(640, t + 0.5); gn.gain.setValueAtTime(0.2, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.7); o.start(t); o.stop(t + 0.7) }
+    else if (kind === 'fire') { o.type = 'sawtooth'; o.frequency.setValueAtTime(80, t); o.frequency.exponentialRampToValueAtTime(640, t + 0.5); gn.gain.setValueAtTime(0.2, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.7); o.start(t); o.stop(t + 0.7); thud(c, t, { low: 60, drop: 30, body: 0.5, bodyGain: 0.4, air: 0.5, airGain: 0.25, airFreq: 600, q: 0.3 }) }
     else if (kind === 'drum') { o.type = 'sine'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.25); gn.gain.setValueAtTime(0.4, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.start(t); o.stop(t + 0.3) }
-    else if (kind === 'cymbal') { o.type = 'square'; o.frequency.setValueAtTime(3200, t); o.frequency.exponentialRampToValueAtTime(1800, t + 0.3); gn.gain.setValueAtTime(0.08, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.start(t); o.stop(t + 0.5) }
+    else if (kind === 'cymbal') { gn.gain.value = 0; const n = noise(c), f = c.createBiquadFilter(), g2 = c.createGain(); f.type = 'highpass'; f.frequency.value = 5000; g2.gain.setValueAtTime(0.2, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.6); n.connect(f); f.connect(g2); g2.connect(c.destination); n.start(t); n.stop(t + 0.6) }
     else if (kind === 'trumpet') { o.type = 'sawtooth'; o.frequency.setValueAtTime(440, t); o.frequency.setValueAtTime(554, t + 0.12); o.frequency.setValueAtTime(659, t + 0.24); gn.gain.setValueAtTime(0.12, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.start(t); o.stop(t + 0.5) }
     else if (kind === 'goal') { o.type = 'square'; o.frequency.setValueAtTime(330, t); o.frequency.setValueAtTime(440, t + 0.12); o.frequency.setValueAtTime(550, t + 0.24); gn.gain.setValueAtTime(0.08, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.6); o.start(t); o.stop(t + 0.6) }
   } catch (e) { /* pas de son */ }
@@ -438,7 +467,7 @@ function hitFrench(f, name, { throwIt = false, knock = 0 } = {}) {
   if (f.carrying) { f.carrying.carriedBy = null; f.carrying.down = 2; f.carrying = null; popup(f.x, f.y - 70, 'PLOUF', PAL.white, true) }
   if (f.hp <= 0 || throwIt || air) knockDown(f, air ? 0.9 : 0.35, air)
   for (let i = 0; i < 6; i++) S.particles.push({ x: f.x, y: f.y - 30, vx: rr(-60, 60), vy: rr(-80, -20), t: 0, life: 0.5, c: i % 2 ? PAL.yellow : PAL.white })
-  beep('hit')
+  beep(air || throwIt || (FOULS[name] && FOULS[name].big) ? 'hitBig' : 'hit')
 }
 function knockDown(f, flight, air = 0) {
   f.state = 'fall'
@@ -477,7 +506,7 @@ function updateFall(f, dt) {
   f.x += f.vx * dt; f.y += f.vy * dt
   if (f.vz || f.z > 0) {
     f.z += f.vz * dt; f.vz -= 900 * dt
-    if (f.z <= 0 && f.vz < 0) { f.z = 0; f.vz = 0; f.vx *= 0.4; f.vy *= 0.4; S.shake = Math.max(S.shake, 4); for (let i = 0; i < 6; i++) S.particles.push({ x: f.x + rr(-8, 8), y: f.y, vx: rr(-50, 50), vy: rr(-40, -5), t: 0, life: 0.4, c: PAL.sand }) }
+    if (f.z <= 0 && f.vz < 0) { f.z = 0; f.vz = 0; f.vx *= 0.4; f.vy *= 0.4; S.shake = Math.max(S.shake, 4); beep('land'); for (let i = 0; i < 6; i++) S.particles.push({ x: f.x + rr(-8, 8), y: f.y, vx: rr(-50, 50), vy: rr(-40, -5), t: 0, life: 0.4, c: PAL.sand }) }
   } else { f.vx *= 0.92; f.vy *= 0.92 }
   f.frame = Math.floor(f.ft * 10)
   dominoes(f)
@@ -795,11 +824,12 @@ function updateFrench(dt) {
     const m = ball.out && target.exact ? -16 : f.role === 'ballboy' ? 2 : 8
     f.x = clamp(f.x, FIELD.x + m, FIELD.x + FIELD.w - m)
     f.y = clamp(f.y, FIELD.y + m, FIELD.y + FIELD.h - m)
-    const moving = Math.hypot(f.vx, f.vy) > 15
+    const spd = Math.hypot(f.vx, f.vy)
+    const moving = f.anim === 'run' ? spd > 12 : spd > 30 // hystérésis : pas de va-et-vient course/arrêt
     const nd = dirOf(f.vx, f.vy)
-    if (moving && nd) f.dir = nd
+    if (moving && nd && spd > 30) { if (nd !== f.dir) { f.dirT = (f.dirT || 0) + dt; if (f.dirT > 0.08) { f.dir = nd; f.dirT = 0 } } else f.dirT = 0 }
     const anim = moving ? 'run' : 'idle'
-    if (anim !== f.anim) { f.anim = anim; f.ft = 0 }
+    if (anim !== f.anim) f.anim = anim // le compteur continue : l'image avance toujours
     f.frame = Math.floor(f.ft * (moving ? 8 : 4))
     // Prise de balle.
     if (ball.out && !ball.owner && S.phase !== 'goal' && dist(f, ball) < 16 && !f.gk && f.role !== 'bird') {
@@ -811,6 +841,7 @@ function updateFrench(dt) {
       ball.out = false; ball.noTake = 0.3; ball.vx = (dx / d) * 380; ball.vy = (dy / d) * 380; ball.z = 20; ball.vz = 240; ball.air = 0.5
       ball.x = clamp(f.x, FIELD.x + 6, FIELD.x + FIELD.w - 6); ball.y = clamp(f.y, FIELD.y + 6, FIELD.y + FIELD.h - 6)
       f.stun = 0.3; f.anim = 'idle'; f.ft = 0
+      beep('pass')
     }
     if (!regroup && !ball.owner && !ball.out && !(ball.noTake > 0) && dist(f, ball) < 14 && !f.gk && (ball.z || 0) < 10) { ball.owner = f; f.holdT = 0 }
     if (carrier && ball.owner === f) { const nx = clamp(f.x + (f.vx || 60) * 0.12, FIELD.x + 6, FIELD.x + FIELD.w - 6), ny = f.y + f.vy * 0.12 + 6; ball.x = nx; ball.y = ny; ball.vx = ball.vy = 0; ball.z = Math.min(ball.z || 0, 4) }
@@ -818,6 +849,7 @@ function updateFrench(dt) {
 }
 function pass(from, to) {
   ball.owner = null
+  beep('pass')
   ball.noTake = 0.25
   S.passes = (S.passes || 0) + 1
   const dx = to.x + to.vx * 0.25 - from.x, dy = to.y + to.vy * 0.25 - from.y
@@ -829,6 +861,7 @@ function pass(from, to) {
 }
 function shoot(from, goal) {
   ball.owner = null
+  beep('shoot')
   ball.noTake = 0.35
   S.shots = (S.shots || 0) + 1
   const ty = goal.y + rr(-GOAL_H / 2 - 50, GOAL_H / 2 + 50)
@@ -955,17 +988,18 @@ function updateBall(dt) {
   ball.x += ball.vx * dt; ball.y += ball.vy * dt
   if (ball.z > 0 || ball.vz) {
     ball.z += ball.vz * dt; ball.vz -= 900 * dt
-    if (ball.z <= 0) { ball.z = 0; if (ball.vz < -120) { ball.vz = -ball.vz * 0.45; for (let i = 0; i < 4; i++) S.particles.push({ x: ball.x, y: ball.y, vx: rr(-40, 40), vy: rr(-30, -5), t: 0, life: 0.3, c: PAL.sand }) } else { ball.vz = 0; ball.air = 0 } }
+    if (ball.z <= 0) { ball.z = 0; if (ball.vz < -120) { ball.vz = -ball.vz * 0.45; beep('bounce'); for (let i = 0; i < 4; i++) S.particles.push({ x: ball.x, y: ball.y, vx: rr(-40, 40), vy: rr(-30, -5), t: 0, life: 0.3, c: PAL.sand }) } else { ball.vz = 0; ball.air = 0 } }
   }
   if (ball.air > 0) { ball.air -= dt; ball.vx *= Math.pow(0.9, dt); ball.vy *= Math.pow(0.9, dt) } else { ball.vx *= Math.pow(0.5, dt); ball.vy *= Math.pow(0.5, dt) }
   const gy = FIELD.y + FIELD.h / 2
-  if (ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 40 && ball.vx >= 0) {
+  if (ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60) {
     if (S.kickedOff) { goalScored(); return }
     ball.x = FIELD.x + FIELD.w - 5; ball.vx = -Math.abs(ball.vx) * 0.4 // pas de remise en jeu, pas de but : ça ressort mollement
   }
   // Sorti : le ballon s'arrête juste derrière la ligne (il casse le panneau s'il arrive fort), et
   // un joueur vient le ramasser pour la remise en jeu.
   const out = ball.x < FIELD.x - 2 || ball.x > FIELD.x + FIELD.w + 2 || ball.y < FIELD.y - 2 || ball.y > FIELD.y + FIELD.h + 2
+  if (out && ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60 && S.kickedOff) { goalScored(); return } // derrière la ligne dans la largeur de la cage : but, cage ou pas cage
   if (out && !ball.out) {
     if (Math.hypot(ball.vx, ball.vy) > 300) hitBoard(ball)
     ball.out = true; ball.vx = ball.vy = 0; ball.vz = 0; ball.z = 0; ball.air = 0; ball.noTake = 0
@@ -1469,6 +1503,6 @@ Promise.all(['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, foul, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
