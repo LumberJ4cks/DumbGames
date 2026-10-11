@@ -51,7 +51,7 @@ const COMBO_STEPS = [0, 2, 4, 7, 10] // seuils pour ×1..×5
 const ATLAS = {}
 const IMG = {}
 function loadImage(name) { return new Promise((res) => { const i = new Image(); i.onload = () => { IMG[name] = i; res() }; i.onerror = () => res(); i.src = `sprites/${name}.png` }) }
-const START_BTN = { x: 229.5, y: 289.5, w: 184.5, h: 61 } // le bouton START dans l'image titre, à l'échelle du canvas
+const START_BTN = { x: 232.2, y: 279.4, w: 175.7, h: 45.0 } // le bouton START dans l'image titre, à l'échelle du canvas
 const mouse = { x: -1, y: -1 }
 let startPress = 0
 async function loadAtlas(name) {
@@ -1625,7 +1625,10 @@ function drawTitle() {
   // Fond : nuit de stade, projecteurs, et l'illustration par-dessus.
   g.fillStyle = PAL.ink; g.fillRect(0, 0, W, H)
   for (let i = 0; i < 3; i++) { const gx = W / 2 + Math.sin(S.t * 0.3 + i * 2.1) * 220; const gr = g.createRadialGradient(gx, -40, 0, gx, -40, 420); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H) }
-  if (IMG.title) g.drawImage(IMG.title, 0, 0, W, H)
+  // Pelouse de nuit sur les côtés, l'illustration carrée au centre.
+  for (let x = 0; x < W; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? 'rgba(99,199,77,0.10)' : 'rgba(99,199,77,0.16)'; g.fillRect(x, H * 0.55, 40, H) }
+  g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(0, H * 0.55, W, 2)
+  if (IMG.title) g.drawImage(IMG.title, (W - H) / 2, 0, H, H)
   else text('FC MMA', W / 2, 60, { size: 40, color: PAL.yellow, align: 'center' })
   // Le bouton START : survol = un peu plus grand et lumineux ; clic = écrasé, puis départ.
   const b = START_BTN
