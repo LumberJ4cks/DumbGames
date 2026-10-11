@@ -121,6 +121,7 @@ function beep(kind) {
     if (kind === 'pass') return thud(c, t, { low: 320, drop: 160, body: 0.05, bodyGain: 0.25, air: 0.03, airGain: 0.18, airFreq: 2400, q: 1.5 }) // petit « poc » de cuir
     if (kind === 'shoot') return thud(c, t, { low: 190, drop: 70, body: 0.13, bodyGain: 0.55, air: 0.07, airGain: 0.4, airFreq: 1500, q: 1 }) // frappe pleine
     if (kind === 'bounce') return thud(c, t, { low: 260, drop: 140, body: 0.05, bodyGain: 0.15, air: 0.02, airGain: 0.08, airFreq: 1800 })
+    if (kind === 'tick') { const o = c.createOscillator(), gn = c.createGain(); o.connect(gn); gn.connect(c.destination); o.type = 'square'; o.frequency.setValueAtTime(880, t); gn.gain.setValueAtTime(0.12, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.12); o.start(t); o.stop(t + 0.13); return }
     if (kind === 'horn') { const o2 = c.createOscillator(), g2 = c.createGain(); o2.connect(g2); g2.connect(c.destination); const o = c.createOscillator(), gn = c.createGain(); o.connect(gn); gn.connect(c.destination); o.type = 'sawtooth'; o2.type = 'sawtooth'; o.frequency.value = 330; o2.frequency.value = 262; gn.gain.setValueAtTime(0.12, t); gn.gain.setValueAtTime(0.12, t + 0.18); gn.gain.setValueAtTime(0.001, t + 0.2); gn.gain.setValueAtTime(0.12, t + 0.3); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.9); g2.gain.setValueAtTime(0.1, t); g2.gain.setValueAtTime(0.1, t + 0.18); g2.gain.setValueAtTime(0.001, t + 0.2); g2.gain.setValueAtTime(0.1, t + 0.3); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.9); o.start(t); o.stop(t + 0.95); o2.start(t); o2.stop(t + 0.95); return }
     if (kind === 'land') return thud(c, t, { low: 90, drop: 40, body: 0.14, bodyGain: 0.35, air: 0.1, airGain: 0.2, airFreq: 400, q: 0.5 })
     const o = c.createOscillator()
@@ -179,7 +180,8 @@ function slotPos(f, ballX) {
 function kickoff() {
   S.phase = 'kickoff'
   S.kickedOff = true
-  S.phaseT = S.goals ? 0.5 : 0.9
+  S.phaseT = S.goals ? 0.5 : 3.9 // au début : 3, 2, 1, GO !
+  S.countTick = 9
   ball.x = FIELD.x + FIELD.w / 2
   ball.y = FIELD.y + FIELD.h / 2
   ball.vx = ball.vy = 0
@@ -605,7 +607,7 @@ function heroAttack() {
   }
 }
 function updateHero(dt) {
-  const v = inputVector()
+  const v = S.phase === 'kickoff' && !S.goals ? { dx: 0, dy: 0 } : inputVector()
   const speed = hero.speed * (S.fury > 0 ? 1.9 : S.fire > 0 ? 1.6 : 1)
   if (hero.stun > 0) { hero.stun -= dt; hero.vx = hero.vy = 0 }
   else if (hero.act === 'tackle') {
@@ -1223,12 +1225,13 @@ function update(dt) {
   S.lifeLostT = (S.lifeLostT || 9) + dt
   if (S.goalFx !== undefined) { S.goalFx += dt; if (S.goalFx > 1) S.goalFx = undefined }
   if (S.endAt !== undefined) { S.endAt -= dt; if (S.endAt <= 0) { S.endAt = undefined; endMatch(); return } }
+  if (S.phase === 'kickoff' && !S.goals) { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } else if (n <= 0) { beep('whistle'); S.shake = Math.max(S.shake, 8) } } }
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
   if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = resumePhase() }
   if (!S.kickedOff && S.phase === 'play') { S.phase = 'goal'; S.phaseT = Math.max(S.phaseT, 3) } // filet de sécurité : jamais de jeu sans remise en jeu
   if (S.phase === 'freekick') { S.phaseT -= dt; if (S.phaseT <= 0) { S.phase = resumePhase(); const taker = nearestFrench(ball, 80, (f) => !f.gk); if (taker && S.phase === 'play') ball.owner = taker } }
-  if (attackPressed) { attackPressed = false; heroAttack() }
+  if (attackPressed) { attackPressed = false; if (!(S.phase === 'kickoff' && !S.goals)) heroAttack() }
   updateHero(dt)
   updateBall(dt)
   if (S.busDue) { S.busDue -= dt; if (S.busDue <= 0) { S.busDue = 0; callBus() } }
@@ -1296,9 +1299,9 @@ function makeCrowd() {
   const rowH = 24, colW = 26
   rowHTop = rowH
   // En haut : six rangées, les plus hautes derrière.
-  for (let r = 0; r < 6; r++) for (let x = -STAND + 20 + (r % 2) * 13; x < pw + STAND - 10; x += colW) crowd.push({ x: x + rr(-3, 3), y: -STAND + 34 + r * rowH - 6, atlas: pick(), dir: 's', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'top', row: r })
+  for (let r = 0; r < 6; r++) for (let x = -4 + (r % 2) * 13; x < pw + 4; x += colW) crowd.push({ x: x + rr(-3, 3), y: -STAND + 34 + r * rowH - 6, atlas: pick(), dir: 's', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'top', row: r })
   // À gauche et à droite : six colonnes de places, les plus éloignées contre le mur.
-  for (let c = 0; c < 6; c++) for (let y = 30 + (c % 2) * 11; y < ph - 10; y += 22) {
+  for (let c = 0; c < 6; c++) for (let y = -STAND + 34 + (c % 2) * 11; y < ph - 10; y += 22) {
     crowd.push({ x: -STAND + 22 + c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'e', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'left', row: c })
     crowd.push({ x: pw + STAND - 22 - c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'w', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'right', row: c })
   }
@@ -1313,12 +1316,12 @@ function drawStands(cx, cy) {
   // Marches en béton, du plus sombre (haut) au plus clair (bas des gradins, près de la pelouse).
   const band = (x, y, w, h, i) => { g.fillStyle = i % 2 ? PAL.slate : PAL.grey3; g.fillRect(Math.round(x + cx), Math.round(y + cy), Math.round(w), Math.round(h)) }
   for (let r = 0; r * 24 < STAND; r++) {
-    band(-STAND, -24 - r * 24, pw + 2 * STAND, 24, r)
-    band(-22 - r * 22, 0, 22, ph, r)
-    band(pw + r * 22, 0, 22, ph, r)
+    band(-18, -24 - r * 24, pw + 36, 24, r)
+    band(-22 - r * 22, -STAND, 22, ph + STAND, r)
+    band(pw + r * 22, -STAND, 22, ph + STAND, r)
   }
   // Rambarde et bord de pelouse, banderoles.
-  g.fillStyle = PAL.grey1; g.fillRect(-STAND + cx, -2 + cy, pw + 2 * STAND, 2); g.fillRect(-2 + cx, cy, 2, ph); g.fillRect(pw + cx, cy, 2, ph)
+  g.fillStyle = PAL.grey1; g.fillRect(-18 + cx, -2 + cy, pw + 36, 2); g.fillRect(-2 + cx, cy, 2, ph); g.fillRect(pw + cx, cy, 2, ph)
   g.fillStyle = PAL.white; g.fillRect(pw / 2 - 160 + cx, -STAND + 4 + cy, 320, 14)
   text('ALLEZ LES BLEUS', pw / 2 + cx, -STAND + 7 + cy, { size: 9, color: PAL.blueD, align: 'center', shadow: false })
   g.fillStyle = PAL.red; g.fillRect(-STAND + 2 + cx, ph / 2 - 60 + cy, 10, 120)
@@ -1338,15 +1341,16 @@ function drawStands(cx, cy) {
   // Rebord de marche : un muret clair avec son ombre, qui cache le bas du corps de la rangée derrière.
   const ledge = (x, y, w, h) => { g.fillStyle = PAL.ink; g.fillRect(Math.round(x + cx), Math.round(y + cy), Math.round(w), 1); g.fillStyle = PAL.grey2; g.fillRect(Math.round(x + cx), Math.round(y + cy) + 1, Math.round(w), Math.round(h) - 1); g.fillStyle = PAL.grey1; g.fillRect(Math.round(x + cx), Math.round(y + cy) + 1, Math.round(w), 2) }
   // En haut : du fond vers la pelouse, chaque rangée puis le rebord devant elle.
-  for (let r = 0; r < 6; r++) { drawRow(crowd.rows['top' + r] || []); const fy = -STAND + 34 + r * rowHTop - 6; ledge(-STAND, fy - 17, pw + 2 * STAND, 22) }
+  for (let r = 0; r < 6; r++) { drawRow(crowd.rows['top' + r] || []); const fy = -STAND + 34 + r * rowHTop - 6; ledge(-18, fy - 17, pw + 36, 22) }
   // Sur les côtés : du mur vers la pelouse, chaque colonne puis le rebord côté pelouse.
   for (let c = 0; c < 6; c++) {
     drawRow(crowd.rows['left' + c] || [], true)
     drawRow(crowd.rows['right' + c] || [], true)
   }
   // Parapet du premier rang, le long de la pelouse, avec la rambarde par-dessus.
-  g.fillStyle = PAL.grey3; g.fillRect(-STAND + cx, -16 + cy, pw + 2 * STAND, 14); g.fillRect(-18 + cx, cy, 16, ph); g.fillRect(pw + 2 + cx, cy, 16, ph)
-  g.fillStyle = PAL.grey1; g.fillRect(-STAND + cx, -16 + cy, pw + 2 * STAND, 2); g.fillRect(-18 + cx, cy, 2, ph); g.fillRect(pw + 16 + cx, cy, 2, ph)
+  // Parapet en U inversé : la barre du haut entre les deux montants, qui descendent jusqu'au bas des tribunes.
+  g.fillStyle = PAL.grey3; g.fillRect(-18 + cx, -16 + cy, pw + 36, 14); g.fillRect(-18 + cx, -16 + cy, 16, ph + 16); g.fillRect(pw + 2 + cx, -16 + cy, 16, ph + 16)
+  g.fillStyle = PAL.grey1; g.fillRect(-18 + cx, -16 + cy, pw + 36, 2); g.fillRect(-18 + cx, -16 + cy, 2, ph + 16); g.fillRect(pw + 16 + cx, -16 + cy, 2, ph + 16)
 }
 function drawPitch() {
   const cx = -Math.round(S.cam.x), cy = -Math.round(S.cam.y)
@@ -1477,6 +1481,24 @@ function segments(x, y, w, h, n, frac, on, off = PAL.slateD) {
   const sw = (w - (n - 1)) / n
   for (let i = 0; i < n; i++) { g.fillStyle = i < Math.round(frac * n) ? on : off; g.fillRect(Math.round(x + i * (sw + 1)), y, Math.floor(sw), h) }
 }
+function drawCountdown() {
+  const n = Math.ceil(S.phaseT - 0.9) // 3, 2, 1 puis 0 = GO
+  const frac = n >= 1 ? (S.phaseT - 0.9) - (n - 1) : S.phaseT / 0.9 // 1 → 0 au fil de chaque temps
+  const age = 1 - frac
+  const go = n <= 0
+  const k = age < 0.15 ? 1 + (0.15 - age) * 6 : 1 // s'écrase en 0,15 s
+  const txt = go ? 'GO !!!' : String(n)
+  const size = Math.round((go ? 64 : 80) * k)
+  const col = go ? PAL.yellow : [PAL.white, PAL.cyan, PAL.amber][(n - 1) % 3]
+  g.save(); g.translate(W / 2, H / 2 - 20)
+  if (go) g.rotate(Math.sin(S.t * 40) * 0.04)
+  g.globalAlpha = go ? 1 : clamp(1.4 - age, 0, 1)
+  g.font = `bold ${size}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle'
+  g.fillStyle = PAL.ink; for (const [dx, dy] of [[-4, 0], [4, 0], [0, -4], [0, 4], [-3, -3], [3, 3], [3, -3], [-3, 3], [0, 6], [6, 6]]) g.fillText(txt, dx, dy)
+  g.fillStyle = col; g.fillText(txt, 0, 0)
+  g.restore()
+  if (!go) text('PREPARE-TOI', W / 2, H / 2 + 36, { size: 9, color: PAL.grey1, align: 'center' })
+}
 function drawGoalFx(t) {
   const bh = Math.round(H * 0.25), by = Math.round(H / 2 - bh / 2)
   // 0 → 0,1 s : la bande entre par la gauche ; 0,75 → 0,95 s : elle sort par la droite.
@@ -1574,6 +1596,7 @@ function drawHUD() {
   segments(W - 108, H - 23, 96, 10, 10, ref.patience / 100, ref.patience > 40 ? PAL.green : ref.patience > 0 ? PAL.amber : PAL.red)
   if (ref.patience <= 0 && Math.floor(S.t * 4) % 2) text('IL CRAQUE', W - 60, H - 21, { size: 8, color: PAL.white, align: 'center' })
   if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
+  if (S.phase === 'kickoff' && !S.goals) drawCountdown()
   // Bandeaux : texte cerné, sans bande, qui glisse depuis le haut.
   S.banners.forEach((b, i) => {
     const a = b.t < 0.15 ? b.t / 0.15 : b.t > 1.4 ? (1.8 - b.t) / 0.4 : 1
