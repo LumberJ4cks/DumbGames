@@ -149,25 +149,31 @@ function kickoff() {
 const keys = {}
 const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null }
 let attackPressed = false
+let restartPressed = false
+const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
+const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_BTN.w && y >= RESTART_BTN.y && y <= RESTART_BTN.y + RESTART_BTN.h
+const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
 addEventListener('keydown', (e) => {
   if (e.repeat) return
   keys[e.code] = true
-  if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; e.preventDefault() }
+  if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
   if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0') }
 })
 addEventListener('keyup', (e) => { keys[e.code] = false })
 addEventListener('contextmenu', (e) => e.preventDefault())
-addEventListener('mousedown', (e) => { if (e.button === 2 || S.phase === 'title' || S.phase === 'end') attackPressed = true })
 const canvas = document.getElementById('c')
+addEventListener('mousedown', (e) => {
+  if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
+  if (e.button === 2 || S.phase === 'title') attackPressed = true
+})
 canvas.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse') return
-  const r = canvas.getBoundingClientRect()
-  const x = ((e.clientX - r.left) / r.width) * W
-  const y = ((e.clientY - r.top) / r.height) * H
+  const { x, y } = canvasXY(e)
+  if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
   else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
-  if (S.phase === 'title' || S.phase === 'end') attackPressed = true
+  if (S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointermove', (e) => {
   if (!touch.joy || e.pointerId !== touch.joy.id) return
@@ -1060,8 +1066,8 @@ function startMatch() {
   beep('whistle')
 }
 function update(dt) {
-  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); if (attackPressed) { attackPressed = false; if (S.endT > 2) startMatch() } return }
-  if (S.phase === 'title') { if (attackPressed) { attackPressed = false; startMatch() } return }
+  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) startMatch() } return }
+  if (S.phase === 'title') { restartPressed = false; if (attackPressed) { attackPressed = false; startMatch() } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
@@ -1400,7 +1406,14 @@ function drawEnd() {
     text(stamp, 0, -8, { size: 14, color: PAL.red, align: 'center', shadow: false })
     g.restore()
   }
-  if (T > 2.2 && Math.floor(S.t * 2) % 2 === 0) text('ESPACE POUR REJOUER', W / 2, py + ph - 20, { size: 9, color: PAL.grey1, align: 'center' })
+  if (T > 2) {
+    const b = RESTART_BTN, hot = Math.floor(S.t * 2) % 2 === 0
+    g.fillStyle = PAL.ink; g.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4)
+    g.fillStyle = hot ? PAL.yellow : PAL.amber; g.fillRect(b.x, b.y, b.w, b.h)
+    g.fillStyle = PAL.orange; g.fillRect(b.x, b.y + b.h - 3, b.w, 3)
+    text('RECOMMENCER', W / 2, b.y + 7, { size: 10, color: PAL.ink, align: 'center', shadow: false })
+    text('OU ESPACE', W / 2, b.y + b.h + 4, { size: 6, color: PAL.grey2, align: 'center' })
+  }
 }
 
 /* ---------- démarrage ---------- */
