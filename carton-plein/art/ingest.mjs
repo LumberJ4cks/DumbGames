@@ -134,16 +134,12 @@ const allDirs = (list) => Object.fromEntries(SHORT.map((d) => [d, list]))
 const pick = (...names) => Object.fromEntries(names.map((n) => [n, A[n]]))
 
 // Onze Français : peau × cheveux seulement (pas de changement de coupe pour l'instant).
-const FR = [
-  { skin: 'skinPale', hair: 'hairBrown' }, { skin: 'skinDark', hair: 'hairBlack' }, { skin: 'skinTan', hair: 'hairBlack' },
-  { skin: 'skinPale', hair: 'hairBlond' }, { skin: 'skinDark', hair: 'hairRed' }, { skin: 'skinTan', hair: 'hairBrown' },
-  { skin: 'skinPale', hair: 'hairRed' }, { skin: 'skinDark', hair: 'hairBrown' }, { skin: 'skinTan', hair: 'hairGrey' },
-  { skin: 'skinPale', hair: 'hairBlack' }, { skin: 'skinDark', hair: 'hairGrey' },
-]
+// Onze Français au même design : peau pâle, tous blonds.
+const FR = [{ skin: 'skinPale', hair: 'hairBlond' }]
 const paintLook = (look) => (p) => recolor(p, look, { nearest })
 FR.forEach((look, i) => atlas('france-' + i, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), paintLook(look)))
 // Le n°4.
-atlas('paraguay', pick('stance', 'run', 'throw', 'tackle', 'punch', 'knee', 'kick', 'flykick', 'header', 'hit'), (p) => paraguay(p, { nearest }))
+atlas('paraguay', pick('stance', 'run', 'throw', 'tackle', 'punch', 'knee', 'kick', 'flykick', 'header', 'hit'), (p) => paraguay(p, { nearest, look: { skin: 'skinTan', hair: 'hairBrown', band: true, beard: true } }))
 // L'arbitre : jaune fluo, cheveux gris. Le gardien : violet, chauve, barbu, avec son plongeon.
 atlas('arbitre', { ...pick('idle', 'run', 'walk', 'hit', 'fall', 'ko'), card: allDirs(CARD.map((p) => paintRefCard(p, RAMP.yellow))), redcard: allDirs(CARD.map((p) => paintRefCard(p, RAMP.red))) }, (p) => p.painted ? p : rekit(p, { nearest, kit: { jersey: 'yellow', shorts: 'black', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } }))
 atlas('gardien', { ...pick('idle', 'run', 'hit', 'fall', 'ko'), dive: A.dive }, (p) => rekit(p, { nearest, kit: { jersey: 'purple', shorts: 'black', socks: 'purple', boots: 'red' }, look: { skin: 'skinDark', hair: 'hairBlack', beard: true } }))
