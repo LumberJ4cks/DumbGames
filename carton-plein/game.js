@@ -15,6 +15,8 @@ const W = 640
 const H = 360
 const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré pour que ça se bouscule
 const GOAL_H = 120
+const STAND = 150 // profondeur des gradins, à gauche, à droite et en haut
+const WORLD = { x0: -STAND, y0: -STAND, x1: 72 * 2 + 940 + STAND, y1: 64 * 2 + 500 }
 const MATCH_SECONDS = 90 // ne sert plus qu'au bot : la partie s'arrête au 3e but
 const LIVES = 3
 const BUS = { w: 54, h: 144, speed: 460, park: 10, need: 30 } // trente fautes et il arrive tout seul
@@ -1204,9 +1206,10 @@ function startMatch() {
   nextLook = 0
   resetTeam()
   makeProps()
+  makeCrowd()
   kickoff()
   startMusic()
-  S.cam.x = clamp(hero.x - W / 2, 0, FIELD.x * 2 + FIELD.w - W); S.cam.y = clamp(hero.y - H / 2, 0, FIELD.y * 2 + FIELD.h - H)
+  S.cam.x = clamp(hero.x - W / 2, WORLD.x0, WORLD.x1 - W); S.cam.y = clamp(hero.y - H / 2, WORLD.y0, WORLD.y1 - H)
   beep('whistle')
 }
 function update(dt) {
@@ -1255,8 +1258,8 @@ function update(dt) {
   // Caméra accrochée au n°4, toujours au centre, avec un léger retard lissé de quelques pixels.
   const tx = hero.x + hero.vx * 0.05 - W / 2, ty = hero.y + hero.vy * 0.05 - H / 2
   const k = 1 - Math.pow(0.001, dt) // ~63 % du chemin en 0,14 s, jamais saccadé
-  S.cam.x += (clamp(tx, 0, FIELD.x * 2 + FIELD.w - W) - S.cam.x) * k
-  S.cam.y += (clamp(ty, 0, FIELD.y * 2 + FIELD.h - H) - S.cam.y) * k
+  S.cam.x += (clamp(tx, WORLD.x0, WORLD.x1 - W) - S.cam.x) * k
+  S.cam.y += (clamp(ty, WORLD.y0, WORLD.y1 - H) - S.cam.y) * k
 }
 function endMatch() {
   S.phase = 'end'
@@ -1281,10 +1284,56 @@ function text(t, x, y, { size = 8, color = PAL.white, align = 'left', shadow = t
   g.fillStyle = color
   g.fillText(t, x, y)
 }
+/* ---------- gradins : des rangées de marches et une foule de têtes qui fait la ola ---------- */
+let crowd = null
+function makeCrowd() {
+  crowd = []
+  const pal = [PAL.blue, PAL.white, PAL.red, PAL.blue, PAL.white, PAL.red, PAL.yellow, PAL.pink, PAL.cyan, PAL.grey1, PAL.orange, PAL.green]
+  const skin = [PAL.skinL, PAL.skin, PAL.clay, PAL.sand]
+  const pw = FIELD.w + 2 * FIELD.x, ph = FIELD.h + 2 * FIELD.y
+  const rows = (x0, y0, w, h, dir) => {
+    // dir : 'top' (rangées horizontales qui montent vers le haut), 'left' / 'right' (rangées verticales).
+    const step = 14
+    if (dir === 'top') for (let r = 0; r * step < h; r++) for (let x = x0 + 6 + ((r % 2) * 5); x < x0 + w - 6; x += 10) crowd.push({ x: x + rr(-1, 1), y: y0 + h - r * step - 6, c: pal[(rnd() * pal.length) | 0], s: skin[(rnd() * skin.length) | 0], ph: rnd() * 6.28, r, dir })
+    else for (let r = 0; r * step < w; r++) for (let y = y0 + 6 + ((r % 2) * 5); y < y0 + h - 6; y += 10) crowd.push({ x: dir === 'left' ? x0 + w - r * step - 6 : x0 + r * step + 6, y: y + rr(-1, 1), c: pal[(rnd() * pal.length) | 0], s: skin[(rnd() * skin.length) | 0], ph: rnd() * 6.28, r, dir })
+  }
+  rows(-STAND, -STAND, pw + 2 * STAND, STAND - 10, 'top')
+  rows(-STAND, 0, STAND - 10, ph, 'left')
+  rows(pw + 10, 0, STAND - 10, ph, 'right')
+}
+function drawStands(cx, cy) {
+  if (!crowd) makeCrowd()
+  const pw = FIELD.w + 2 * FIELD.x, ph = FIELD.h + 2 * FIELD.y
+  // Marches en béton, du plus sombre (haut) au plus clair (bas des gradins, près de la pelouse).
+  const band = (x, y, w, h, i) => { g.fillStyle = i % 2 ? PAL.slate : PAL.grey3; g.fillRect(Math.round(x + cx), Math.round(y + cy), Math.round(w), Math.round(h)) }
+  for (let r = 0; r * 14 < STAND; r++) {
+    band(-STAND, -14 - r * 14, pw + 2 * STAND, 14, r)
+    band(-14 - r * 14, 0, 14, ph, r)
+    band(pw + r * 14, 0, 14, ph, r)
+  }
+  // Rambarde et bord de pelouse.
+  g.fillStyle = PAL.grey1; g.fillRect(-STAND + cx, -2 + cy, pw + 2 * STAND, 2); g.fillRect(-2 + cx, cy, 2, ph); g.fillRect(pw + cx, cy, 2, ph)
+  // Banderoles.
+  g.fillStyle = PAL.white; g.fillRect(pw / 2 - 160 + cx, -STAND + 30 + cy, 320, 14)
+  text('ALLEZ LES BLEUS', pw / 2 + cx, -STAND + 33 + cy, { size: 9, color: PAL.blueD, align: 'center', shadow: false })
+  g.fillStyle = PAL.red; g.fillRect(-STAND + 20 + cx, ph / 2 - 60 + cy, 14, 120)
+  g.save(); g.translate(-STAND + 27 + cx, ph / 2 + cy); g.rotate(-Math.PI / 2); text('PARAGUAY', 0, -4, { size: 8, color: PAL.white, align: 'center', shadow: false }); g.restore()
+  // La foule : une tête et des épaules par place, qui sautille en ola. Seulement ce qui est à l'écran.
+  const t = S.t
+  const wave = (S.combo >= 4 || S.fury > 0) ? 2 : 1
+  for (const c of crowd) {
+    const sx = c.x + cx, sy = c.y + cy
+    if (sx < -6 || sx > W + 6 || sy < -8 || sy > H + 8) continue
+    const bob = Math.round(Math.sin(t * 4 * wave + c.ph + (c.dir === 'top' ? c.x : c.y) * 0.02) * (wave > 1 ? 3 : 1.5))
+    g.fillStyle = c.c; g.fillRect(Math.round(sx) - 3, Math.round(sy) - bob, 6, 4)
+    g.fillStyle = c.s; g.fillRect(Math.round(sx) - 2, Math.round(sy) - 4 - bob, 4, 4)
+  }
+}
 function drawPitch() {
   const cx = -Math.round(S.cam.x), cy = -Math.round(S.cam.y)
-  g.fillStyle = PAL.greenD
+  g.fillStyle = PAL.slateD
   g.fillRect(0, 0, W, H)
+  drawStands(cx, cy)
   // Pelouse à bandes.
   for (let x = 0; x < FIELD.w + 2 * FIELD.x; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? PAL.green : PAL.greenL; g.fillRect(x + cx, cy, 40, FIELD.h + 2 * FIELD.y) }
   // Lignes.
