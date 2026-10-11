@@ -17,6 +17,7 @@ const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré p
 const GOAL_H = 120
 const MATCH_SECONDS = 90 // ne sert plus qu'au bot : la partie s'arrête au 3e but
 const LIVES = 3
+const BUS = { w: 46, h: 132, speed: 460, park: 10 }
 const DIRS = ['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']
 const PAL = { ink: '#181425', white: '#ffffff', grey1: '#c0cbdc', grey2: '#8b9bb4', slate: '#3a4466', slateD: '#262b44', green: '#63c74d', greenL: '#7fd36a', greenM: '#3e8948', greenD: '#265c42', yellow: '#fee761', amber: '#feae34', orange: '#f77622', red: '#e43b44', redD: '#a22633', pink: '#f6757a', cyan: '#2ce8f5', blue: '#0099db', sand: '#e4a672', clay: '#b86f50' }
 
@@ -39,7 +40,7 @@ const FOULS = {
   'LA CAGE EST PAR TERRE': { pts: 3000, big: true }, 'FAUTE SUR LE STAFF': { pts: 1500, big: true },
   'PIED SAUTE': { pts: 450, big: true }, 'COUP DE BOULE': { pts: 500, big: true }, DOMINO: { pts: 150, big: false, noWhistle: true }, 'VOL DE BALLON': { pts: 100, big: false, noWhistle: true },
   'FAUTE SUR UN JOURNALISTE': { pts: 1200, big: true }, 'FAUTE SUR UN SUPPORTER': { pts: 900, big: true },
-  'FAUTE SUR LA BANANE': { pts: 1000, big: true }, 'FAUTE SUR LE VENDEUR DE HOT-DOGS': { pts: 1100, big: true }, 'FAUTE SUR LE MARIE': { pts: 1400, big: true }, 'FAUTE SUR LA MARIEE': { pts: 1600, big: true }, 'FAUTE SUR LE COMMENTATEUR': { pts: 1300, big: true }, 'FAUTE SUR UN PIGEON': { pts: 2000, big: false, noWhistle: true }, 'FAUTE SUR LE GENDARME A CHEVAL': { pts: 3000, big: true }, 'FAUTE SUR LE KINE': { pts: 1500, big: true }, 'FAUTE SUR LE RAMASSEUR DE BALLES': { pts: 1700, big: true }, 'FAUTE SUR LE PRESIDENT': { pts: 5000, big: true }, 'FAUTE SUR LA FANFARE': { pts: 900, big: true }, 'FAUTE SUR LE DINOSAURE': { pts: 1200, big: true }, SOUFFLE: { pts: 300, big: false, noWhistle: true }, 'FAUTE SUR LA POULE': { pts: 1500, big: true }, 'FAUTE SUR LA MASCOTTE': { pts: 1200, big: true }, 'FAUTE SUR UN CRS': { pts: 1800, big: true }, 'FAUTE SUR LE STREAKER': { pts: 1300, big: true }, 'FAUTE SUR UNE MAMIE': { pts: 2500, big: true },
+  'ECRASE PAR LE BUS': { pts: 800, big: true, noWhistle: true }, 'FAUTE SUR LA BANANE': { pts: 1000, big: true }, 'FAUTE SUR LE VENDEUR DE HOT-DOGS': { pts: 1100, big: true }, 'FAUTE SUR LE MARIE': { pts: 1400, big: true }, 'FAUTE SUR LA MARIEE': { pts: 1600, big: true }, 'FAUTE SUR LE COMMENTATEUR': { pts: 1300, big: true }, 'FAUTE SUR UN PIGEON': { pts: 2000, big: false, noWhistle: true }, 'FAUTE SUR LE GENDARME A CHEVAL': { pts: 3000, big: true }, 'FAUTE SUR LE KINE': { pts: 1500, big: true }, 'FAUTE SUR LE RAMASSEUR DE BALLES': { pts: 1700, big: true }, 'FAUTE SUR LE PRESIDENT': { pts: 5000, big: true }, 'FAUTE SUR LA FANFARE': { pts: 900, big: true }, 'FAUTE SUR LE DINOSAURE': { pts: 1200, big: true }, SOUFFLE: { pts: 300, big: false, noWhistle: true }, 'FAUTE SUR LA POULE': { pts: 1500, big: true }, 'FAUTE SUR LA MASCOTTE': { pts: 1200, big: true }, 'FAUTE SUR UN CRS': { pts: 1800, big: true }, 'FAUTE SUR LE STREAKER': { pts: 1300, big: true }, 'FAUTE SUR UNE MAMIE': { pts: 2500, big: true },
 }
 const TIERS = ['', 'CHAUD', 'BAGARRE', 'EMEUTE', 'CARTON PLEIN']
 const COMBO_STEPS = [0, 2, 4, 7, 10] // seuils pour ×1..×5
@@ -146,7 +147,7 @@ const S = {
   phase: 'title', // title | play | kickoff | freekick | goal | end
   t: 0, clock: 0, added: 0, addedShown: false,
   score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0,
-  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
+  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, bus: null, busHits: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
   popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
   phaseT: 0,
@@ -200,9 +201,12 @@ let restartPressed = false
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
 const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_BTN.w && y >= RESTART_BTN.y && y <= RESTART_BTN.y + RESTART_BTN.h
 const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
+let lastDownTap = -9, lastRightClick = -9
+function tryBus() { if (S.chains >= 3 && !S.busUsed && !S.bus && (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'goal')) { callBus(); return true } return false }
 addEventListener('keydown', (e) => {
   if (e.repeat) return
   if (music.wanted && !music.src) startMusic()
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') { const now = performance.now(); if (now - lastDownTap < 300) { if (tryBus()) lastDownTap = -9 } else lastDownTap = now }
   keys[e.code] = true
   if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
@@ -214,6 +218,7 @@ const canvas = document.getElementById('c')
 addEventListener('mousedown', (e) => {
   if (music.wanted && !music.src) startMusic()
   if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
+  if (e.button === 2) { const now = performance.now(); if (now - lastRightClick < 300 && tryBus()) { lastRightClick = -9; return } lastRightClick = now }
   if (e.button === 2 || S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointerdown', (e) => {
@@ -222,7 +227,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const { x, y } = canvasXY(e)
   if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
-  else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
+  else { const now = performance.now(); if (now - lastRightClick < 300 && tryBus()) { lastRightClick = -9; return } lastRightClick = now; touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
   if (S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointermove', (e) => {
@@ -289,7 +294,7 @@ function foul(name, victim, extra = {}) {
   if (S.refDown <= 0 && name !== "FAUTE SUR L'ARBITRE" && !def.noWhistle) {
     ref.patience = Math.max(0, ref.patience - (def.big ? 18 : 8) * (ref.strict || 1))
     ref.calm = 5
-    if (ref.patience <= 0 && def.big && victim && victim.team === 'fra' && !ref.cardTarget) startCard(victim)
+    if (ref.patience <= 0 && def.big && victim && victim.team === 'fra' && !ref.cardTarget && S.phase !== 'goal') startCard(victim)
   }
   if (S.hitStopCd <= 0 && S.fury <= 0) { S.freeze = Math.max(S.freeze, def.big ? 0.07 : 0.035); S.hitStopCd = 0.3 }
   if (S.shakeCd <= 0) { S.shake = Math.max(S.shake, def.big ? 6 : 3); S.shakeCd = 0.12 }
@@ -298,6 +303,8 @@ function foul(name, victim, extra = {}) {
   if (def.big && S.t - (S.lastWhistle || -9) > 1.5) { S.lastWhistle = S.t; beep('whistle') }
   if (victim && victim.team === 'fra') freeKick(vx, vy, victim)
 }
+/** Phase à reprendre après une interruption : le jeu, ou le retour du ballon au centre s'il n'a pas été remis en jeu. */
+function resumePhase() { return S.kickedOff ? 'play' : 'goal' }
 function startCard(victim) {
   ref.cardTarget = victim
   ref.cardT = 0
@@ -577,6 +584,7 @@ function heroAttack() {
     const step = hero.chainT > 0 ? Math.min(hero.chain, 3) : 0
     hero.act = chain[step]
     hero.actT = step === 3 ? 0.36 : 0.2
+    if (step === 3 && !S.busUsed && S.chains < 3) { S.chains++; popup(hero.x, hero.y - 70, S.chains >= 3 ? 'BUS PRET !' : 'ENCHAINEMENT ' + S.chains + '/3', PAL.cyan, true); if (S.chains >= 3) { banner('BUS PRET : DOUBLE BAS (OU DOUBLE CLIC DROIT)', PAL.cyan); beep('card') } }
     hero.chain = step + 1
     hero.chainT = 0.55 // fenêtre courte : il faut le rythme, pas le spam
     if (hero.linked) { S.score += 50 * comboMult(); hero.linked = false }
@@ -725,7 +733,7 @@ function hitRef() {
   const dx = ref.x - hero.x, dy = ref.y - hero.y, d = Math.hypot(dx, dy) || 1
   const air = hero.act === 'throw' || hero.act === 'flykick' || hero.act === 'header' || hero.act === 'kick' || S.fire > 0 ? 300 : 200
   ref.vx = (dx / d) * (200 + air * 0.5); ref.vy = (dy / d) * (200 + air * 0.5); ref.z = 0; ref.vz = air; ref.landed = false
-  if (ref.cardTarget) { popup(ref.x, ref.y - 66, 'IL NE DIRA RIEN', PAL.grey1, true); ref.cardTarget = null; if (S.phase === 'card') S.phase = 'play' }
+  if (ref.cardTarget) { popup(ref.x, ref.y - 66, 'IL NE DIRA RIEN', PAL.grey1, true); ref.cardTarget = null; if (S.phase === 'card') S.phase = resumePhase() }
   ref.cardShow = 0
   if (ball.owner === ref) { ball.owner = null; ball.vx = rr(-200, 200); ball.vy = rr(-200, 200) }
   foul("FAUTE SUR L'ARBITRE", null)
@@ -965,6 +973,54 @@ function spawnAbsurd(kind, near) {
   return f
 }
 
+/* ---------- le bus des supporters : pouvoir unique, se gare devant notre but 10 s ---------- */
+function callBus() {
+  S.busUsed = true
+  const gy = FIELD.y + FIELD.h / 2
+  S.bus = { x: FIELD.x + FIELD.w - 60 - BUS.w / 2, y: FIELD.y - 200, state: 'in', t: 0, hit: new Set(), ty: gy }
+  banner('LE BUS DES SUPPORTERS DEBARQUE', PAL.cyan)
+  S.shake = Math.max(S.shake, 8)
+  beep('hitBig')
+}
+function busRect(b, pad = 0) { return { x: b.x - BUS.w / 2 - pad, y: b.y - BUS.h / 2 - pad, w: BUS.w + pad * 2, h: BUS.h + pad * 2 } }
+function inRect(p, r) { return p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h }
+function updateBus(dt) {
+  const b = S.bus
+  if (!b) return
+  b.t += dt
+  if (b.state === 'in') { b.y += BUS.speed * dt; if (b.y >= b.ty) { b.y = b.ty; b.state = 'park'; b.t = 0; S.shake = Math.max(S.shake, 10); beep('land'); banner('STATIONNEMENT GENANT', PAL.cyan) } }
+  else if (b.state === 'park') { if (b.t > BUS.park) { b.state = 'out'; b.hit.clear(); banner('LE BUS REPART', PAL.grey1) } }
+  else if (b.state === 'out') { b.y += BUS.speed * dt; if (b.y > FIELD.y + FIELD.h + 260) S.bus = null }
+  const moving = b.state !== 'park'
+  const r = busRect(b, moving ? 8 : 0)
+  // Tout ce qui est sur le passage s'envole ; à l'arrêt, on ne fait que pousser.
+  for (const f of [...french, ...npcs]) {
+    if (f.state !== 'play' || !inRect(f, r)) continue
+    if (moving) { if (b.hit.has(f)) continue; b.hit.add(f); f.vx = (f.x - b.x) * 6 + rr(-80, 80); f.vy = BUS.speed * 0.6; knockDown(f, 0.9, 320); foul('ECRASE PAR LE BUS', f); S.busHits++ }
+    else { const side = f.x < b.x ? -1 : 1; f.x = b.x + side * (BUS.w / 2 + 6) }
+  }
+  if (S.refDown <= 0 && inRect(ref, r)) { if (moving && !b.hit.has(ref)) { b.hit.add(ref); hitRef(); ref.vy = BUS.speed * 0.5 } else if (!moving) ref.x = b.x + (ref.x < b.x ? -1 : 1) * (BUS.w / 2 + 8) }
+  if (inRect(hero, busRect(b, 2))) { const side = hero.x < b.x ? -1 : 1; hero.x = b.x + side * (BUS.w / 2 + 10) }
+  // Le ballon rebondit dessus : c'est le but du bus.
+  if (!ball.owner && inRect(ball, busRect(b, 4)) && ball.z < 60) { const side = ball.x < b.x ? -1 : 1; ball.x = b.x + side * (BUS.w / 2 + 6); ball.vx = side * Math.max(220, Math.abs(ball.vx) * 0.8); ball.vy += rr(-80, 80); ball.noTake = 0.1; beep('bounce'); if (b.state === 'park') { popup(b.x - 30, b.y - 80, 'CONTRE', PAL.cyan, true); S.score += 200; S.lastPts = 200; S.lastPtsT = 0 } }
+}
+function drawBus(b, cx, cy) {
+  const r = busRect(b)
+  const x = Math.round(r.x + cx), y = Math.round(r.y + cy)
+  g.fillStyle = PAL.ink; g.fillRect(x - 2, y - 2, r.w + 4, r.h + 4)
+  g.fillStyle = PAL.blueD; g.fillRect(x, y, r.w, r.h)
+  g.fillStyle = PAL.blue; g.fillRect(x + 4, y + 10, r.w - 8, r.h - 20)
+  g.fillStyle = PAL.white; g.fillRect(x + 4, y + 10, r.w - 8, 3); g.fillRect(x + 4, y + r.h - 13, r.w - 8, 3)
+  g.fillStyle = PAL.grey1
+  for (let j = 18; j < r.h - 18; j += 14) { g.fillRect(x + 1, y + j, 3, 9); g.fillRect(x + r.w - 4, y + j, 3, 9) }
+  g.fillStyle = PAL.yellow; g.fillRect(x + 6, y + r.h - 5, 6, 3); g.fillRect(x + r.w - 12, y + r.h - 5, 6, 3)
+  g.fillStyle = PAL.red; g.fillRect(x + 6, y + 2, 6, 3); g.fillRect(x + r.w - 12, y + 2, 6, 3)
+  g.save(); g.translate(x + r.w / 2, y + r.h / 2); g.rotate(-Math.PI / 2)
+  text('FC MMA', 0, -5, { size: 9, color: PAL.white, align: 'center' })
+  g.restore()
+  if (b.state !== 'park') for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(192,203,220,0.5)'; g.fillRect(x + rr(0, r.w), y + (b.state === 'in' ? -6 - i * 6 : r.h + i * 6), 4, 3) }
+}
+
 /* ---------- vagues : le banc, puis la presse, puis la tribune ---------- */
 const WAVES = [
   { role: 'staff', n: 3, text: 'LE STAFF ENTRE EN JEU' },
@@ -1090,7 +1146,7 @@ function updateRef(dt) {
       if (ref.cardT === 0) { S.phase = 'card'; S.phaseT = 1.1; S.freeze = 0.05; beep('whistle'); ball.vx = ball.vy = 0; if (ball.owner && ball.owner !== hero) ball.owner = null; ref.ft = 0 }
       ref.cardT += dt
       ref.anim = ct.card === 1 ? 'redcard' : 'card'; ref.frame = Math.floor(ref.ft * 8)
-      if (ref.cardT > 0.6) { giveCard(ct); S.phase = 'play' }
+      if (ref.cardT > 0.6) { giveCard(ct); S.phase = resumePhase() }
     }
     return
   }
@@ -1121,7 +1177,7 @@ function updateRef(dt) {
 /* ---------- boucle ---------- */
 function startMatch() {
   S.goalFx = undefined
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, bus: null, busHits: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -1146,11 +1202,13 @@ function update(dt) {
   if (S.endAt !== undefined) { S.endAt -= dt; if (S.endAt <= 0) { S.endAt = undefined; endMatch(); return } }
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
-  if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = 'play' }
-  if (S.phase === 'freekick') { S.phaseT -= dt; if (S.phaseT <= 0) { S.phase = 'play'; const taker = nearestFrench(ball, 80, (f) => !f.gk); if (taker) ball.owner = taker } }
+  if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = resumePhase() }
+  if (!S.kickedOff && S.phase === 'play') { S.phase = 'goal'; S.phaseT = Math.max(S.phaseT, 3) } // filet de sécurité : jamais de jeu sans remise en jeu
+  if (S.phase === 'freekick') { S.phaseT -= dt; if (S.phaseT <= 0) { S.phase = resumePhase(); const taker = nearestFrench(ball, 80, (f) => !f.gk); if (taker && S.phase === 'play') ball.owner = taker } }
   if (attackPressed) { attackPressed = false; heroAttack() }
   updateHero(dt)
   updateBall(dt)
+  updateBus(dt)
   if (S.stopAll > 0) { S.stopAll -= dt; settleAir(dt) }
   else { updateFrench(dt); updateRef(dt); updateNpcs(dt); updateWaves(dt) }
   for (const d of S.debris) { if (d.t < 0) continue; d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 300 * dt; if (d.t > 0.6) { d.t = -1; d.vx = d.vy = 0 } }
@@ -1278,14 +1336,17 @@ function render() {
   for (const d of S.debris) { g.fillStyle = d.color; g.fillRect(Math.round(d.x + cx), Math.round(d.y + cy), 3, 2) }
   const ents = [...french, ...npcs, ref, hero]
   for (const p of props) ents.push({ isProp: true, p, y: p.y + p.h, x: p.x })
+  if (S.bus) ents.push({ isBus: true, b: S.bus, y: S.bus.y + BUS.h / 2, x: S.bus.x })
   const flat = (e) => !e.isProp && (e.state === 'ko' || e.state === 'fade' || (e === ref && ref.landed && ref.down > 0))
   ents.sort((a, b) => (flat(a) ? 0 : 1) - (flat(b) ? 0 : 1) || a.y - b.y)
   // Ombres et marquage.
-  for (const e of ents) if (!e.isProp && e.state !== 'ko' && e.state !== 'fade' && !(e === ref && ref.landed && ref.down > 0)) drawShadow(e.x + cx, e.y + cy + 1, Math.max(6, (e.state === 'fall' ? 14 : 12) - (e.z || 0) * 0.15))
+  if (S.bus) { g.fillStyle = 'rgba(24,20,37,0.25)'; const r = busRect(S.bus); g.fillRect(Math.round(r.x + cx + 4), Math.round(r.y + cy + 6), r.w, r.h) }
+  for (const e of ents) if (!e.isProp && !e.isBus && e.state !== 'ko' && e.state !== 'fade' && !(e === ref && ref.landed && ref.down > 0)) drawShadow(e.x + cx, e.y + cy + 1, Math.max(6, (e.state === 'fall' ? 14 : 12) - (e.z || 0) * 0.15))
   drawShadow(ball.x + cx, ball.y + cy + 2, Math.max(2, 4 - (ball.z || 0) / 40))
   if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t, S.fury > 0)
   for (const e of ents) {
     if (e.isProp) { drawProp(e.p, cx, cy); continue }
+    if (e.isBus) { drawBus(e.b, cx, cy); continue }
     if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
     if (e.state === 'fade') { g.globalAlpha = clamp((Math.floor(e.ft * 24) % 2 ? 0.15 : 0.9) * Math.min(1, e.fadeT / 0.5 + 0.2), 0, 1); drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); g.globalAlpha = 1; continue }
     if (e.state === 'fall') { const z = e.z || 0; if (z > 2) { g.save(); g.translate(e.x + cx, e.y + cy - z); g.rotate(Math.sin(e.ft * 9) * 0.5); drawSprite(g, e.atlas, 'knocked', e.dir, e.frame, 0, 0); g.restore() } else drawSprite(g, e.atlas, z > 0 ? 'knocked' : 'fall', e.dir, e.frame, e.x + cx, e.y + cy - z); continue }
@@ -1410,6 +1471,14 @@ function drawHUD() {
   text(furyOn ? 'FURIE' : fireOn ? 'FURIE ?' : 'FUEGO', 16, H - 25, { size: 9, color: furyOn ? (Math.floor(S.t * 10) % 2 ? PAL.white : PAL.yellow) : fireOn ? PAL.yellow : PAL.orange })
   segments(72, H - 23, 98, 10, 12, furyOn ? S.fury / 12 : fireOn ? S.furyCharge / 100 : S.fuego / 100, furyOn ? PAL.white : fireOn ? PAL.yellow : PAL.orange)
   if (fireOn && !furyOn) text('EN FEU ' + Math.ceil(S.fire) + 'S', 72, H - 11 - 1, { size: 6, color: PAL.orange })
+  // Le bus : trois crans d'enchaînement, puis prêt.
+  if (!S.busUsed || S.bus) {
+    panel(W / 2 - 52, H - 24, 104, 18, PAL.cyan)
+    const ready = S.chains >= 3 && !S.busUsed
+    text(S.bus ? 'BUS ' + (S.bus.state === 'park' ? Math.ceil(BUS.park - S.bus.t) + 'S' : '') : ready ? (Math.floor(S.t * 3) % 2 ? 'BUS PRET' : 'BAS BAS') : 'BUS', W / 2 - 44, H - 19, { size: 7, color: ready ? PAL.cyan : PAL.grey1 })
+    if (!S.bus) segments(W / 2 + 4, H - 18, 44, 6, 3, S.chains / 3, PAL.cyan)
+    else segments(W / 2 + 4, H - 18, 44, 6, 10, S.bus.state === 'park' ? 1 - S.bus.t / BUS.park : 1, PAL.cyan)
+  }
   // Arbitre, en bas à droite.
   panel(W - 178, H - 30, 172, 24, ref.patience <= 0 ? PAL.red : ref.patience > 40 ? PAL.green : PAL.amber)
   text('ARBITRE', W - 168, H - 25, { size: 9, color: ref.patience <= 0 ? PAL.red : PAL.grey1 })
@@ -1439,6 +1508,7 @@ function drawTitle() {
   text('UN PARAGUAYEN. ONZE FRANCAIS. ZERO INTENTION DE JOUER AU BALLON.', W / 2, 108, { size: 8, color: PAL.grey1, align: 'center' })
   text('FLECHES : BOUGER   ESPACE / CLIC DROIT : FRAPPER', W / 2, 140, { size: 9, align: 'center' })
   text('LOIN = TACLE GLISSE     COLLE = POING, GENOU, PIED, PROJECTION', W / 2, 156, { size: 9, align: 'center' })
+  text('3 ENCHAINEMENTS COMPLETS = LE BUS. DOUBLE BAS POUR LE GARER DEVANT TON BUT.', W / 2, 168, { size: 8, color: PAL.cyan, align: 'center' })
   text('TROIS BALLONS DE VIE : AU TROISIEME BUT ENCAISSE, C\'EST FINI.', W / 2, 180, { size: 8, color: PAL.grey1, align: 'center' })
   text('FAIS UN MAXIMUM DE DEGATS AVANT. LA FRANCE ACCELERE AVEC LE TEMPS.', W / 2, 192, { size: 8, color: PAL.grey1, align: 'center' })
   text("QUAND L'ARBITRE CRAQUE, UNE GROSSE FAUTE = CARTON POUR LA FRANCE", W / 2, 206, { size: 8, color: PAL.grey1, align: 'center' })
@@ -1474,6 +1544,7 @@ function drawEnd() {
     ['Cartons jaunes', S.yellows], ['Cartons rouges', S.reds], ['Combo maximum', '×' + S.maxCombo],
     ['Boosts EN FEU', S.fires], ['Furies', S.furies],
   ]
+  if (S.busHits) right.push(['Ecrases par le bus', S.busHits])
   const colW = (pw - 40) / 2
   const row = (k, v, x, y, i) => {
     if (T < 0.45 + i * 0.08) return
