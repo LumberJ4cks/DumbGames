@@ -9,6 +9,7 @@ import { Pix, PALETTE } from '../../cons-de-mime/pixel.js'
 import { toPix } from './pixellab-check.mjs'
 import { recolor, rekit, paraguay } from './recolor.mjs'
 import { LOOKS, RAMP } from './players.mjs'
+import { absurdFrames, ABSURD_NAMES } from './absurdes.mjs'
 
 const RGB = PALETTE.map((c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)])
 const nearest = (c) => { const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16); let best = 0, bd = 1e9; RGB.forEach(([R, G, B], i) => { const d = (R - r) ** 2 * 0.3 + (G - g) ** 2 * 0.59 + (B - b) ** 2 * 0.11; if (d < bd) { bd = d; best = i } }); return PALETTE[best] }
@@ -47,7 +48,7 @@ function pngRGBA(pix) {
 }
 
 /** Construit un atlas : `anims` = { nom: { dir: [Pix] } }, `paint` = fonction de recoloration par image. */
-function atlas(name, anims, paint) {
+function atlas(name, anims, paint, extra = {}) {
   const frames = []
   const index = {}
   for (const [an, dirs] of Object.entries(anims)) {
@@ -65,7 +66,7 @@ function atlas(name, anims, paint) {
   })
   fs.mkdirSync(OUT, { recursive: true })
   fs.writeFileSync(path.join(OUT, name + '.png'), pngRGBA(sheet))
-  fs.writeFileSync(path.join(OUT, name + '.json'), JSON.stringify({ cell: CELL, cols: COLS, ax: AX, ay: AY, anims: index }))
+  fs.writeFileSync(path.join(OUT, name + '.json'), JSON.stringify({ cell: CELL, cols: COLS, ax: AX, ay: AY, ...extra, anims: index }))
   console.error(name, frames.length, 'images', sheet.w + 'x' + sheet.h)
 }
 
@@ -140,18 +141,8 @@ const paintLook = (look) => (p) => recolor(p, look, { nearest })
 FR.forEach((look, i) => atlas('france-' + i, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), paintLook(look)))
 // Le n°4.
 atlas('paraguay', pick('stance', 'run', 'throw', 'tackle', 'punch', 'knee', 'kick', 'flykick', 'header', 'hit'), (p) => paraguay(p, { nearest, look: { skin: 'skinTan', hair: 'hairBrown', band: true, beard: true } }))
-// Les absurdes, qui entrent à partir du 12e Français défoncé : même pantin, kits improbables.
-const ABSURD = {
-  banane: { kit: { jersey: 'yellow', shorts: 'yellow', socks: 'yellow', boots: 'yellow' }, look: { skin: 'skinPale', hair: 'yellow' } },
-  echarpe: { kit: { jersey: 'blueDark', shorts: 'navy', socks: 'white', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairBrown' } },
-  supporter: { kit: { jersey: 'grass', shorts: 'navy', socks: 'white', boots: 'white' }, look: { skin: 'skinTan', hair: 'hairBlack', beard: true } },
-  poule: { kit: { jersey: 'white', shorts: 'white', socks: 'yellow', boots: 'yellow' }, look: { skin: 'white', hair: 'red' } },
-  mascotte: { kit: { jersey: 'blueLight', shorts: 'blueLight', socks: 'red', boots: 'red' }, look: { skin: 'blueLight', hair: 'red' } },
-  crs: { kit: { jersey: 'navy', shorts: 'navy', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'black' } },
-  streaker: { kit: { jersey: 'skinPale', shorts: 'skinPale', socks: 'skinPale', boots: 'skinPale' }, look: { skin: 'skinPale', hair: 'hairRed' } },
-  mamie: { kit: { jersey: 'purple', shorts: 'black', socks: 'white', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } },
-}
-for (const [name, d] of Object.entries(ABSURD)) atlas(name, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), (p) => rekit(p, { nearest, kit: d.kit, look: d.look }))
+// Les absurdes : dessinés en procédural dans absurdes.mjs, loin du pantin des joueurs.
+for (const name of ABSURD_NAMES) atlas(name, absurdFrames(name), (p) => p, { koOff: 0 })
 // L'arbitre : jaune fluo, cheveux gris. Le gardien : violet, chauve, barbu, avec son plongeon.
 atlas('arbitre', { ...pick('idle', 'run', 'walk', 'hit', 'fall', 'ko'), card: allDirs(CARD.map((p) => paintRefCard(p, RAMP.yellow))), redcard: allDirs(CARD.map((p) => paintRefCard(p, RAMP.red))) }, (p) => p.painted ? p : rekit(p, { nearest, kit: { jersey: 'yellow', shorts: 'black', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } }))
 atlas('gardien', { ...pick('idle', 'run', 'hit', 'fall', 'ko'), dive: A.dive }, (p) => rekit(p, { nearest, kit: { jersey: 'purple', shorts: 'black', socks: 'purple', boots: 'red' }, look: { skin: 'skinDark', hair: 'hairBlack', beard: true } }))

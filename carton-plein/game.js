@@ -1066,6 +1066,7 @@ function drawOverlay(kind, x, y) {
   else if (kind === 'censure') { g.fillStyle = PAL.ink; g.fillRect(hx - 8, y - 16, 16, 6) }
   else if (kind === 'chignon') { g.fillStyle = PAL.grey1; g.beginPath(); g.arc(hx, hy - 12, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = PAL.grey2; g.fillRect(hx - 1, hy - 13, 2, 2) }
 }
+const koOff = (name) => (ATLAS[name] && ATLAS[name].koOff !== undefined ? ATLAS[name].koOff : 22)
 function drawCard(x, y, blink) { g.fillStyle = PAL.ink; g.fillRect(x - 4, y - 6, 8, 11); g.fillStyle = blink ? PAL.white : PAL.yellow; g.fillRect(x - 3, y - 5, 6, 9); g.fillStyle = PAL.white; g.fillRect(x - 3, y - 5, 6, 1) }
 function drawStars(x, y, t, n = 3) {
   for (let k = 0; k < n; k++) {
@@ -1093,14 +1094,13 @@ function render() {
   if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t)
   for (const e of ents) {
     if (e.isProp) { drawProp(e.p, cx, cy); continue }
-    if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
-    if (e.state === 'fade') { g.globalAlpha = clamp((Math.floor(e.ft * 24) % 2 ? 0.15 : 0.9) * Math.min(1, e.fadeT / 0.5 + 0.2), 0, 1); drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - 22); g.globalAlpha = 1; continue }
+    if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
+    if (e.state === 'fade') { g.globalAlpha = clamp((Math.floor(e.ft * 24) % 2 ? 0.15 : 0.9) * Math.min(1, e.fadeT / 0.5 + 0.2), 0, 1); drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); g.globalAlpha = 1; continue }
     if (e.state === 'fall') { const z = e.z || 0; if (z > 2) { g.save(); g.translate(e.x + cx, e.y + cy - z); g.rotate(Math.sin(e.ft * 9) * 0.5); drawSprite(g, e.atlas, 'knocked', e.dir, e.frame, 0, 0); g.restore() } else drawSprite(g, e.atlas, z > 0 ? 'knocked' : 'fall', e.dir, e.frame, e.x + cx, e.y + cy - z); continue }
     if (e === ref && ref.down > 0) { if (!ref.landed) { g.save(); g.translate(e.x + cx, e.y + cy - ref.z); g.rotate(Math.sin(e.ft * 9) * 0.6); drawSprite(g, 'arbitre', 'fall', e.dir, e.frame, 0, 0); g.restore() } else { drawSprite(g, 'arbitre', 'ko', e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t) } continue }
     let anim = e.anim
     if (e === hero && hero.act && hero.act !== 'tackle') anim = hero.act === 'ballthrow' ? 'throw' : hero.act
     drawSprite(g, e.atlas, anim, e.dir, e.frame, e.x + cx, e.y + cy - (e.z || 0))
-    if (e.absurd && e.state === 'play') drawOverlay(e.absurd.overlay, e.x + cx, e.y + cy - (e.z || 0))
     if (e.card === 1) drawCard(e.x + cx, e.y + cy - 58 + Math.round(Math.sin(S.t * 6 + e.cardBob)), dist(e, hero) < 60 && Math.floor(S.t * 6) % 2 === 0)
     if (e.stun > 0 && e.team === 'fra') drawStars(e.x + cx, e.y + cy - 52, S.t, 2)
   }
