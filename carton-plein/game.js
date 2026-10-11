@@ -191,17 +191,22 @@ function kickoff() {
   ball.x = FIELD.x + FIELD.w / 2
   ball.y = FIELD.y + FIELD.h / 2
   ball.vx = ball.vy = 0
-  ball.z = ball.vz = 0; ball.air = 0; ball.out = false
+  ball.z = ball.vz = 0; ball.air = 0; ball.out = false; ball.inStands = null
   ball.owner = null
   for (const f of french) {
     const p = slotPos(f, ball.x - 200)
     f.x = p.x; f.y = p.y; f.state = 'play'; f.stun = 0; f.down = 0; f.anim = 'idle'
     if (f.hp <= 0) f.hp = 3
   }
-  french[9].x = ball.x - 14; french[9].y = ball.y
-  french[10].x = ball.x - 40; french[10].y = ball.y + 30
+  french[9].x = ball.x - 24; french[9].y = ball.y + 4
+  french[10].x = ball.x - 46; french[10].y = ball.y + 34
   hero.x = ball.x + 90; hero.y = ball.y + 10
-  ref.x = ball.x; ref.y = ball.y - 110
+  if (!S.goals) {
+    // Début de match : l'arbitre entre par la touche avec le ballon dans les mains.
+    ref.x = ball.x - 20; ref.y = FIELD.y - 40
+    ball.owner = ref; ball.x = ref.x; ball.y = ref.y
+    S.kickStage = 'carry'; S.phaseT = 99
+  } else { ref.x = ball.x; ref.y = ball.y - 110 }
 }
 
 /* ---------- entrées ---------- */
@@ -357,16 +362,24 @@ function startFury() {
   S.furies++
   S.furyCharge = 0
   hero.act = null; hero.stun = 0
-  // Cinématique SUPA FOOT SAYAN, jouée une fois, tout figé ; la furie démarre à la fin.
-  S.sayanPrev = S.phase
-  S.phase = 'sayan'
-  S.sayanT = 0
-  S.banners = []
-  S.freeze = 0; S.stopAll = 0
-  beep('fire')
+  // Cinématique SUPA FOOT SAYAN la première fois ; ensuite la transformation se joue sur le terrain.
+  if (!S.sayanSeen) {
+    S.sayanSeen = true
+    S.sayanPrev = S.phase
+    S.phase = 'sayan'
+    S.sayanT = 0
+    S.banners = []
+    S.freeze = 0; S.stopAll = 0
+    beep('fire')
+  } else {
+    S.fieldTf = 0
+    S.stopAll = SAYAN.frames / 10 + 0.1
+    S.shake = 10
+    beep('fire')
+  }
 }
 function endSayan() {
-  S.phase = S.sayanPrev && S.sayanPrev !== 'sayan' ? S.sayanPrev : 'play'
+  if (S.phase === 'sayan') S.phase = S.sayanPrev && S.sayanPrev !== 'sayan' ? S.sayanPrev : 'play'
   S.fury = 12
   S.fire = 12
   S.shake = 16
@@ -627,7 +640,7 @@ function heroAttack() {
   }
 }
 function updateHero(dt) {
-  const v = S.phase === 'kickoff' && !S.goals ? { dx: 0, dy: 0 } : inputVector()
+  const v = (S.phase === 'kickoff' && !S.goals) || S.fieldTf !== undefined ? { dx: 0, dy: 0 } : inputVector()
   const speed = hero.speed * (S.fury > 0 ? 1.9 : S.fire > 0 ? 1.6 : 1)
   if (hero.stun > 0) { hero.stun -= dt; hero.vx = hero.vy = 0 }
   else if (hero.act === 'tackle') {
@@ -681,8 +694,8 @@ function updateHero(dt) {
     hero.vx = v.dx * speed * 0.35; hero.vy = v.dy * speed * 0.35
     hero.x += hero.vx * dt; hero.y += hero.vy * dt
     hero.actT -= dt
-    const dur = hero.act === 'throw' ? 0.36 : hero.act === 'ballthrow' ? 0.4 : 0.2
-    if (!hero.hitDone && hero.actT < dur - 0.08) {
+    const dur = hero.act === 'throw' ? 0.36 : hero.act === 'ballthrow' ? 0.62 : 0.2
+    if (!hero.hitDone && hero.actT < dur - (hero.act === 'ballthrow' ? 0.34 : 0.08)) {
       hero.hitDone = true
       const t = hero.hitTarget
       if (hero.act === 'ballthrow') throwBall()
@@ -703,26 +716,26 @@ function updateHero(dt) {
     if (d) hero.dir = d
     if (S.fury > 0) { for (const f of [...french, ...npcs]) if (f.state === 'play' && dist(hero, f) < 30) hitFrench(f, 'SOUFFLE', { knock: 340 }); if (S.refDown <= 0 && dist(hero, ref) < 28) hitRef() }
     // Le ballon à portée : on le ramasse et on le balance loin, comme une brute.
-    const wants = v.dx || v.dy // c'est le n°4 qui va au ballon, jamais l'inverse
+    const wants = (v.dx || v.dy) && !ball.inStands // c'est le n°4 qui va au ballon, jamais l'inverse
     if ((S.phase === 'play' || S.phase === 'freekick' || S.phase === 'goal') && wants && (ball.z || 0) < 12 && dist(hero, ball) < 22 && ball.owner !== hero) {
       const o = ball.owner
       ball.out = false
       if (o === ref) { ball.owner = null; popup(ref.x, ref.y - 60, 'EH !', PAL.grey1, true) }
       else if (o && o !== hero) { o.stun = 0.5; o.anim = 'hit'; o.ft = 0; o.vx = (o.x - hero.x) * 4; o.vy = (o.y - hero.y) * 4; foul('VOL DE BALLON', o) }
-      hero.act = 'ballthrow'; hero.actT = 0.4; hero.hitDone = false; ball.owner = hero
+      hero.act = 'ballthrow'; hero.actT = 0.62; hero.hitDone = false; ball.owner = hero; ball.out = false
     }
   }
-  if (ball.owner === hero) { ball.x = hero.x; ball.y = hero.y - 20; ball.vx = ball.vy = 0 }
+  if (ball.owner === hero) { ball.x = hero.x; ball.y = hero.y - 4; ball.z = 38; ball.vx = ball.vy = 0 } // à deux mains, au-dessus de la tête
   hero.chainT -= dt
   if (hero.chainT <= 0) hero.chain = 0
-  hero.x = clamp(hero.x, FIELD.x - 20, FIELD.x + FIELD.w + 20)
-  hero.y = clamp(hero.y, FIELD.y - 10, FIELD.y + FIELD.h + 10)
+  hero.x = clamp(hero.x, 8, FIELD.w + 2 * FIELD.x - 8)
+  hero.y = clamp(hero.y, 8, FIELD.h + 2 * FIELD.y - 8)
   // Animation.
   const moving = Math.hypot(hero.vx, hero.vy) > 5
   const anim = hero.act === 'tackle' ? 'tackle' : hero.act === 'ballthrow' ? 'throw' : hero.act ? hero.act : moving ? 'run' : 'stance'
   if (anim !== hero.anim) { hero.anim = anim; hero.frame = 0; hero.ft = 0 }
   hero.ft += dt
-  const fps = anim === 'run' ? 8 : anim === 'throw' ? 10 : 6
+  const fps = anim === 'run' ? 8 : anim === 'throw' ? 11 : 6
   hero.frame = Math.floor(hero.ft * fps)
 }
 function throwBall() {
@@ -732,7 +745,7 @@ function throwBall() {
   const d = Math.hypot(dx, dy) || 1
   ball.out = false
   ball.vx = (dx / d) * 900; ball.vy = (dy / d) * 900
-  ball.z = 10; ball.vz = 520
+  ball.z = 38; ball.vz = 420
   ball.air = 1.2
   S.stopAll = 0.7
   S.freeze = Math.max(S.freeze, 0.1)
@@ -814,7 +827,9 @@ function updateFrench(dt) {
     // Cible de déplacement.
     let target
     const carrier = ball.owner === f
-    if (S.phase === 'goal') target = slotPos(f, FIELD.x + FIELD.w / 2 - 120)
+    if (S.phase === 'goal' && f.carryBack) target = ball.owner === f ? { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2, exact: true } : { x: ball.x, y: ball.y, exact: true }
+    else if (S.phase === 'goal') target = slotPos(f, FIELD.x + FIELD.w / 2 - 120)
+    else if (S.phase === 'kickoff') target = (f === french[9] || f === french[10]) ? { x: f.x, y: f.y } : slotPos(f, ball.x - 200)
     else if (regroup) {
       const near = french.filter((g) => g.state === 'play' && !g.gk).sort((a, b) => (dist(a, ball) - (a.near ? 60 : 0)) - (dist(b, ball) - (b.near ? 60 : 0))).slice(0, 4)
       for (const g of french) g.near = near.includes(g)
@@ -873,9 +888,8 @@ function updateFrench(dt) {
     f.x += f.vx * dt; f.y += f.vy * dt
     // Séparation : un glissement de position (un tiers du chevauchement), jamais une vitesse, sinon ça tremble sur place.
     for (const g of french) if (g !== f && g.state === 'play') { const dd = dist(f, g); const rad = (g.r > 12 ? g.r + 14 : 22); if (dd < rad && dd > 0.01) { const k = (rad - dd) * (g.r > 12 ? 0.6 : 0.33); f.x += ((f.x - g.x) / dd) * k; f.y += ((f.y - g.y) / dd) * k } }
-    const m = ball.out && target.exact ? -16 : f.role === 'ballboy' ? 2 : 8
-    f.x = clamp(f.x, FIELD.x + m, FIELD.x + FIELD.w - m)
-    f.y = clamp(f.y, FIELD.y + m, FIELD.y + FIELD.h - m)
+    if ((ball.out && target.exact) || f.carryBack) { f.x = clamp(f.x, 10, FIELD.w + 2 * FIELD.x - 10); f.y = clamp(f.y, 10, FIELD.h + 2 * FIELD.y - 10) }
+    else { const m = f.role === 'ballboy' ? 2 : 8; f.x = clamp(f.x, FIELD.x + m, FIELD.x + FIELD.w - m); f.y = clamp(f.y, FIELD.y + m, FIELD.y + FIELD.h - m) }
     // Animation sur le déplacement réel, lissé : pas de course sur place, pas de direction qui saute.
     const mvx = (f.x - px0) / Math.max(dt, 0.001), mvy = (f.y - py0) / Math.max(dt, 0.001)
     f.svx = (f.svx || 0) * 0.7 + mvx * 0.3; f.svy = (f.svy || 0) * 0.7 + mvy * 0.3
@@ -886,8 +900,17 @@ function updateFrench(dt) {
     const anim = moving ? 'run' : 'idle'
     if (anim !== f.anim) f.anim = anim // le compteur continue : l'image avance toujours
     f.frame = Math.floor(f.ft * (moving ? 8 : 4))
+    // Le Français qui ramène le ballon après un but : il le prend en mains, le pose au centre, et ça repart.
+    if (S.phase === 'goal' && f.carryBack) {
+      if (!ball.owner && !ball.inStands && dist(f, ball) < 16) { ball.owner = f; ball.z = 0; ball.vz = 0; ball.out = false; ball.vx = ball.vy = 0 }
+      if (ball.owner === f) {
+        ball.x = f.x; ball.y = f.y - 2; ball.z = 30; ball.vx = ball.vy = 0
+        if (dist(f, { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 }) < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; ball.z = 0; f.carryBack = false; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') }
+      }
+      continue
+    }
     // Prise de balle.
-    if (ball.out && !ball.owner && S.phase !== 'goal' && dist(f, ball) < 16 && !f.gk && f.role !== 'bird') {
+    if (ball.out && !ball.inStands && !ball.owner && S.phase !== 'goal' && dist(f, ball) < 16 && !f.gk && f.role !== 'bird') {
       // Remise en jeu : à deux mains, vers un coéquipier ou le centre, bien moins fort que le n°4.
       const mate = french.filter((g) => g !== f && g.state === 'play' && !g.gk && dist(g, f) < 300).sort((a, b) => dist(a, f) - dist(b, f))[0]
       const anywhere = f.role === 'ballboy'
@@ -1250,6 +1273,7 @@ function updateBall(dt) {
   if (ball.out && ball.x > FIELD.x + 2 && ball.x < FIELD.x + FIELD.w - 2 && ball.y > FIELD.y + 2 && ball.y < FIELD.y + FIELD.h - 2) ball.out = false // remis dedans par un coup franc ou autre
   if (ball.owner || S.phase === 'kickoff' || S.phase === 'card') return
   ball.x += ball.vx * dt; ball.y += ball.vy * dt
+  ball.rot = (ball.rot || 0) + (ball.vx * dt) / 6 // il roule
   if (ball.z > 0 || ball.vz) {
     ball.z += ball.vz * dt; ball.vz -= 900 * dt
     if (ball.z <= 0) { ball.z = 0; if (ball.vz < -120) { ball.vz = -ball.vz * 0.45; beep('bounce'); for (let i = 0; i < 4; i++) S.particles.push({ x: ball.x, y: ball.y, vx: rr(-40, 40), vy: rr(-30, -5), t: 0, life: 0.3, c: PAL.sand }) } else { ball.vz = 0; ball.air = 0 } }
@@ -1264,11 +1288,33 @@ function updateBall(dt) {
   // un joueur vient le ramasser pour la remise en jeu.
   const out = ball.x < FIELD.x - 2 || ball.x > FIELD.x + FIELD.w + 2 || ball.y < FIELD.y - 2 || ball.y > FIELD.y + FIELD.h + 2
   if (out && ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60 && S.kickedOff) { goalScored(); return } // derrière la ligne dans la largeur de la cage : but, cage ou pas cage
-  if (out && !ball.out) {
-    if (Math.hypot(ball.vx, ball.vy) > 300) hitBoard(ball)
-    ball.out = true; ball.vx = ball.vy = 0; ball.vz = 0; ball.z = 0; ball.air = 0; ball.noTake = 0
-    ball.x = clamp(ball.x, FIELD.x - 8, FIELD.x + FIELD.w + 8); ball.y = clamp(ball.y, FIELD.y - 8, FIELD.y + FIELD.h + 8)
-    for (let i = 0; i < 5; i++) S.particles.push({ x: ball.x, y: ball.y, vx: rr(-40, 40), vy: rr(-30, -5), t: 0, life: 0.3, c: PAL.white })
+  if (out && !ball.out) { if (Math.hypot(ball.vx, ball.vy) > 300) hitBoard(ball); ball.out = true; ball.noTake = 0; for (let i = 0; i < 5; i++) S.particles.push({ x: ball.x, y: ball.y, vx: rr(-40, 40), vy: rr(-30, -5), t: 0, life: 0.3, c: PAL.white }) }
+  // Hors de la pelouse il freine davantage ; il ne revient jamais tout seul.
+  if (out) { ball.vx *= Math.pow(0.35, dt); ball.vy *= Math.pow(0.35, dt) }
+  // En bas, il n'y a que le banc : il s'arrête contre.
+  const PWw = FIELD.w + 2 * FIELD.x, PHh = FIELD.h + 2 * FIELD.y
+  if (ball.y > PHh - 8) { ball.y = PHh - 8; ball.vy = 0; ball.vx *= 0.5 }
+  // Dans les gradins : la foule le garde une seconde et le renvoie en cloche sur la pelouse.
+  if (ball.inStands) {
+    ball.vx = ball.vy = 0; ball.vz = 0; ball.z = 0
+    ball.inStands.t += dt
+    if (ball.inStands.t > 1.2) {
+      const tx = clamp(ball.x + rr(-120, 120), FIELD.x + 60, FIELD.x + FIELD.w - 60), ty = clamp(ball.y + rr(-80, 80), FIELD.y + 60, FIELD.y + FIELD.h - 60)
+      const dx = tx - ball.x, dy = ty - ball.y, d = Math.hypot(dx, dy) || 1
+      const v = Math.min(520, 260 + d * 0.9)
+      ball.vx = (dx / d) * v; ball.vy = (dy / d) * v; ball.z = 30; ball.vz = 320; ball.air = 0.8; ball.noTake = 0.3
+      popup(ball.x, ball.y - 40, 'LA FOULE RENVOIE', PAL.cyan, true); beep('pass')
+      for (const c of crowd || []) if (Math.abs(c.x - ball.x) < 90 && Math.abs(c.y - ball.y) < 90) c.hop = 1.2
+      ball.inStands = null
+    }
+    return
+  }
+  if (ball.x < 6 || ball.x > PWw - 6 || ball.y < 6) {
+    ball.x = clamp(ball.x, -24, PWw + 24); ball.y = Math.max(ball.y, -24)
+    ball.inStands = { t: 0 }; ball.vx = ball.vy = 0; ball.vz = 0; ball.z = 0; ball.air = 0
+    for (const c of crowd || []) if (Math.abs(c.x - ball.x) < 70 && Math.abs(c.y - ball.y) < 70) c.hop = 1.4
+    popup(ball.x, ball.y - 30, 'DANS LES GRADINS', PAL.grey1, true); beep('bounce')
+    return
   }
   // Le ballon fauche un Français qui le prend en pleine tête.
   const sp = Math.hypot(ball.vx, ball.vy)
@@ -1278,6 +1324,11 @@ function goalScored() {
   S.goals++
   ball.vx = ball.vy = 0
   ball.x = FIELD.x + FIELD.w + 14
+  ball.out = false; ball.inStands = null
+  // Qui ramène le ballon ? Le plus proche entre l'arbitre et un Français de champ.
+  for (const f of french) f.carryBack = false
+  const near = french.filter((f) => f.state === 'play' && !f.gk && !f.intruder).sort((a, b) => dist(a, ball) - dist(b, ball))[0]
+  if (near && dist(near, ball) < dist(ref, ball) && S.goals < LIVES) near.carryBack = true
   S.phase = 'goal'
   S.phaseT = 6 // garde-fou : si l'arbitre n'y arrive pas, on relance
   S.kickedOff = false // pas de nouveau but tant que le ballon n'a pas été remis en jeu au centre
@@ -1292,6 +1343,7 @@ function goalScored() {
 
 /* ---------- arbitre ---------- */
 function updateRef(dt) {
+  if (S.phase === 'kickoff' && !S.goals && S.kickStage !== 'count') return
   ref.ft += dt
   if (ref.down > 0) {
     ref.down -= dt; S.refDown = ref.down
@@ -1334,7 +1386,8 @@ function updateRef(dt) {
   }
   if (S.phase === 'goal') ref.flee = 0
   if (ref.flee > 0) { ref.flee -= dt; const dx = ref.x - hero.x, dy = ref.y - hero.y; const d = Math.hypot(dx, dy) || 1; target = { x: ref.x + (dx / d) * 100, y: ref.y + (dy / d) * 100 } }
-  else if (S.phase === 'goal') target = ball.owner === ref ? { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 } : { x: ball.x, y: ball.y }
+  else if (S.phase === 'goal' && !french.some((f) => f.carryBack && f.state === 'play')) target = ball.owner === ref ? { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 } : { x: ball.x, y: ball.y }
+  else if (S.phase === 'goal') target = { x: FIELD.x + FIELD.w / 2 - 60, y: FIELD.y + FIELD.h / 2 - 90 }
   else target = { x: ball.x - 110, y: ball.y - 80 }
   if (ref.cardShow > 0) { ref.vx = ref.vy = 0; ref.frame = Math.floor(ref.ft * 10); return }
   const dx = target.x - ref.x, dy = target.y - ref.y
@@ -1343,10 +1396,10 @@ function updateRef(dt) {
   if (d > 10) { ref.vx = (dx / d) * sp; ref.vy = (dy / d) * sp } else ref.vx = ref.vy = 0
   ref.x = clamp(ref.x + ref.vx * dt, FIELD.x - 20, FIELD.x + FIELD.w + 30)
   ref.y = clamp(ref.y + ref.vy * dt, FIELD.y - 20, FIELD.y + FIELD.h + 40)
-  if (S.phase === 'goal') {
+  if (S.phase === 'goal' && !french.some((f) => f.carryBack && f.state === 'play')) {
     // Il va chercher le ballon au fond des filets, le ramène au centre et le pose. Pas de coupure.
-    if (ball.owner !== ref && d < 16) { ball.owner = ref; ball.z = 0; ball.vz = 0; ball.out = false; ball.vx = ball.vy = 0 }
-    if (ball.owner === ref) { ball.x = ref.x + (ref.dir.includes('w') ? -10 : 10); ball.y = ref.y + 2; ball.vx = ball.vy = 0; if (d < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') } }
+    if (ball.owner !== ref && !ball.inStands && d < 16) { ball.owner = ref; ball.z = 0; ball.vz = 0; ball.out = false; ball.vx = ball.vy = 0 }
+    if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 30; ball.vx = ball.vy = 0; if (d < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') } }
   }
   const moving = Math.hypot(ref.vx, ref.vy) > 15
   const nd = dirOf(ref.vx, ref.vy)
@@ -1359,7 +1412,7 @@ function updateRef(dt) {
 /* ---------- boucle ---------- */
 function startMatch() {
   S.goalFx = undefined
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, sayanSeen: false, fieldTf: undefined, kickStage: 'count', refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -1374,6 +1427,7 @@ function startMatch() {
 }
 function update(dt) {
   if (S.phase === 'sayan') { S.sayanT += dt; S.t += dt; attackPressed = false; if (S.sayanT >= SAYAN.frames / SAYAN.fps + SAYAN.outro) endSayan(); return }
+  if (S.fieldTf !== undefined) { S.fieldTf += dt; hero.vx = hero.vy = 0; attackPressed = false; if (S.fieldTf >= SAYAN.frames / 10) { S.fieldTf = undefined; endSayan() } }
   if (S.phase === 'var') { updateVar(dt); return }
   if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) startMatch() } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
@@ -1386,6 +1440,17 @@ function update(dt) {
   S.lifeLostT = (S.lifeLostT || 9) + dt
   if (S.goalFx !== undefined) { S.goalFx += dt; if (S.goalFx > 1) S.goalFx = undefined }
   if (S.endAt !== undefined) { S.endAt -= dt; if (S.endAt <= 0) { S.endAt = undefined; endMatch(); return } }
+  if (S.phase === 'kickoff' && !S.goals && S.kickStage !== 'count') {
+    // L'arbitre amène le ballon au centre, le pose, et s'écarte avant le décompte.
+    const cx0 = FIELD.x + FIELD.w / 2, cy0 = FIELD.y + FIELD.h / 2
+    const tgt = S.kickStage === 'carry' ? { x: cx0, y: cy0 - 4 } : { x: cx0 - 70, y: cy0 - 100 }
+    const dx = tgt.x - ref.x, dy = tgt.y - ref.y, d = Math.hypot(dx, dy)
+    if (d > 4) { ref.x += (dx / d) * Math.min(d, 150 * dt); ref.y += (dy / d) * Math.min(d, 150 * dt); const nd = dirOf(dx, dy); if (nd) ref.dir = nd; if (ref.anim !== 'walk') { ref.anim = 'walk'; ref.ft = 0 }; ref.ft += dt; ref.frame = Math.floor(ref.ft * 8) }
+    else if (S.kickStage === 'carry') { ball.owner = null; ball.x = cx0; ball.y = cy0; ball.z = 0; ball.vz = 0; S.kickStage = 'leave'; beep('bounce') }
+    else { S.kickStage = 'count'; S.phaseT = 3.9; ref.anim = 'idle'; ref.dir = 's' }
+    if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 30 }
+    return
+  }
   if (S.phase === 'kickoff' && !S.goals) { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } else if (n <= 0) { beep('whistle'); S.shake = Math.max(S.shake, 8) } } }
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
@@ -1496,7 +1561,8 @@ function drawStands(cx, cy) {
     for (const c of list) {
       const sx = c.x + cx, sy = c.y + cy
       if (sx < -30 || sx > W + 30 || sy < -10 || sy > H + 50) continue
-      const bob = Math.round(Math.sin(t * c.sp * (hot ? 1.8 : 1) + c.ph) * c.amp * (hot ? 1.8 : 1))
+      if (c.hop > 0) c.hop -= 0.016
+      const bob = Math.round(Math.sin(t * c.sp * (hot ? 1.8 : 1) + c.ph) * c.amp * (hot ? 1.8 : 1)) + (c.hop > 0 ? Math.round(Math.abs(Math.sin(t * 14 + c.ph)) * 5) : 0)
       drawSprite(g, c.atlas, 'idle', c.dir, 0, sx, sy - bob)
       if (seats) { const x0 = Math.round(sx) - 11, y0 = Math.round(sy) - 15; g.fillStyle = PAL.ink; g.fillRect(x0, y0, 22, 1); g.fillStyle = PAL.grey2; g.fillRect(x0, y0 + 1, 22, 18); g.fillStyle = PAL.grey1; g.fillRect(x0, y0 + 1, 22, 2); g.fillStyle = PAL.grey3; g.fillRect(x0 + 1, y0 + 12, 20, 6) }
     }
@@ -1609,12 +1675,21 @@ function render() {
     if (e === ref && ref.down > 0) { if (!ref.landed) { g.save(); g.translate(e.x + cx, e.y + cy - ref.z); g.rotate(Math.sin(e.ft * 9) * 0.6); drawSprite(g, 'arbitre', 'fall', e.dir, e.frame, 0, 0); g.restore() } else { drawSprite(g, 'arbitre', 'ko', e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t) } continue }
     let anim = e.anim
     if (e === hero && hero.act && hero.act !== 'tackle') anim = hero.act === 'ballthrow' ? 'throw' : hero.act
+    if (e === hero && S.fieldTf !== undefined && IMG['sayan-perso']) {
+      // Transformation sur place : la flamme derrière, le personnage image par image, à l'échelle du jeu.
+      const fi = Math.min(SAYAN.frames - 1, Math.floor(S.fieldTf * 10))
+      const fl = IMG['sayan-flamme']; if (fl) { const ff = Math.floor(S.fieldTf * SAYAN.flameFps) % SAYAN.flameFrames; g.drawImage(fl, ff * 64, 0, 64, 64, e.x + cx - 36, e.y + cy - 66, 72, 72) }
+      g.drawImage(IMG['sayan-perso'], fi * 68, 0, 68, 68, e.x + cx - 26, e.y + cy - 50, 52, 52)
+      continue
+    }
     drawSprite(g, e === hero && S.fury > 0 && ATLAS['paraguay-furie'] ? 'paraguay-furie' : e.atlas, anim, e.dir, e.frame, e.x + cx, e.y + cy - (e.z || 0))
     if (e.card === 1) drawCard(e.x + cx, e.y + cy - 58 + Math.round(Math.sin(S.t * 6 + e.cardBob)), dist(e, hero) < 60 && Math.floor(S.t * 6) % 2 === 0)
     if (e.stun > 0 && e.team === 'fra') drawStars(e.x + cx, e.y + cy - 52, S.t, 2)
   }
   // Ballon.
-  { const z = ball.z || 0, r = 4 + Math.min(3, z / 40); g.fillStyle = PAL.white; g.beginPath(); g.arc(ball.x + cx, ball.y + cy - 3 - z, r, 0, Math.PI * 2); g.fill(); g.fillStyle = PAL.ink; g.fillRect(ball.x + cx - 1, ball.y + cy - 4 - z, 2, 2) }
+  { const z = ball.z || 0, d = 12 + Math.min(6, z / 30)
+    if (IMG.ballon) { g.save(); g.translate(Math.round(ball.x + cx), Math.round(ball.y + cy - 4 - z)); g.rotate(ball.rot || 0); g.drawImage(IMG.ballon, 2, 2, 44, 44, -d / 2, -d / 2, d, d); g.restore() }
+    else { g.fillStyle = PAL.white; g.beginPath(); g.arc(ball.x + cx, ball.y + cy - 3 - z, d / 2 - 1, 0, Math.PI * 2); g.fill() } }
   // Particules et popups.
   for (const p of S.particles) { g.fillStyle = p.c; g.fillRect(Math.round(p.x + cx), Math.round(p.y + cy), 2, 2) }
   for (const p of S.popups) { const k = p.t < 0.1 ? 1 + (0.1 - p.t) * 8 : 1; text(p.text, Math.round(p.x + cx), Math.round(p.y + cy - p.t * 16), { size: Math.round((p.big ? 16 : 11) * k), color: p.color, align: 'center' }) }
@@ -1761,7 +1836,7 @@ function drawHUD() {
   if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
   if (S.phase === 'var' && S.var) drawVar()
   if (S.phase === 'sayan') drawSayan()
-  if (S.phase === 'kickoff' && !S.goals) drawCountdown()
+  if (S.phase === 'kickoff' && !S.goals && S.kickStage === 'count') drawCountdown()
   // Bandeaux : texte cerné, sans bande, qui glisse depuis le haut.
   S.banners.forEach((b, i) => {
     const a = b.t < 0.15 ? b.t / 0.15 : b.t > 1.4 ? (1.8 - b.t) / 0.4 : 1
@@ -1867,7 +1942,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
