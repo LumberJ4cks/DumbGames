@@ -8,7 +8,7 @@ import zlib from 'node:zlib'
 import { Pix, PALETTE } from '../../cons-de-mime/pixel.js'
 import { toPix } from './pixellab-check.mjs'
 import { recolor, rekit, paraguay } from './recolor.mjs'
-import { LOOKS } from './players.mjs'
+import { LOOKS, RAMP } from './players.mjs'
 
 const RGB = PALETTE.map((c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)])
 const nearest = (c) => { const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16); let best = 0, bd = 1e9; RGB.forEach(([R, G, B], i) => { const d = (R - r) ** 2 * 0.3 + (G - g) ** 2 * 0.59 + (B - b) ** 2 * 0.11; if (d < bd) { bd = d; best = i } }); return PALETTE[best] }
@@ -88,6 +88,49 @@ const A = {
   knocked: rotations('Knocked_back_pose_f'),
   dive: rotations('Goalkeeper_diving_sa'),
 }
+/**
+ * Planche 3 × 3 générée hors PixelLab (arbitre qui siffle et brandit le carton) : cases de 256 px,
+ * figure d'environ 220 px, réduite par blocs de `scale` (majorité des pixels opaques) en 48 × 48,
+ * pieds en 47, centre en 24, comme les rotations.
+ */
+function sheetFrames(file, cols, rows, cellPx, scale) {
+  const sheet = toPix(file, false)
+  const out = []
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const w = Math.floor(cellPx / scale), h = w
+    const small = new Pix(w, h)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const count = {}
+      let n = 0
+      for (let j = 0; j < scale; j++) for (let i = 0; i < scale; i++) { const k = sheet.get(c * cellPx + x * scale + i, r * cellPx + y * scale + j); if (k) { n++; count[k] = (count[k] || 0) + 1 } }
+      if (n * 2 >= scale * scale) small.px(x, y, Object.entries(count).sort((a, b) => b[1] - a[1])[0][0])
+    }
+    const b = small.bounds()
+    const f = new Pix(48, 48)
+    const ox = 24 - (b.x + Math.floor(b.w / 2)), oy = 47 - (b.y + b.h - 1)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = small.get(x, y); if (k && x + ox >= 0 && x + ox < 48 && y + oy >= 0 && y + oy < 48) f.px(x + ox, y + oy, k) }
+    f.ax = 24; f.ay = 47
+    out.push(f)
+  }
+  return out
+}
+/** Arbitre au carton : peau pâle, cheveux gris, rayures blanches du maillot → jaune, carton → `card`. */
+function paintRefCard(raw, cardRamp) {
+  const q = recolor(raw, { skin: 'skinPale', hair: 'hairGrey' }, { nearest })
+  const b = raw.bounds()
+  for (let y = 0; y < raw.h; y++) for (let x = 0; x < raw.w; x++) {
+    const c = raw.get(x, y)
+    if (!c) continue
+    const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), bl = parseInt(c.slice(5, 7), 16)
+    const rel = (y - b.y) / b.h
+    if (r > 150 && g < 90 && bl < 90) q.px(x, y, cardRamp[r > 190 ? 3 : 2]) // le carton
+    else if (r > 170 && g > 170 && bl > 170 && rel > 0.42 && rel < 0.74) q.px(x, y, RAMP.yellow[r > 240 ? 2 : 1]) // rayures du maillot
+  }
+  q.painted = true
+  return q
+}
+const CARD = sheetFrames('carton-plein/art/pixellab/export-06-referee-card/sheet.png', 3, 3, 256, 5)
+const allDirs = (list) => Object.fromEntries(SHORT.map((d) => [d, list]))
 const pick = (...names) => Object.fromEntries(names.map((n) => [n, A[n]]))
 
 // Onze Français : peau × cheveux seulement (pas de changement de coupe pour l'instant).
@@ -102,5 +145,5 @@ FR.forEach((look, i) => atlas('france-' + i, pick('idle', 'run', 'hit', 'fall', 
 // Le n°4.
 atlas('paraguay', pick('stance', 'run', 'throw', 'tackle', 'punch', 'knee', 'kick', 'flykick', 'header', 'hit'), (p) => paraguay(p, { nearest }))
 // L'arbitre : jaune fluo, cheveux gris. Le gardien : violet, chauve, barbu, avec son plongeon.
-atlas('arbitre', pick('idle', 'run', 'walk', 'hit', 'fall', 'ko'), (p) => rekit(p, { nearest, kit: { jersey: 'yellow', shorts: 'black', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } }))
+atlas('arbitre', { ...pick('idle', 'run', 'walk', 'hit', 'fall', 'ko'), card: allDirs(CARD.map((p) => paintRefCard(p, RAMP.yellow))), redcard: allDirs(CARD.map((p) => paintRefCard(p, RAMP.red))) }, (p) => p.painted ? p : rekit(p, { nearest, kit: { jersey: 'yellow', shorts: 'black', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } }))
 atlas('gardien', { ...pick('idle', 'run', 'hit', 'fall', 'ko'), dive: A.dive }, (p) => rekit(p, { nearest, kit: { jersey: 'purple', shorts: 'black', socks: 'purple', boots: 'red' }, look: { skin: 'skinDark', hair: 'hairBlack', beard: true } }))
