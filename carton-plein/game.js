@@ -1758,26 +1758,27 @@ function drawEnd() {
   const fade = Math.min(1, T / 0.4)
   g.globalAlpha = fade
   // Bandeau de titre, sous le logo de la vidéo.
-  outlined('FIN DU MATCH', W / 2, 54, { size: 12, color: PAL.white })
-  outlined('TROIS BUTS ENCAISSES  ·  TEMPS TENU ' + Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0'), W / 2, 70, { size: 7, color: PAL.grey1 })
+  panel(6, 6, 150, 26, PAL.red)
+  text('FIN DU MATCH', 16, 10, { size: 9, color: PAL.white })
+  text('3 BUTS  ·  TENU ' + Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0'), 16, 21, { size: 6, color: PAL.grey1 })
   // Le score, énorme, au centre entre les deux joueurs.
   if (T > 0.5) {
     const pop = Math.max(0, 1 - (T - 0.5) * 4)
-    g.fillStyle = 'rgba(24,20,37,0.78)'; g.fillRect(W / 2 - 120, 96, 240, 74)
-    g.fillStyle = PAL.yellow; g.fillRect(W / 2 - 120, 96, 240, 3)
-    text('DEGATS', W / 2, 102, { size: 9, color: PAL.yellow, align: 'center' })
-    outlined(String(S.final).padStart(7, '0'), W / 2, 114 - Math.round(pop * 4), { size: Math.round(30 + pop * 14), color: PAL.yellow })
-    text(S.newRecord && S.final > 0 ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, W / 2, 152, { size: 7, color: S.newRecord ? PAL.orange : PAL.grey1, align: 'center' })
+    g.fillStyle = 'rgba(24,20,37,0.78)'; g.fillRect(W / 2 - 78, 100, 156, 60)
+    g.fillStyle = PAL.yellow; g.fillRect(W / 2 - 78, 100, 156, 3)
+    text('DEGATS', W / 2, 105, { size: 8, color: PAL.yellow, align: 'center' })
+    outlined(String(S.final).padStart(7, '0'), W / 2, 115 - Math.round(pop * 4), { size: Math.round(22 + pop * 12), color: PAL.yellow })
+    text(S.newRecord && S.final > 0 ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, W / 2, 146, { size: 6, color: S.newRecord ? PAL.orange : PAL.grey1, align: 'center' })
   }
   // Le tampon, qui claque.
   if (T > 1.2) {
     const k = Math.max(0, 1 - (T - 1.2) * 5)
     const stamp = S.final < 15000 ? 'FAIR-PLAY' : S.final < 40000 ? 'RUGUEUX' : S.final < 80000 ? 'BOUCHER' : S.final < 150000 ? 'CARTON PLEIN' : 'LEGENDE DU GUARANI'
     if (k > 0 && S.stampShake === undefined) { S.stampShake = 1; S.shake = Math.max(S.shake, 8); beep('hit') }
-    g.save(); g.translate(W / 2, 192); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
-    g.fillStyle = 'rgba(24,20,37,0.55)'; g.fillRect(-96, -14, 192, 28)
-    g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-96, -14, 192, 28)
-    text(stamp, 0, -8, { size: 14, color: PAL.red, align: 'center', shadow: false })
+    g.save(); g.translate(W / 2, 184); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
+    g.fillStyle = 'rgba(24,20,37,0.55)'; g.fillRect(-72, -11, 144, 22)
+    g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-72, -11, 144, 22)
+    text(stamp, 0, -6, { size: 11, color: PAL.red, align: 'center', shadow: false })
     g.restore(); g.globalAlpha = fade
   }
   // Le détail des dégâts, en petit, dans un bandeau tout en bas pour ne pas couvrir les joueurs.
