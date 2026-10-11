@@ -85,7 +85,7 @@ function startMusic() {
     if (!music.buf) {
       if (music.loading) return
       music.loading = true
-      fetch('audio/mma_foot.mp3').then((r) => r.arrayBuffer()).then((ab) => c.decodeAudioData(ab)).then((buf) => { music.buf = buf; music.loading = false; if (music.wanted) startMusic() }).catch(() => { music.loading = false })
+      fetch('audio/mma_foot.mp3?v=2').then((r) => r.arrayBuffer()).then((ab) => c.decodeAudioData(ab)).then((buf) => { music.buf = buf; music.loading = false; if (music.wanted) startMusic() }).catch(() => { music.loading = false })
       return
     }
     music.gain = c.createGain(); music.gain.gain.value = audio.muted ? 0 : 0.55; music.gain.connect(c.destination)
