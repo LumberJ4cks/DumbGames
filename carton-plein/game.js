@@ -17,7 +17,7 @@ const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré p
 const GOAL_H = 120
 const MATCH_SECONDS = 90 // ne sert plus qu'au bot : la partie s'arrête au 3e but
 const LIVES = 3
-const BUS = { w: 54, h: 144, speed: 460, park: 10 }
+const BUS = { w: 54, h: 144, speed: 460, park: 10, need: 30 } // trente fautes et il arrive tout seul
 const DIRS = ['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']
 const PAL = { ink: '#181425', white: '#ffffff', grey1: '#c0cbdc', grey2: '#8b9bb4', slate: '#3a4466', slateD: '#262b44', green: '#63c74d', greenL: '#7fd36a', greenM: '#3e8948', greenD: '#265c42', yellow: '#fee761', amber: '#feae34', orange: '#f77622', red: '#e43b44', redD: '#a22633', pink: '#f6757a', cyan: '#2ce8f5', blue: '#0099db', sand: '#e4a672', clay: '#b86f50' }
 
@@ -119,6 +119,7 @@ function beep(kind) {
     if (kind === 'pass') return thud(c, t, { low: 320, drop: 160, body: 0.05, bodyGain: 0.25, air: 0.03, airGain: 0.18, airFreq: 2400, q: 1.5 }) // petit « poc » de cuir
     if (kind === 'shoot') return thud(c, t, { low: 190, drop: 70, body: 0.13, bodyGain: 0.55, air: 0.07, airGain: 0.4, airFreq: 1500, q: 1 }) // frappe pleine
     if (kind === 'bounce') return thud(c, t, { low: 260, drop: 140, body: 0.05, bodyGain: 0.15, air: 0.02, airGain: 0.08, airFreq: 1800 })
+    if (kind === 'horn') { const o2 = c.createOscillator(), g2 = c.createGain(); o2.connect(g2); g2.connect(c.destination); const o = c.createOscillator(), gn = c.createGain(); o.connect(gn); gn.connect(c.destination); o.type = 'sawtooth'; o2.type = 'sawtooth'; o.frequency.value = 330; o2.frequency.value = 262; gn.gain.setValueAtTime(0.12, t); gn.gain.setValueAtTime(0.12, t + 0.18); gn.gain.setValueAtTime(0.001, t + 0.2); gn.gain.setValueAtTime(0.12, t + 0.3); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.9); g2.gain.setValueAtTime(0.1, t); g2.gain.setValueAtTime(0.1, t + 0.18); g2.gain.setValueAtTime(0.001, t + 0.2); g2.gain.setValueAtTime(0.1, t + 0.3); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.9); o.start(t); o.stop(t + 0.95); o2.start(t); o2.stop(t + 0.95); return }
     if (kind === 'land') return thud(c, t, { low: 90, drop: 40, body: 0.14, bodyGain: 0.35, air: 0.1, airGain: 0.2, airFreq: 400, q: 0.5 })
     const o = c.createOscillator()
     const gn = c.createGain()
@@ -147,7 +148,7 @@ const S = {
   phase: 'title', // title | play | kickoff | freekick | goal | end
   t: 0, clock: 0, added: 0, addedShown: false,
   score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0,
-  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, bus: null, busHits: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
+  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
   popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
   phaseT: 0,
@@ -201,12 +202,9 @@ let restartPressed = false
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
 const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_BTN.w && y >= RESTART_BTN.y && y <= RESTART_BTN.y + RESTART_BTN.h
 const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
-let lastDownTap = -9, lastRightClick = -9
-function tryBus() { if (S.chains >= 3 && !S.busUsed && !S.bus && (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'goal')) { callBus(); return true } return false }
 addEventListener('keydown', (e) => {
   if (e.repeat) return
   if (music.wanted && !music.src) startMusic()
-  if (e.code === 'ArrowDown' || e.code === 'KeyS') { const now = performance.now(); if (now - lastDownTap < 300) { if (tryBus()) lastDownTap = -9 } else lastDownTap = now }
   keys[e.code] = true
   if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
@@ -218,7 +216,6 @@ const canvas = document.getElementById('c')
 addEventListener('mousedown', (e) => {
   if (music.wanted && !music.src) startMusic()
   if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
-  if (e.button === 2) { const now = performance.now(); if (now - lastRightClick < 300 && tryBus()) { lastRightClick = -9; return } lastRightClick = now }
   if (e.button === 2 || S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointerdown', (e) => {
@@ -227,7 +224,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const { x, y } = canvasXY(e)
   if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
-  else { const now = performance.now(); if (now - lastRightClick < 300 && tryBus()) { lastRightClick = -9; return } lastRightClick = now; touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
+  else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
   if (S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointermove', (e) => {
@@ -299,6 +296,7 @@ function foul(name, victim, extra = {}) {
   if (S.hitStopCd <= 0 && S.fury <= 0) { S.freeze = Math.max(S.freeze, def.big ? 0.07 : 0.035); S.hitStopCd = 0.3 }
   if (S.shakeCd <= 0) { S.shake = Math.max(S.shake, def.big ? 6 : 3); S.shakeCd = 0.12 }
   S.lastPts = pts; S.lastPtsT = 0
+  if (!S.busUsed && !S.busDue) { S.chains = Math.min(BUS.need, S.chains + 1); if (S.chains >= BUS.need) { S.busDue = 1.6; banner('TUT TUUUT ! LE BUS DES SUPPORTERS ARRIVE', PAL.cyan); beep('horn') } }
   if (def.noWhistle) return
   if (def.big && S.t - (S.lastWhistle || -9) > 1.5) { S.lastWhistle = S.t; beep('whistle') }
   if (victim && victim.team === 'fra') freeKick(vx, vy, victim)
@@ -584,7 +582,6 @@ function heroAttack() {
     const step = hero.chainT > 0 ? Math.min(hero.chain, 3) : 0
     hero.act = chain[step]
     hero.actT = step === 3 ? 0.36 : 0.2
-    if (step === 3 && !S.busUsed && S.chains < 3) { S.chains++; popup(hero.x, hero.y - 70, S.chains >= 3 ? 'BUS PRET !' : 'ENCHAINEMENT ' + S.chains + '/3', PAL.cyan, true); if (S.chains >= 3) { banner('BUS PRET : DOUBLE BAS (OU DOUBLE CLIC DROIT)', PAL.cyan); beep('card') } }
     hero.chain = step + 1
     hero.chainT = 0.55 // fenêtre courte : il faut le rythme, pas le spam
     if (hero.linked) { S.score += 50 * comboMult(); hero.linked = false }
@@ -980,7 +977,7 @@ function callBus() {
   S.bus = { x: FIELD.x + FIELD.w - BUS.w / 2 - 6, y: FIELD.y - 200, state: 'in', t: 0, hit: new Set(), ty: gy } // collé à la ligne de but
   banner('LE BUS DES SUPPORTERS DEBARQUE', PAL.cyan)
   S.shake = Math.max(S.shake, 8)
-  beep('hitBig')
+  beep('horn')
 }
 function busRect(b, pad = 0) { return { x: b.x - BUS.w / 2 - pad, y: b.y - BUS.h / 2 - pad, w: BUS.w + pad * 2, h: BUS.h + pad * 2 } }
 function inRect(p, r) { return p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h }
@@ -1200,7 +1197,7 @@ function updateRef(dt) {
 /* ---------- boucle ---------- */
 function startMatch() {
   S.goalFx = undefined
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, bus: null, busHits: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -1231,6 +1228,7 @@ function update(dt) {
   if (attackPressed) { attackPressed = false; heroAttack() }
   updateHero(dt)
   updateBall(dt)
+  if (S.busDue) { S.busDue -= dt; if (S.busDue <= 0) { S.busDue = 0; callBus() } }
   updateBus(dt)
   if (S.stopAll > 0) { S.stopAll -= dt; settleAir(dt) }
   else { updateFrench(dt); updateRef(dt); updateNpcs(dt); updateWaves(dt) }
@@ -1497,9 +1495,9 @@ function drawHUD() {
   // Le bus : trois crans d'enchaînement, puis prêt.
   if (!S.busUsed || S.bus) {
     panel(W / 2 - 52, H - 24, 104, 18, PAL.cyan)
-    const ready = S.chains >= 3 && !S.busUsed
-    text(S.bus ? 'BUS ' + (S.bus.state === 'park' ? Math.ceil(BUS.park - S.bus.t) + 'S' : '') : ready ? (Math.floor(S.t * 3) % 2 ? 'BUS PRET' : 'BAS BAS') : 'BUS', W / 2 - 44, H - 19, { size: 7, color: ready ? PAL.cyan : PAL.grey1 })
-    if (!S.bus) segments(W / 2 + 4, H - 18, 44, 6, 3, S.chains / 3, PAL.cyan)
+    const due = S.busDue > 0
+    text(S.bus ? 'BUS ' + (S.bus.state === 'park' ? Math.ceil(BUS.park - S.bus.t) + 'S' : '') : due ? (Math.floor(S.t * 6) % 2 ? 'TUT TUUUT' : 'LE BUS !') : 'BUS', W / 2 - 44, H - 19, { size: 7, color: due ? PAL.cyan : PAL.grey1 })
+    if (!S.bus) segments(W / 2 + 4, H - 18, 44, 6, 10, S.chains / BUS.need, PAL.cyan)
     else segments(W / 2 + 4, H - 18, 44, 6, 10, S.bus.state === 'park' ? 1 - S.bus.t / BUS.park : 1, PAL.cyan)
   }
   // Arbitre, en bas à droite.
@@ -1531,7 +1529,7 @@ function drawTitle() {
   text('UN PARAGUAYEN. ONZE FRANCAIS. ZERO INTENTION DE JOUER AU BALLON.', W / 2, 108, { size: 8, color: PAL.grey1, align: 'center' })
   text('FLECHES : BOUGER   ESPACE / CLIC DROIT : FRAPPER', W / 2, 140, { size: 9, align: 'center' })
   text('LOIN = TACLE GLISSE     COLLE = POING, GENOU, PIED, PROJECTION', W / 2, 156, { size: 9, align: 'center' })
-  text('3 ENCHAINEMENTS COMPLETS = LE BUS. DOUBLE BAS POUR LE GARER DEVANT TON BUT.', W / 2, 168, { size: 8, color: PAL.cyan, align: 'center' })
+  text('A 30 FAUTES, LE BUS DES SUPPORTERS VIENT SE GARER DEVANT TON BUT.', W / 2, 168, { size: 8, color: PAL.cyan, align: 'center' })
   text('TROIS BALLONS DE VIE : AU TROISIEME BUT ENCAISSE, C\'EST FINI.', W / 2, 180, { size: 8, color: PAL.grey1, align: 'center' })
   text('FAIS UN MAXIMUM DE DEGATS AVANT. LA FRANCE ACCELERE AVEC LE TEMPS.', W / 2, 192, { size: 8, color: PAL.grey1, align: 'center' })
   text("QUAND L'ARBITRE CRAQUE, UNE GROSSE FAUTE = CARTON POUR LA FRANCE", W / 2, 206, { size: 8, color: PAL.grey1, align: 'center' })
