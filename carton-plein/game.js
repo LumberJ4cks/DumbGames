@@ -128,6 +128,7 @@ function slotPos(f, ballX) {
 }
 function kickoff() {
   S.phase = 'kickoff'
+  S.kickedOff = true
   S.phaseT = S.goals ? 0.5 : 0.9
   ball.x = FIELD.x + FIELD.w / 2
   ball.y = FIELD.y + FIELD.h / 2
@@ -629,9 +630,8 @@ function updateHero(dt) {
     const wants = v.dx || v.dy // c'est le n°4 qui va au ballon, jamais l'inverse
     if ((S.phase === 'play' || S.phase === 'freekick' || S.phase === 'goal') && wants && (ball.z || 0) < 12 && dist(hero, ball) < 22 && ball.owner !== hero) {
       const o = ball.owner
-      if (S.phase === 'goal') S.phase = 'play'
       ball.out = false
-      if (o === ref) { ball.owner = null }
+      if (o === ref) { ball.owner = null; popup(ref.x, ref.y - 60, 'EH !', PAL.grey1, true) }
       else if (o && o !== hero) { o.stun = 0.5; o.anim = 'hit'; o.ft = 0; o.vx = (o.x - hero.x) * 4; o.vy = (o.y - hero.y) * 4; foul('VOL DE BALLON', o) }
       hero.act = 'ballthrow'; hero.actT = 0.4; hero.hitDone = false; ball.owner = hero
     }
@@ -680,7 +680,7 @@ function hitRef() {
   ref.vx = (dx / d) * (200 + air * 0.5); ref.vy = (dy / d) * (200 + air * 0.5); ref.z = 0; ref.vz = air; ref.landed = false
   if (ref.cardTarget) { popup(ref.x, ref.y - 66, 'IL NE DIRA RIEN', PAL.grey1, true); ref.cardTarget = null; if (S.phase === 'card') S.phase = 'play' }
   ref.cardShow = 0
-  if (ball.owner === ref) { ball.owner = null; ball.vx = rr(-200, 200); ball.vy = rr(-200, 200); S.phase = 'play' }
+  if (ball.owner === ref) { ball.owner = null; ball.vx = rr(-200, 200); ball.vy = rr(-200, 200) }
   foul("FAUTE SUR L'ARBITRE", null)
   if (ref.hits >= 3 && !ref.strict) { ref.strict = 1.25; banner('LE 4E ARBITRE PREND LE SIFFLET', PAL.grey1); S.evac++ }
 }
@@ -802,7 +802,7 @@ function updateFrench(dt) {
     if (anim !== f.anim) { f.anim = anim; f.ft = 0 }
     f.frame = Math.floor(f.ft * (moving ? 8 : 4))
     // Prise de balle.
-    if (ball.out && !ball.owner && dist(f, ball) < 16 && !f.gk && f.role !== 'bird') {
+    if (ball.out && !ball.owner && S.phase !== 'goal' && dist(f, ball) < 16 && !f.gk && f.role !== 'bird') {
       // Remise en jeu : à deux mains, vers un coéquipier ou le centre, bien moins fort que le n°4.
       const mate = french.filter((g) => g !== f && g.state === 'play' && !g.gk && dist(g, f) < 300).sort((a, b) => dist(a, f) - dist(b, f))[0]
       const anywhere = f.role === 'ballboy'
@@ -951,7 +951,7 @@ function updateWaves(dt) {
 function updateBall(dt) {
   if (ball.noTake > 0) ball.noTake -= dt
   if (ball.out && ball.x > FIELD.x + 2 && ball.x < FIELD.x + FIELD.w - 2 && ball.y > FIELD.y + 2 && ball.y < FIELD.y + FIELD.h - 2) ball.out = false // remis dedans par un coup franc ou autre
-  if (ball.owner || S.phase === 'goal' || S.phase === 'kickoff' || S.phase === 'card') return
+  if (ball.owner || S.phase === 'kickoff' || S.phase === 'card') return
   ball.x += ball.vx * dt; ball.y += ball.vy * dt
   if (ball.z > 0 || ball.vz) {
     ball.z += ball.vz * dt; ball.vz -= 900 * dt
@@ -959,7 +959,10 @@ function updateBall(dt) {
   }
   if (ball.air > 0) { ball.air -= dt; ball.vx *= Math.pow(0.9, dt); ball.vy *= Math.pow(0.9, dt) } else { ball.vx *= Math.pow(0.5, dt); ball.vy *= Math.pow(0.5, dt) }
   const gy = FIELD.y + FIELD.h / 2
-  if (ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 40 && ball.vx >= 0) { goalScored(); return }
+  if (ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 40 && ball.vx >= 0) {
+    if (S.kickedOff) { goalScored(); return }
+    ball.x = FIELD.x + FIELD.w - 5; ball.vx = -Math.abs(ball.vx) * 0.4 // pas de remise en jeu, pas de but : ça ressort mollement
+  }
   // Sorti : le ballon s'arrête juste derrière la ligne (il casse le panneau s'il arrive fort), et
   // un joueur vient le ramasser pour la remise en jeu.
   const out = ball.x < FIELD.x - 2 || ball.x > FIELD.x + FIELD.w + 2 || ball.y < FIELD.y - 2 || ball.y > FIELD.y + FIELD.h + 2
@@ -979,6 +982,7 @@ function goalScored() {
   ball.x = FIELD.x + FIELD.w + 14
   S.phase = 'goal'
   S.phaseT = 12 // garde-fou : si l'arbitre n'y arrive pas, on relance
+  S.kickedOff = false // pas de nouveau but tant que le ballon n'a pas été remis en jeu au centre
   S.lifeLostT = 0
   S.shake = Math.max(S.shake, 10)
   const left = LIVES - S.goals
@@ -1037,12 +1041,12 @@ function updateRef(dt) {
   const d = Math.hypot(dx, dy)
   const sp = ref.flee > 0 ? 170 : S.phase === 'goal' ? 150 : d > 160 ? 180 : 95
   if (d > 10) { ref.vx = (dx / d) * sp; ref.vy = (dy / d) * sp } else ref.vx = ref.vy = 0
-  ref.x = clamp(ref.x + ref.vx * dt, FIELD.x + 10, FIELD.x + FIELD.w + 24)
-  ref.y = clamp(ref.y + ref.vy * dt, FIELD.y + 10, FIELD.y + FIELD.h - 10)
+  ref.x = clamp(ref.x + ref.vx * dt, FIELD.x - 20, FIELD.x + FIELD.w + 30)
+  ref.y = clamp(ref.y + ref.vy * dt, FIELD.y - 20, FIELD.y + FIELD.h + 40)
   if (S.phase === 'goal') {
     // Il va chercher le ballon au fond des filets, le ramène au centre et le pose. Pas de coupure.
-    if (ball.owner !== ref && d < 16) { ball.owner = ref; ball.z = 0; ball.vz = 0 }
-    if (ball.owner === ref) { ball.x = ref.x + (ref.dir.includes('w') ? -10 : 10); ball.y = ref.y + 2; ball.vx = ball.vy = 0; if (d < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; S.phase = 'play'; ball.noTake = 0.4; beep('whistle') } }
+    if (ball.owner !== ref && d < 16) { ball.owner = ref; ball.z = 0; ball.vz = 0; ball.out = false; ball.vx = ball.vy = 0 }
+    if (ball.owner === ref) { ball.x = ref.x + (ref.dir.includes('w') ? -10 : 10); ball.y = ref.y + 2; ball.vx = ball.vy = 0; if (d < 12) { ball.owner = null; ball.x = FIELD.x + FIELD.w / 2; ball.y = FIELD.y + FIELD.h / 2; S.phase = 'play'; S.kickedOff = true; ball.noTake = 0.4; beep('whistle') } }
   }
   const moving = Math.hypot(ref.vx, ref.vy) > 15
   const nd = dirOf(ref.vx, ref.vy)
@@ -1075,7 +1079,7 @@ function update(dt) {
   if (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'card' || S.phase === 'goal') S.clock += dt
   S.lifeLostT = (S.lifeLostT || 9) + dt
   if (S.endAt !== undefined) { S.endAt -= dt; if (S.endAt <= 0) { S.endAt = undefined; endMatch(); return } }
-  if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') kickoff(); else { S.phase = 'play'; ball.owner = french[9] } } }
+  if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
   if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = 'play' }
   if (S.phase === 'freekick') { S.phaseT -= dt; if (S.phaseT <= 0) { S.phase = 'play'; const taker = nearestFrench(ball, 80, (f) => !f.gk); if (taker) ball.owner = taker } }
