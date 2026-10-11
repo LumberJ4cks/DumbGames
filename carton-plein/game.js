@@ -1171,7 +1171,7 @@ function updateBus(dt) {
   if (!b) return
   b.t += dt
   if (b.state === 'in') { b.y += BUS.speed * dt; if (b.y >= b.ty) { b.y = b.ty; b.state = 'park'; b.t = 0; S.shake = Math.max(S.shake, 10); beep('land'); banner('STATIONNEMENT GENANT', PAL.cyan) } }
-  else if (b.state === 'park') { if (b.t > BUS.park) { b.state = 'out'; b.hit.clear(); banner('LE BUS REPART', PAL.grey1) } }
+  else if (b.state === 'park') { if (b.t > BUS.park) { b.state = 'out'; b.hit.clear(); banner('LE BUS REPART', PAL.grey1); if (!ball.owner && ball.x > b.x && Math.abs(ball.y - b.y) < BUS.h / 2 + 20) { ball.x = b.x - BUS.w / 2 - 20; ball.vx = -200; ball.vy = rr(-80, 80) } } }
   else if (b.state === 'out') { b.y += BUS.speed * dt; if (b.y > FIELD.y + FIELD.h + 260) S.bus = null }
   const moving = b.state !== 'park'
   const r = busRect(b, moving ? 8 : 0)
@@ -1179,10 +1179,10 @@ function updateBus(dt) {
   for (const f of [...french, ...npcs]) {
     if (f.state !== 'play' || !inRect(f, r)) continue
     if (moving) { if (b.hit.has(f)) continue; b.hit.add(f); f.vx = (f.x - b.x) * 6 + rr(-80, 80); f.vy = BUS.speed * 0.6; knockDown(f, 0.9, 320); foul('ECRASE PAR LE BUS', f); S.busHits++ }
-    else { const side = f.x < b.x ? -1 : 1; f.x = b.x + side * (BUS.w / 2 + 6) }
+    else { f.x = b.x - (BUS.w / 2 + 8); if (ball.owner === f) { ball.x = f.x - 8 } }
   }
-  if (S.refDown <= 0 && inRect(ref, r)) { if (moving && !b.hit.has(ref)) { b.hit.add(ref); hitRef(); ref.vy = BUS.speed * 0.5 } else if (!moving) ref.x = b.x + (ref.x < b.x ? -1 : 1) * (BUS.w / 2 + 8) }
-  if (inRect(hero, busRect(b, 2))) { const side = hero.x < b.x ? -1 : 1; hero.x = b.x + side * (BUS.w / 2 + 10) }
+  if (S.refDown <= 0 && inRect(ref, r)) { if (moving && !b.hit.has(ref)) { b.hit.add(ref); hitRef(); ref.vy = BUS.speed * 0.5 } else if (!moving) ref.x = b.x - (BUS.w / 2 + 8) }
+  if (inRect(hero, busRect(b, 2))) { hero.x = b.x - (BUS.w / 2 + 10) }
   // Le ballon rebondit dessus : c'est le but du bus.
   if (!ball.owner && inRect(ball, busRect(b, 4)) && ball.z < 60) { const side = ball.x < b.x ? -1 : 1; ball.x = b.x + side * (BUS.w / 2 + 6); ball.vx = side * Math.max(220, Math.abs(ball.vx) * 0.8); ball.vy += rr(-80, 80); ball.noTake = 0.1; beep('bounce'); if (b.state === 'park') { popup(b.x - 30, b.y - 80, 'CONTRE', PAL.cyan, true); S.score += 200; S.lastPts = 200; S.lastPtsT = 0 } }
 }
@@ -1280,14 +1280,16 @@ function updateBall(dt) {
   }
   if (ball.air > 0) { ball.air -= dt; ball.vx *= Math.pow(0.9, dt); ball.vy *= Math.pow(0.9, dt) } else { ball.vx *= Math.pow(0.5, dt); ball.vy *= Math.pow(0.5, dt) }
   const gy = FIELD.y + FIELD.h / 2
-  if (ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60) {
+  const busParked = S.bus && S.bus.state === 'park'
+  if (ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60 && !busParked) {
     if (S.kickedOff) { goalScored(); return }
     ball.x = FIELD.x + FIELD.w - 5; ball.vx = -Math.abs(ball.vx) * 0.4 // pas de remise en jeu, pas de but : ça ressort mollement
   }
   // Sorti : le ballon s'arrête juste derrière la ligne (il casse le panneau s'il arrive fort), et
   // un joueur vient le ramasser pour la remise en jeu.
   const out = ball.x < FIELD.x - 2 || ball.x > FIELD.x + FIELD.w + 2 || ball.y < FIELD.y - 2 || ball.y > FIELD.y + FIELD.h + 2
-  if (out && ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60 && S.kickedOff) { goalScored(); return } // derrière la ligne dans la largeur de la cage : but, cage ou pas cage
+  if (out && ball.x > FIELD.x + FIELD.w - 4 && Math.abs(ball.y - gy) < GOAL_H / 2 && ball.z < 60 && S.kickedOff && !busParked) { goalScored(); return }
+  if (busParked && ball.x > S.bus.x - BUS.w / 2 - 6 && Math.abs(ball.y - S.bus.y) < BUS.h / 2 + 10) { ball.x = S.bus.x - BUS.w / 2 - 8; ball.vx = -Math.max(120, Math.abs(ball.vx) * 0.6) } // rien ne passe derrière le bus, même en l'air // derrière la ligne dans la largeur de la cage : but, cage ou pas cage
   if (out && !ball.out) { if (Math.hypot(ball.vx, ball.vy) > 300) hitBoard(ball); ball.out = true; ball.noTake = 0; for (let i = 0; i < 5; i++) S.particles.push({ x: ball.x, y: ball.y, vx: rr(-40, 40), vy: rr(-30, -5), t: 0, life: 0.3, c: PAL.white }) }
   // Hors de la pelouse il freine davantage ; il ne revient jamais tout seul.
   if (out) { ball.vx *= Math.pow(0.35, dt); ball.vy *= Math.pow(0.35, dt) }
