@@ -1,4 +1,4 @@
-# CARTON PLEIN — pré-GDD (v0.4)
+# FC MMA (ex « Carton plein ») — pré-GDD (v0.4)
 
 *Un Paraguayen. Onze Français. Zéro intention de jouer au ballon.*
 

@@ -1,5 +1,5 @@
 /*
- * CARTON PLEIN — prototype jouable. France – Paraguay, Coupe du monde 2026. Tu es le dernier
+ * FC MMA (ex Carton plein) — prototype jouable. France – Paraguay, Coupe du monde 2026. Tu es le dernier
  * Paraguayen sur le terrain ; les Français jouent au foot, toi tu fais des fautes.
  *
  * Flèches / ZQSD / WASD : se déplacer. Espace, Entrée ou clic droit : frapper (poing de près,
@@ -69,8 +69,12 @@ function drawSprite(g, name, anim, dir, frame, x, y, flip = false) {
 
 /* ---------- son (synthétisé) ---------- */
 const audio = { ctx: null, muted: localStorage.getItem('carton.muted') === '1' }
+const beepLast = {}
 function beep(kind) {
   if (audio.muted) return
+  const now = performance.now()
+  if (beepLast[kind] && now - beepLast[kind] < 70) return // une rafale de coups = un seul son
+  beepLast[kind] = now
   try {
     if (!audio.ctx) audio.ctx = new (window.AudioContext || window.webkitAudioContext)()
     const c = audio.ctx
@@ -95,7 +99,7 @@ const S = {
   phase: 'title', // title | play | kickoff | freekick | goal | end
   t: 0, clock: 0, added: 0, addedShown: false,
   score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0,
-  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
+  combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
   popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
   phaseT: 0,
@@ -230,8 +234,9 @@ function foul(name, victim, extra = {}) {
     ref.calm = 5
     if (ref.patience <= 0 && def.big && victim && victim.team === 'fra' && !ref.cardTarget) startCard(victim)
   }
-  S.freeze = Math.max(S.freeze, def.big ? 0.08 : 0.04)
-  S.shake = Math.max(S.shake, def.big ? 6 : 3)
+  if (S.hitStopCd <= 0 && S.fury <= 0) { S.freeze = Math.max(S.freeze, def.big ? 0.07 : 0.035); S.hitStopCd = 0.3 }
+  if (S.shakeCd <= 0) { S.shake = Math.max(S.shake, def.big ? 6 : 3); S.shakeCd = 0.12 }
+  S.lastPts = pts; S.lastPtsT = 0
   if (def.noWhistle) { beep('hit'); return }
   beep('whistle')
   if (victim && victim.team === 'fra') freeKick(vx, vy, victim)
@@ -1000,7 +1005,7 @@ function updateRef(dt) {
 
 /* ---------- boucle ---------- */
 function startMatch() {
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -1014,6 +1019,7 @@ function startMatch() {
 function update(dt) {
   if (S.phase === 'title' || S.phase === 'end') { if (attackPressed) { attackPressed = false; startMatch() } return }
   if (S.paused) { attackPressed = false; return }
+  S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; return }
   S.t += dt
   const total = RUN + S.added
@@ -1045,7 +1051,9 @@ function update(dt) {
   if (S.banners.length > 2) S.banners.splice(0, S.banners.length - 2)
   for (const p of S.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt }
   S.particles = S.particles.filter((p) => p.t < p.life)
-  S.shake *= Math.pow(0.02, dt)
+  if (S.particles.length > 240) S.particles.splice(0, S.particles.length - 240)
+  if (S.debris.length > 160) S.debris.splice(0, S.debris.length - 160)
+  S.shake = Math.min(10, S.shake) * Math.pow(0.02, dt)
   // Caméra : suit le ballon, tirée vers le héros.
   // Caméra accrochée au n°4, toujours au centre, avec un léger retard lissé de quelques pixels.
   const tx = hero.x + hero.vx * 0.05 - W / 2, ty = hero.y + hero.vy * 0.05 - H / 2
@@ -1181,69 +1189,99 @@ function render() {
   drawHUD()
   if (S.phase === 'end') drawEnd()
 }
+function panel(x, y, w, h, accent) {
+  g.fillStyle = 'rgba(24,20,37,0.82)'; g.fillRect(x, y, w, h)
+  g.fillStyle = PAL.slate; g.fillRect(x, y, w, 1); g.fillRect(x, y + h - 1, w, 1); g.fillRect(x, y, 1, h); g.fillRect(x + w - 1, y, 1, h)
+  if (accent) { g.fillStyle = accent; g.fillRect(x, y, 3, h) }
+}
+/** Texte cerné d'encre, lisible sur la pelouse sans bandeau. */
+function outlined(t, x, y, { size = 10, color = PAL.white, align = 'center' } = {}) {
+  g.font = `bold ${size}px monospace`; g.textAlign = align; g.textBaseline = 'top'
+  g.fillStyle = PAL.ink
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [1, -1], [-1, 1], [0, 2], [2, 0]]) g.fillText(t, x + dx, y + dy)
+  g.fillStyle = color; g.fillText(t, x, y)
+}
+function flag(x, y, cols) { cols.forEach((c, i) => { g.fillStyle = c; g.fillRect(x + i * 3, y, 3, 7) }); g.fillStyle = PAL.ink; g.fillRect(x - 1, y - 1, 11, 1); g.fillRect(x - 1, y + 7, 11, 1) }
+function segments(x, y, w, h, n, frac, on, off = PAL.slateD) {
+  const sw = (w - (n - 1)) / n
+  for (let i = 0; i < n; i++) { g.fillStyle = i < Math.round(frac * n) ? on : off; g.fillRect(Math.round(x + i * (sw + 1)), y, Math.floor(sw), h) }
+}
 function drawHUD() {
-  // Tableau d'affichage.
-  g.fillStyle = 'rgba(24,20,37,0.85)'
-  g.fillRect(6, 6, 150, 20)
   const t = Math.min(S.clock, RUN + S.added)
   const minute = Math.floor((t / RUN) * 90)
-  text(`${String(minute).padStart(2, '0')}'${S.clock > RUN ? '+' : ''}`, 12, 12, { color: PAL.yellow })
-  text(`FRA ${S.goals}  PAR 0`, 56, 12, { color: PAL.grey1 })
-  // Score.
-  g.fillStyle = 'rgba(24,20,37,0.85)'
-  g.fillRect(W - 126, 6, 120, 20)
-  text(String(S.score).padStart(6, '0'), W - 12, 12, { color: PAL.yellow, align: 'right' })
-  text('FAUTES ' + S.fouls, W - 118, 12, { color: PAL.grey1 })
-  g.fillStyle = 'rgba(24,20,37,0.85)'; g.fillRect(W - 126, 28, 120, 14)
-  text('FRANCE ' + Math.min(22, S.koCount) + '/22   BANC ' + npcs.filter((n) => n.role === 'sub').length + (S.teamDoneAt ? '   EN ' + S.teamDoneAt.toFixed(0) + 'S' : ''), W - 12, 31, { size: 7, color: S.koCount >= 22 ? PAL.orange : PAL.grey1, align: 'right' })
-  // Combo au centre.
+  // Tableau d'affichage, en haut à gauche : minute, drapeaux, score du match.
+  panel(6, 6, 172, 28, PAL.yellow)
+  text(`${String(minute).padStart(2, '0')}'${S.clock > RUN ? '+' : ''}`, 16, 12, { size: 14, color: PAL.yellow })
+  flag(60, 15, [PAL.blue, PAL.white, PAL.red]); text('FRA', 74, 14, { size: 8, color: PAL.grey1 })
+  text(`${S.goals} - 0`, 118, 12, { size: 12, color: PAL.white, align: 'center' })
+  text('PAR', 138, 14, { size: 8, color: PAL.grey1 }); flag(162, 15, [PAL.red, PAL.white, PAL.blue])
+  // Score, en haut à droite : points, fautes, état de l'équipe de France.
+  panel(W - 178, 6, 172, 28, PAL.amber)
+  text(String(S.score).padStart(7, '0'), W - 12, 10, { size: 14, color: PAL.yellow, align: 'right' })
+  text('FAUTES ' + S.fouls, W - 170, 24, { size: 7, color: PAL.grey1 })
+  if (S.lastPtsT < 0.8 && S.lastPts) text('+' + S.lastPts, W - 12, 25, { size: 7, color: PAL.white, align: 'right' })
+  panel(W - 178, 36, 172, 14)
+  const bench = npcs.filter((n) => n.role === 'sub').length
+  text('FRANCE', W - 170, 39, { size: 7, color: PAL.grey2 })
+  segments(W - 128, 40, 66, 6, 22, Math.min(22, S.koCount) / 22, S.koCount >= 22 ? PAL.orange : PAL.red, PAL.blueD)
+  text(S.teamDoneAt ? 'KO EN ' + S.teamDoneAt.toFixed(0) + 'S' : 'BANC ' + bench, W - 12, 39, { size: 7, color: S.teamDoneAt ? PAL.orange : PAL.grey1, align: 'right' })
+  // Combo, au centre : gros multiplicateur cerné, palier, crans et anneau de temps.
   if (S.combo > 0) {
     const m = comboMult()
     const pop = Math.max(0, 1 - S.comboAt * 5)
-    const col = m >= 5 ? PAL.orange : m >= 3 ? PAL.amber : PAL.yellow
-    g.fillStyle = 'rgba(24,20,37,0.8)'; g.fillRect(W / 2 - 60, 4, 120, 44)
-    text(`×${m}`, W / 2, 6 - Math.round(pop * 4), { size: Math.round(22 + pop * 10), color: col, align: 'center' })
-    // Dix crans vers le prochain palier, puis le chrono qui fond.
+    const col = m >= 5 ? PAL.orange : m >= 4 ? PAL.red : m >= 3 ? PAL.amber : m >= 2 ? PAL.yellow : PAL.white
+    const cx = W / 2, cy = 30
+    const frac = S.fire > 0 ? 1 : S.comboT / 3
+    // Anneau de temps.
+    g.lineWidth = 4; g.strokeStyle = PAL.ink; g.beginPath(); g.arc(cx, cy, 26, 0, Math.PI * 2); g.stroke()
+    g.lineWidth = 2; g.strokeStyle = PAL.slate; g.beginPath(); g.arc(cx, cy, 26, 0, Math.PI * 2); g.stroke()
+    g.strokeStyle = col; g.beginPath(); g.arc(cx, cy, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); g.stroke()
+    g.fillStyle = 'rgba(24,20,37,0.85)'; g.beginPath(); g.arc(cx, cy, 23, 0, Math.PI * 2); g.fill()
+    if (pop > 0) { g.fillStyle = col; g.globalAlpha = pop * 0.5; g.beginPath(); g.arc(cx, cy, 23 + pop * 10, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1 }
+    outlined(`×${m}`, cx, cy - 11 - Math.round(pop * 3), { size: Math.round(22 + pop * 8), color: pop > 0.6 ? PAL.white : col })
+    // Palier et crans vers le suivant, sous l'anneau.
     const next = COMBO_STEPS[Math.min(m, COMBO_STEPS.length - 1)]
     const prev = COMBO_STEPS[m - 1]
-    const frac = m >= 5 ? 1 : (S.combo - prev) / Math.max(1, next - prev)
-    for (let i = 0; i < 10; i++) { g.fillStyle = i < Math.round(frac * 10) ? col : PAL.slateD; g.fillRect(W / 2 - 50 + i * 10, 39, 8, 3) }
-    g.fillStyle = S.fire > 0 ? PAL.orange : PAL.white; g.fillRect(W / 2 - 50, 44, Math.round(100 * (S.fire > 0 ? 1 : S.comboT / 3)), 2)
+    const f2 = m >= 5 ? 1 : (S.combo - prev) / Math.max(1, next - prev)
+    const label = m >= 5 ? 'CARTON PLEIN' : TIERS[m - 1] || 'COMBO'
+    const lw = label.length * 6 + 10
+    g.fillStyle = col; g.fillRect(cx - lw / 2, 58, lw, 11)
+    text(label, cx, 60, { size: 8, color: PAL.ink, align: 'center', shadow: false })
+    for (let i = 0; i < 10; i++) { const on = i < Math.round(f2 * 10); g.fillStyle = PAL.ink; g.fillRect(cx - 40 + i * 8, 71, 7, 5); g.fillStyle = on ? col : PAL.slate; g.fillRect(cx - 39 + i * 8, 72, 5, 3) }
+    text(S.combo + ' FAUTES', cx, 78, { size: 7, color: PAL.grey1, align: 'center' })
   }
-  // FUEGO et patience, en bas.
-  g.fillStyle = 'rgba(24,20,37,0.85)'
-  g.fillRect(6, H - 24, 150, 18)
-  text(S.fury > 0 ? 'FURIE' : S.fire > 0 ? 'FURIE ?' : 'FUEGO', 10, H - 19, { size: 7, color: S.fury > 0 ? PAL.white : S.fire > 0 ? PAL.yellow : PAL.orange })
-  g.fillStyle = PAL.slateD; g.fillRect(44, H - 18, 104, 7)
-  g.fillStyle = S.fury > 0 ? (Math.floor(S.t * 10) % 2 ? PAL.white : PAL.yellow) : S.fire > 0 ? PAL.yellow : PAL.orange; g.fillRect(45, H - 17, Math.round(102 * (S.fury > 0 ? S.fury / 12 : S.fire > 0 ? S.furyCharge / 100 : S.fuego / 100)), 5)
-  g.fillStyle = 'rgba(24,20,37,0.85)'
-  g.fillRect(W - 156, H - 24, 150, 18)
-  text('ARBITRE', W - 152, H - 19, { size: 7, color: ref.patience <= 0 ? PAL.red : PAL.grey1 })
-  g.fillStyle = PAL.slateD; g.fillRect(W - 104, H - 18, 94, 7)
-  g.fillStyle = ref.patience > 40 ? PAL.green : ref.patience > 0 ? PAL.amber : PAL.red; g.fillRect(W - 103, H - 17, Math.round(92 * (ref.patience / 100)), 5)
-  if (ref.patience <= 0) text('IL CRAQUE', W - 60, H - 32, { size: 7, color: PAL.red, align: 'center' })
-  // Bandeaux.
+  // FUEGO / FURIE, en bas à gauche.
+  const furyOn = S.fury > 0, fireOn = S.fire > 0
+  panel(6, H - 30, 172, 24, furyOn ? PAL.white : fireOn ? PAL.yellow : PAL.orange)
+  text(furyOn ? 'FURIE' : fireOn ? 'FURIE ?' : 'FUEGO', 16, H - 25, { size: 9, color: furyOn ? (Math.floor(S.t * 10) % 2 ? PAL.white : PAL.yellow) : fireOn ? PAL.yellow : PAL.orange })
+  segments(72, H - 23, 98, 10, 12, furyOn ? S.fury / 12 : fireOn ? S.furyCharge / 100 : S.fuego / 100, furyOn ? PAL.white : fireOn ? PAL.yellow : PAL.orange)
+  if (fireOn && !furyOn) text('EN FEU ' + Math.ceil(S.fire) + 'S', 72, H - 11 - 1, { size: 6, color: PAL.orange })
+  // Arbitre, en bas à droite.
+  panel(W - 178, H - 30, 172, 24, ref.patience <= 0 ? PAL.red : ref.patience > 40 ? PAL.green : PAL.amber)
+  text('ARBITRE', W - 168, H - 25, { size: 9, color: ref.patience <= 0 ? PAL.red : PAL.grey1 })
+  segments(W - 108, H - 23, 96, 10, 10, ref.patience / 100, ref.patience > 40 ? PAL.green : ref.patience > 0 ? PAL.amber : PAL.red)
+  if (ref.patience <= 0 && Math.floor(S.t * 4) % 2) text('IL CRAQUE', W - 60, H - 21, { size: 8, color: PAL.white, align: 'center' })
+  // Bandeaux : texte cerné, sans bande, qui glisse depuis le haut.
   S.banners.forEach((b, i) => {
     const a = b.t < 0.15 ? b.t / 0.15 : b.t > 1.4 ? (1.8 - b.t) / 0.4 : 1
     g.globalAlpha = clamp(a, 0, 1)
-    g.fillStyle = 'rgba(24,20,37,0.9)'
-    g.fillRect(0, 60 + i * 22, W, 18)
-    text(b.text, W / 2, 65 + i * 22, { size: 9, color: b.color, align: 'center' })
+    outlined(b.text, W / 2, 96 + i * 18 - Math.round((1 - Math.min(1, b.t / 0.15)) * 10), { size: 11, color: b.color })
     g.globalAlpha = 1
   })
   // Tactile : joystick et bouton.
   if (touch.joy) { g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 2; g.beginPath(); g.arc(touch.joy.x, touch.joy.y, 24, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(touch.joy.x + touch.jx * 24, touch.joy.y + touch.jy * 24, 8, 0, Math.PI * 2); g.fill() }
   // Repère de l'arbitre quand il est hors champ.
   { const rx = ref.x - S.cam.x, ry = ref.y - S.cam.y - 30
-    if (rx < 0 || rx > W || ry < 0 || ry > H) { const px = clamp(rx, 12, W - 12), py = clamp(ry, 36, H - 36); g.fillStyle = 'rgba(24,20,37,0.8)'; g.fillRect(px - 22, py - 6, 44, 12); text('ARBITRE', px, py - 4, { size: 7, color: PAL.amber, align: 'center' }) } }
-  if (S.phase === 'card' && ref.cardTarget) text('JEU ARRETE', W / 2, H / 2 - 40, { size: 10, color: PAL.yellow, align: 'center' })
-  if (S.paused) text('PAUSE', W / 2, H / 2 - 8, { size: 16, align: 'center' })
+    if (rx < 0 || rx > W || ry < 0 || ry > H) { const px = clamp(rx, 30, W - 30), py = clamp(ry, 56, H - 40); outlined('ARBITRE', px, py - 4, { size: 7, color: PAL.amber }) } }
+  if (S.phase === 'card' && ref.cardTarget) outlined('JEU ARRETE', W / 2, H / 2 - 40, { size: 12, color: PAL.yellow })
+  if (S.paused) outlined('PAUSE', W / 2, H / 2 - 8, { size: 16 })
 }
 function drawTitle() {
   g.fillStyle = 'rgba(24,20,37,0.75)'
   g.fillRect(0, 0, W, H)
-  text('CARTON PLEIN', W / 2, 60, { size: 32, color: PAL.yellow, align: 'center' })
-  text('UN PARAGUAYEN. ONZE FRANCAIS. ZERO INTENTION DE JOUER AU BALLON.', W / 2, 104, { size: 8, color: PAL.grey1, align: 'center' })
+  text('FC MMA', W / 2, 52, { size: 40, color: PAL.yellow, align: 'center' })
+  text('FRANCE – PARAGUAY, COUPE DU MONDE 2026', W / 2, 92, { size: 8, color: PAL.amber, align: 'center' })
+  text('UN PARAGUAYEN. ONZE FRANCAIS. ZERO INTENTION DE JOUER AU BALLON.', W / 2, 108, { size: 8, color: PAL.grey1, align: 'center' })
   text('FLECHES : BOUGER   ESPACE / CLIC DROIT : FRAPPER', W / 2, 140, { size: 9, align: 'center' })
   text('LOIN = TACLE GLISSE     COLLE = POING, GENOU, PIED, PROJECTION', W / 2, 156, { size: 9, align: 'center' })
   text('FAIS LE PLUS DE FAUTES POSSIBLE EN 90 SECONDES. LES BUTS NE COMPTENT PAS.', W / 2, 180, { size: 8, color: PAL.grey1, align: 'center' })
