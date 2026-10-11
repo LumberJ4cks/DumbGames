@@ -1060,7 +1060,8 @@ function startMatch() {
   beep('whistle')
 }
 function update(dt) {
-  if (S.phase === 'title' || S.phase === 'end') { if (attackPressed) { attackPressed = false; startMatch() } return }
+  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); if (attackPressed) { attackPressed = false; if (S.endT > 2) startMatch() } return }
+  if (S.phase === 'title') { if (attackPressed) { attackPressed = false; startMatch() } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
@@ -1107,7 +1108,9 @@ function endMatch() {
   S.phase = 'end'
   S.final = S.score
   const best = Number(localStorage.getItem('carton.record') || 0)
+  S.newRecord = S.final > best
   S.record = Math.max(best, S.final)
+  S.endT = 0; S.stampShake = undefined
   localStorage.setItem('carton.record', String(S.record))
   beep('whistle')
 }
@@ -1344,25 +1347,60 @@ function drawTitle() {
   drawSprite(g, 'france-0', 'ko', 'e', 0, W / 2 + 160, 290)
 }
 function drawEnd() {
-  g.fillStyle = 'rgba(24,20,37,0.88)'
-  g.fillRect(60, 30, W - 120, H - 60)
-  text("RAPPORT DE L'ARBITRE", W / 2, 40, { size: 12, color: PAL.yellow, align: 'center' })
-  text('France - Paraguay   Joueur concerne : BENITEZ (4)   Sanction : aucune (normal)', W / 2, 58, { size: 7, color: PAL.grey1, align: 'center' })
-  const lines = [
-    ['Fautes sifflees', S.fouls], ['  dont grosses fautes', S.bigFouls], ["  dont sur l'arbitre", S.refHits],
-    ['Cartons jaunes (France)', S.yellows], ['Cartons rouges (France)', S.reds], ['Francais defonces', S.koCount + '/22' + (S.teamDoneAt ? '   (equipe entiere en ' + S.teamDoneAt.toFixed(1) + ' s)' : '')],
-    ['Boosts EN FEU', S.fires], ['Furies', S.furies], ['Combo maximum', '×' + S.maxCombo], ['Temps tenu', Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0')],
-    ['Buts encaisses', S.goals + ' / ' + LIVES],
+  // Panneau récap : il se déplie, puis les lignes tombent une à une, puis le tampon claque.
+  const T = S.endT || 0
+  const open = Math.min(1, T / 0.35)
+  const pw = W - 100, ph = Math.round((H - 40) * open)
+  const px = 50, py = Math.round((H - ph) / 2)
+  g.fillStyle = 'rgba(24,20,37,0.6)'; g.fillRect(0, 0, W, H)
+  g.fillStyle = PAL.ink; g.fillRect(px - 2, py - 2, pw + 4, ph + 4)
+  g.fillStyle = PAL.slateD; g.fillRect(px, py, pw, ph)
+  g.fillStyle = PAL.red; g.fillRect(px, py, pw, 3)
+  if (open < 1) return
+  // En-tête.
+  text('FIN DU MATCH', px + 14, py + 10, { size: 14, color: PAL.yellow })
+  text('FRANCE ' + S.goals + ' - 0 PARAGUAY', W - 64, py + 12, { size: 9, color: PAL.grey1, align: 'right' })
+  for (let i = 0; i < LIVES; i++) { const bx = px + 150 + i * 14, by = py + 18; g.fillStyle = PAL.ink; g.beginPath(); g.arc(bx, by, 6, 0, Math.PI * 2); g.fill(); g.fillStyle = PAL.slate; g.beginPath(); g.arc(bx, by, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = PAL.ink; g.fillRect(bx - 3, by - 1, 6, 2) }
+  text('TROIS BUTS ENCAISSES. TEMPS TENU ' + Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0'), px + 14, py + 30, { size: 7, color: PAL.grey2 })
+  g.fillStyle = PAL.slate; g.fillRect(px + 10, py + 42, pw - 20, 1)
+  // Deux colonnes de dégâts, qui apparaissent une par une.
+  const left = [
+    ['Fautes sifflees', S.fouls], ['Grosses fautes', S.bigFouls], ["Fautes sur l'arbitre", S.refHits],
+    ['Francais defonces', S.koCount + ' / 22'], ['Equipe entiere en', S.teamDoneAt ? S.teamDoneAt.toFixed(1) + ' s' : '-'],
   ]
-  lines.forEach(([k, v], i) => { text(k, 90, 80 + i * 13, { size: 8, color: PAL.grey1 }); text(String(v), W - 90, 80 + i * 13, { size: 8, align: 'right' }) })
-  text('SCORE', 90, 220, { size: 12, color: PAL.yellow }); text(String(S.final), W - 90, 220, { size: 12, color: PAL.yellow, align: 'right' })
-  text('RECORD', 90, 238, { size: 8, color: PAL.grey2 }); text(String(S.record), W - 90, 238, { size: 8, color: PAL.grey2, align: 'right' })
-  const stamp = S.final < 15000 ? 'FAIR-PLAY' : S.final < 40000 ? 'RUGUEUX' : S.final < 80000 ? 'BOUCHER' : S.final < 150000 ? 'CARTON PLEIN' : 'LEGENDE DU GUARANI'
-  g.save(); g.translate(W / 2, 275); g.rotate(-0.12)
-  g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-90, -14, 180, 28)
-  text(stamp, 0, -8, { size: 14, color: PAL.red, align: 'center', shadow: false })
-  g.restore()
-  text('ESPACE POUR REJOUER', W / 2, 308, { size: 9, color: PAL.grey1, align: 'center' })
+  const right = [
+    ['Cartons jaunes', S.yellows], ['Cartons rouges', S.reds], ['Combo maximum', '×' + S.maxCombo],
+    ['Boosts EN FEU', S.fires], ['Furies', S.furies],
+  ]
+  const colW = (pw - 40) / 2
+  const row = (k, v, x, y, i) => {
+    if (T < 0.45 + i * 0.08) return
+    const pop = Math.max(0, 1 - (T - (0.45 + i * 0.08)) * 6)
+    text(k.toUpperCase(), x, y, { size: 7, color: PAL.grey1 })
+    text(String(v), x + colW - 8, y - Math.round(pop * 3), { size: 9, color: pop > 0.5 ? PAL.yellow : PAL.white, align: 'right' })
+    g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x, y + 11, colW - 8, 1)
+  }
+  left.forEach(([k, v], i) => row(k, v, px + 16, py + 50 + i * 15, i))
+  right.forEach(([k, v], i) => row(k, v, px + 28 + colW, py + 50 + i * 15, i + 5))
+  // Score, record, tampon.
+  if (T > 1.3) {
+    const pop = Math.max(0, 1 - (T - 1.3) * 4)
+    g.fillStyle = PAL.ink; g.fillRect(px + 10, py + 132, pw - 20, 30)
+    g.fillStyle = PAL.yellow; g.fillRect(px + 10, py + 132, 3, 30)
+    text('DEGATS', px + 22, py + 138, { size: 10, color: PAL.yellow })
+    text(String(S.final).padStart(7, '0'), W - 64, py + 134 - Math.round(pop * 4), { size: Math.round(16 + pop * 8), color: PAL.yellow, align: 'right' })
+    text(S.final >= S.record && S.final > 0 && S.newRecord ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, px + 22, py + 152, { size: 7, color: S.newRecord ? PAL.orange : PAL.grey2 })
+  }
+  if (T > 1.7) {
+    const k = Math.max(0, 1 - (T - 1.7) * 5)
+    const stamp = S.final < 15000 ? 'FAIR-PLAY' : S.final < 40000 ? 'RUGUEUX' : S.final < 80000 ? 'BOUCHER' : S.final < 150000 ? 'CARTON PLEIN' : 'LEGENDE DU GUARANI'
+    if (k > 0 && S.stampShake === undefined) { S.stampShake = 1; S.shake = Math.max(S.shake, 8); beep('hit') }
+    g.save(); g.translate(W / 2, py + ph - 56); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = 1 - k * 0.5
+    g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-100, -14, 200, 28)
+    text(stamp, 0, -8, { size: 14, color: PAL.red, align: 'center', shadow: false })
+    g.restore()
+  }
+  if (T > 2.2 && Math.floor(S.t * 2) % 2 === 0) text('ESPACE POUR REJOUER', W / 2, py + ph - 20, { size: 9, color: PAL.grey1, align: 'center' })
 }
 
 /* ---------- démarrage ---------- */
