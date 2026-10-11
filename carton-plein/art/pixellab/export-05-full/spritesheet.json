@@ -1,0 +1,493 @@
+{
+  "character": {
+    "id": "812e17a0-9e59-45c3-a644-e3260a051684",
+    "name": "Idle",
+    "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+    "size": {
+      "width": 48,
+      "height": 48
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Chibi_cartoon_soccer_pla-Idle.png",
+    "cell_size": {
+      "width": 80,
+      "height": 80
+    },
+    "sheet_size": {
+      "width": 640,
+      "height": 4560
+    },
+    "columns": 8,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "south-east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "east"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "north-east"
+      },
+      {
+        "row": 5,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "north"
+      },
+      {
+        "row": 6,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "north-west"
+      },
+      {
+        "row": 7,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "west"
+      },
+      {
+        "row": 8,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "04d7052f-a6a3-4f1e-ab40-3d1b23cbe1cf",
+        "direction": "south-west"
+      },
+      {
+        "row": 9,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "south"
+      },
+      {
+        "row": 10,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "south-east"
+      },
+      {
+        "row": 11,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "east"
+      },
+      {
+        "row": 12,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "north-east"
+      },
+      {
+        "row": 13,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "north"
+      },
+      {
+        "row": 14,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "north-west"
+      },
+      {
+        "row": 15,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "west"
+      },
+      {
+        "row": 16,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Breathing Idle",
+        "animation_group_id": "3c5021e3-2518-4af5-a190-be107c12a737",
+        "direction": "south-west"
+      },
+      {
+        "row": 17,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "south"
+      },
+      {
+        "row": 18,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "south-east"
+      },
+      {
+        "row": 19,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "east"
+      },
+      {
+        "row": 20,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "north-east"
+      },
+      {
+        "row": 21,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "north"
+      },
+      {
+        "row": 22,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "north-west"
+      },
+      {
+        "row": 23,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "west"
+      },
+      {
+        "row": 24,
+        "type": "animation",
+        "frame_count": 8,
+        "animation": "Fight Stance Idle",
+        "animation_group_id": "46a4c580-3245-45ac-b066-63f19c554df3",
+        "direction": "south-west"
+      },
+      {
+        "row": 25,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "south"
+      },
+      {
+        "row": 26,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "south-east"
+      },
+      {
+        "row": 27,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "east"
+      },
+      {
+        "row": 28,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "north-east"
+      },
+      {
+        "row": 29,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "north"
+      },
+      {
+        "row": 30,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "north-west"
+      },
+      {
+        "row": 31,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "west"
+      },
+      {
+        "row": 32,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Throw Object",
+        "animation_group_id": "4bc5754a-cd27-4d73-98a4-5838f344bd50",
+        "direction": "south-west"
+      },
+      {
+        "row": 33,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "south"
+      },
+      {
+        "row": 34,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "south-east"
+      },
+      {
+        "row": 35,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "east"
+      },
+      {
+        "row": 36,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "north-east"
+      },
+      {
+        "row": 37,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "north"
+      },
+      {
+        "row": 38,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "north-west"
+      },
+      {
+        "row": 39,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "west"
+      },
+      {
+        "row": 40,
+        "type": "animation",
+        "frame_count": 6,
+        "animation": "Taking Punch",
+        "animation_group_id": "6ebe9c40-2045-4f60-8394-a219d8b5888d",
+        "direction": "south-west"
+      },
+      {
+        "row": 41,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "south"
+      },
+      {
+        "row": 42,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "south-east"
+      },
+      {
+        "row": 43,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "east"
+      },
+      {
+        "row": 44,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "north-east"
+      },
+      {
+        "row": 45,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "north"
+      },
+      {
+        "row": 46,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "north-west"
+      },
+      {
+        "row": 47,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "west"
+      },
+      {
+        "row": 48,
+        "type": "animation",
+        "frame_count": 7,
+        "animation": "Falling Back Death",
+        "animation_group_id": "79aa5abd-8eb8-45a3-a156-9289defb4d46",
+        "direction": "south-west"
+      },
+      {
+        "row": 49,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "south"
+      },
+      {
+        "row": 50,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "south-east"
+      },
+      {
+        "row": 51,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "east"
+      },
+      {
+        "row": 52,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "north-east"
+      },
+      {
+        "row": 53,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "north"
+      },
+      {
+        "row": 54,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "north-west"
+      },
+      {
+        "row": 55,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "west"
+      },
+      {
+        "row": 56,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Walking",
+        "animation_group_id": "f27af0c7-2441-45d8-9655-065892b44ca7",
+        "direction": "south-west"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-11T02:22:53.977512+00:00"
+}
