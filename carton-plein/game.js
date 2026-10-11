@@ -51,6 +51,7 @@ const COMBO_STEPS = [0, 2, 4, 7, 10] // seuils pour ×1..×5
 const ATLAS = {}
 const IMG = {}
 function loadImage(name) { return new Promise((res) => { const i = new Image(); i.onload = () => { IMG[name] = i; res() }; i.onerror = () => res(); i.src = `sprites/${name}.png` }) }
+const endVideo = (() => { try { const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; for (const [src, type] of [['video/fin.mp4', 'video/mp4'], ['video/fin.webm', 'video/webm']]) { const so = document.createElement('source'); so.src = src; so.type = type; v.appendChild(so) } v.load(); return v } catch (e) { return null } })()
 const START_BTN = { x: 232.2, y: 279.4, w: 175.7, h: 45.0 } // le bouton START dans l'image titre, à l'échelle du canvas
 const mouse = { x: -1, y: -1 }
 let startPress = 0
@@ -1325,6 +1326,7 @@ function startMatch() {
 function update(dt) {
   if (S.phase === 'var') { updateVar(dt); return }
   if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) startMatch() } return }
+  if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
   if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('tick') } } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
@@ -1381,6 +1383,7 @@ function endMatch() {
   S.newRecord = S.final > best
   S.record = Math.max(best, S.final)
   S.endT = 0; S.stampShake = undefined
+  if (endVideo) { try { endVideo.currentTime = 0; endVideo.play().catch(() => {}) } catch (e) { /* pas de vidéo */ } }
   localStorage.setItem('carton.record', String(S.record))
   beep('whistle')
 }
@@ -1747,60 +1750,46 @@ function drawTitle() {
   text('RECORD ' + (localStorage.getItem('carton.record') || 0), W - 8, H - 9, { size: 6, color: PAL.grey2, align: 'right' })
 }
 function drawEnd() {
-  // Panneau récap : il se déplie, puis les lignes tombent une à une, puis le tampon claque.
   const T = S.endT || 0
-  const open = Math.min(1, T / 0.35)
-  const pw = W - 100, ph = Math.round((H - 40) * open)
-  const px = 50, py = Math.round((H - ph) / 2)
-  g.fillStyle = 'rgba(24,20,37,0.6)'; g.fillRect(0, 0, W, H)
-  g.fillStyle = PAL.ink; g.fillRect(px - 2, py - 2, pw + 4, ph + 4)
-  g.fillStyle = PAL.slateD; g.fillRect(px, py, pw, ph)
-  g.fillStyle = PAL.red; g.fillRect(px, py, pw, 3)
-  if (open < 1) return
-  // En-tête.
-  text('FIN DU MATCH', px + 14, py + 10, { size: 14, color: PAL.yellow })
-  text('FRANCE ' + S.goals + ' - 0 PARAGUAY', W - 64, py + 12, { size: 9, color: PAL.grey1, align: 'right' })
-  for (let i = 0; i < LIVES; i++) { const bx = px + 150 + i * 14, by = py + 18; g.fillStyle = PAL.ink; g.beginPath(); g.arc(bx, by, 6, 0, Math.PI * 2); g.fill(); g.fillStyle = PAL.slate; g.beginPath(); g.arc(bx, by, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = PAL.ink; g.fillRect(bx - 3, by - 1, 6, 2) }
-  text('TROIS BUTS ENCAISSES. TEMPS TENU ' + Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0'), px + 14, py + 30, { size: 7, color: PAL.grey2 })
-  g.fillStyle = PAL.slate; g.fillRect(px + 10, py + 42, pw - 20, 1)
-  // Deux colonnes de dégâts, qui apparaissent une par une.
-  const left = [
-    ['Fautes sifflees', S.fouls], ['Grosses fautes', S.bigFouls], ["Fautes sur l'arbitre", S.refHits],
-    ['Francais defonces', S.koCount + ' / 22'], ['Equipe entiere en', S.teamDoneAt ? S.teamDoneAt.toFixed(1) + ' s' : '-'],
-  ]
-  const right = [
-    ['Cartons jaunes', S.yellows], ['Cartons rouges', S.reds], ['Combo maximum', '×' + S.maxCombo],
-    ['Boosts EN FEU', S.fires], ['Furies', S.furies],
-  ]
-  if (S.busHits) right.push(['Ecrases par le bus', S.busHits])
-  const colW = (pw - 40) / 2
-  const row = (k, v, x, y, i) => {
-    if (T < 0.45 + i * 0.08) return
-    const pop = Math.max(0, 1 - (T - (0.45 + i * 0.08)) * 6)
-    text(k.toUpperCase(), x, y, { size: 7, color: PAL.grey1 })
-    text(String(v), x + colW - 8, y - Math.round(pop * 3), { size: 9, color: pop > 0.5 ? PAL.yellow : PAL.white, align: 'right' })
-    g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x, y + 11, colW - 8, 1)
+  // Fond : la vidéo si elle est prête, sinon la scène figée assombrie.
+  const vid = endVideo && endVideo.readyState >= 2
+  if (vid) { const vw = endVideo.videoWidth, vh = endVideo.videoHeight, k = Math.max(W / vw, H / vh); g.drawImage(endVideo, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k) }
+  else { g.fillStyle = 'rgba(24,20,37,0.7)'; g.fillRect(0, 0, W, H) }
+  const fade = Math.min(1, T / 0.4)
+  g.globalAlpha = fade
+  // Bandeau de titre, sous le logo de la vidéo.
+  outlined('FIN DU MATCH', W / 2, 54, { size: 12, color: PAL.white })
+  outlined('TROIS BUTS ENCAISSES  ·  TEMPS TENU ' + Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0'), W / 2, 70, { size: 7, color: PAL.grey1 })
+  // Le score, énorme, au centre entre les deux joueurs.
+  if (T > 0.5) {
+    const pop = Math.max(0, 1 - (T - 0.5) * 4)
+    g.fillStyle = 'rgba(24,20,37,0.78)'; g.fillRect(W / 2 - 120, 96, 240, 74)
+    g.fillStyle = PAL.yellow; g.fillRect(W / 2 - 120, 96, 240, 3)
+    text('DEGATS', W / 2, 102, { size: 9, color: PAL.yellow, align: 'center' })
+    outlined(String(S.final).padStart(7, '0'), W / 2, 114 - Math.round(pop * 4), { size: Math.round(30 + pop * 14), color: PAL.yellow })
+    text(S.newRecord && S.final > 0 ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, W / 2, 152, { size: 7, color: S.newRecord ? PAL.orange : PAL.grey1, align: 'center' })
   }
-  left.forEach(([k, v], i) => row(k, v, px + 16, py + 50 + i * 15, i))
-  right.forEach(([k, v], i) => row(k, v, px + 28 + colW, py + 50 + i * 15, i + 5))
-  // Score, record, tampon.
-  if (T > 1.3) {
-    const pop = Math.max(0, 1 - (T - 1.3) * 4)
-    g.fillStyle = PAL.ink; g.fillRect(px + 10, py + 132, pw - 20, 30)
-    g.fillStyle = PAL.yellow; g.fillRect(px + 10, py + 132, 3, 30)
-    text('DEGATS', px + 22, py + 138, { size: 10, color: PAL.yellow })
-    text(String(S.final).padStart(7, '0'), W - 64, py + 134 - Math.round(pop * 4), { size: Math.round(16 + pop * 8), color: PAL.yellow, align: 'right' })
-    text(S.final >= S.record && S.final > 0 && S.newRecord ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, px + 22, py + 152, { size: 7, color: S.newRecord ? PAL.orange : PAL.grey2 })
-  }
-  if (T > 1.7) {
-    const k = Math.max(0, 1 - (T - 1.7) * 5)
+  // Le tampon, qui claque.
+  if (T > 1.2) {
+    const k = Math.max(0, 1 - (T - 1.2) * 5)
     const stamp = S.final < 15000 ? 'FAIR-PLAY' : S.final < 40000 ? 'RUGUEUX' : S.final < 80000 ? 'BOUCHER' : S.final < 150000 ? 'CARTON PLEIN' : 'LEGENDE DU GUARANI'
     if (k > 0 && S.stampShake === undefined) { S.stampShake = 1; S.shake = Math.max(S.shake, 8); beep('hit') }
-    g.save(); g.translate(W / 2, py + ph - 56); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = 1 - k * 0.5
-    g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-100, -14, 200, 28)
+    g.save(); g.translate(W / 2, 192); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
+    g.fillStyle = 'rgba(24,20,37,0.55)'; g.fillRect(-96, -14, 192, 28)
+    g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-96, -14, 192, 28)
     text(stamp, 0, -8, { size: 14, color: PAL.red, align: 'center', shadow: false })
-    g.restore()
+    g.restore(); g.globalAlpha = fade
   }
+  // Le détail des dégâts, en petit, dans un bandeau tout en bas pour ne pas couvrir les joueurs.
+  if (T > 1.6) {
+    const items = [['FAUTES', S.fouls], ['GROSSES', S.bigFouls], ['ARBITRE', S.refHits], ['KO', S.koCount + '/22'], ['JAUNES', S.yellows], ['ROUGES', S.reds], ['COMBO', '×' + S.maxCombo], ['FEUX', S.fires], ['FURIES', S.furies]]
+    if (S.busHits) items.push(['BUS', S.busHits])
+    g.fillStyle = 'rgba(24,20,37,0.82)'; g.fillRect(0, H - 76, W, 22)
+    const cw = W / items.length
+    items.forEach(([k, v], i) => { text(k, cw * i + cw / 2, H - 73, { size: 6, color: PAL.grey2, align: 'center' }); text(String(v), cw * i + cw / 2, H - 64, { size: 8, color: PAL.white, align: 'center' }) })
+  }
+  g.globalAlpha = 1
+  // Le bouton, seul moyen de relancer à la souris.
   if (T > 2) {
     const b = RESTART_BTN, hot = Math.floor(S.t * 2) % 2 === 0
     g.fillStyle = PAL.ink; g.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4)
@@ -1830,6 +1819,6 @@ Promise.all([loadImage('title'), loadImage('start'), ...['paraguay', 'arbitre', 
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
