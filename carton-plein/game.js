@@ -1695,8 +1695,8 @@ function render() {
     if (e === hero && S.fieldTf !== undefined && IMG['sayan-perso']) {
       // Transformation sur place : la flamme derrière, le personnage image par image, à l'échelle du jeu.
       const fi = Math.min(SAYAN.frames - 1, Math.floor(S.fieldTf * 10))
-      const fl = IMG['sayan-flamme']; if (fl) { const ff = Math.floor(S.fieldTf * SAYAN.flameFps) % SAYAN.flameFrames; g.drawImage(fl, ff * 64, 0, 64, 64, e.x + cx - 36, e.y + cy - 66, 72, 72) }
-      g.drawImage(IMG['sayan-perso'], fi * 68, 0, 68, 68, e.x + cx - 26, e.y + cy - 50, 52, 52)
+      const fl = IMG['sayan-flamme']; if (fl) { const ff = Math.floor(S.fieldTf * SAYAN.flameFps) % SAYAN.flameFrames; g.drawImage(fl, ff * 64, 0, 64, 64, e.x + cx - 40, e.y + cy - 74, 80, 80) }
+      g.drawImage(IMG['sayan-perso'], fi * 68, 0, 68, 68, e.x + cx - 34, e.y + cy - 56, 68, 68) // même échelle et même ancrage que l'atlas (pieds en 54 → sur l'ombre)
       continue
     }
     drawSprite(g, e === hero && S.fury > 0 && ATLAS['paraguay-furie'] ? 'paraguay-furie' : e.atlas, anim, e.dir, e.frame, e.x + cx, e.y + cy - (e.z || 0))
