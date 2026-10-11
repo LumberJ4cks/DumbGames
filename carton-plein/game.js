@@ -1592,7 +1592,8 @@ function drawPitch() {
   // Pelouse : image externe sprites/gazon.png (1084×628, 1 px = 1 px monde) si elle existe, sinon bandes procédurales. Les lignes et les buts sont toujours posés par-dessus.
   if (IMG.gazon) g.drawImage(IMG.gazon, cx, cy, GRASS.w, GRASS.h)
   else for (let x = 0; x < GRASS.w; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? PAL.green : PAL.greenL; g.fillRect(x + cx, cy, 40, GRASS.h) }
-  // Lignes.
+  // Lignes (déjà peintes dans le gazon externe).
+  if (IMG.gazon) return
   g.strokeStyle = PAL.white
   g.lineWidth = 2
   g.strokeRect(FIELD.x + cx, FIELD.y + cy, FIELD.w, FIELD.h)
