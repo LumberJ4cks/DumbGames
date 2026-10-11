@@ -17,7 +17,7 @@ const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré p
 const GOAL_H = 120
 const MATCH_SECONDS = 90 // ne sert plus qu'au bot : la partie s'arrête au 3e but
 const LIVES = 3
-const BUS = { w: 46, h: 132, speed: 460, park: 10 }
+const BUS = { w: 54, h: 144, speed: 460, park: 10 }
 const DIRS = ['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']
 const PAL = { ink: '#181425', white: '#ffffff', grey1: '#c0cbdc', grey2: '#8b9bb4', slate: '#3a4466', slateD: '#262b44', green: '#63c74d', greenL: '#7fd36a', greenM: '#3e8948', greenD: '#265c42', yellow: '#fee761', amber: '#feae34', orange: '#f77622', red: '#e43b44', redD: '#a22633', pink: '#f6757a', cyan: '#2ce8f5', blue: '#0099db', sand: '#e4a672', clay: '#b86f50' }
 
@@ -977,7 +977,7 @@ function spawnAbsurd(kind, near) {
 function callBus() {
   S.busUsed = true
   const gy = FIELD.y + FIELD.h / 2
-  S.bus = { x: FIELD.x + FIELD.w - 60 - BUS.w / 2, y: FIELD.y - 200, state: 'in', t: 0, hit: new Set(), ty: gy }
+  S.bus = { x: FIELD.x + FIELD.w - BUS.w / 2 - 6, y: FIELD.y - 200, state: 'in', t: 0, hit: new Set(), ty: gy } // collé à la ligne de but
   banner('LE BUS DES SUPPORTERS DEBARQUE', PAL.cyan)
   S.shake = Math.max(S.shake, 8)
   beep('hitBig')
@@ -1006,19 +1006,42 @@ function updateBus(dt) {
 }
 function drawBus(b, cx, cy) {
   const r = busRect(b)
-  const x = Math.round(r.x + cx), y = Math.round(r.y + cy)
-  g.fillStyle = PAL.ink; g.fillRect(x - 2, y - 2, r.w + 4, r.h + 4)
-  g.fillStyle = PAL.blueD; g.fillRect(x, y, r.w, r.h)
-  g.fillStyle = PAL.blue; g.fillRect(x + 4, y + 10, r.w - 8, r.h - 20)
-  g.fillStyle = PAL.white; g.fillRect(x + 4, y + 10, r.w - 8, 3); g.fillRect(x + 4, y + r.h - 13, r.w - 8, 3)
-  g.fillStyle = PAL.grey1
-  for (let j = 18; j < r.h - 18; j += 14) { g.fillRect(x + 1, y + j, 3, 9); g.fillRect(x + r.w - 4, y + j, 3, 9) }
-  g.fillStyle = PAL.yellow; g.fillRect(x + 6, y + r.h - 5, 6, 3); g.fillRect(x + r.w - 12, y + r.h - 5, 6, 3)
-  g.fillStyle = PAL.red; g.fillRect(x + 6, y + 2, 6, 3); g.fillRect(x + r.w - 12, y + 2, 6, 3)
-  g.save(); g.translate(x + r.w / 2, y + r.h / 2); g.rotate(-Math.PI / 2)
-  text('FC MMA', 0, -5, { size: 9, color: PAL.white, align: 'center' })
+  const x = Math.round(r.x + cx), y = Math.round(r.y + cy), w = r.w, h = r.h
+  const R = (xx, yy, ww, hh, c) => { g.fillStyle = c; g.fillRect(xx, yy, ww, hh) }
+  // Roues qui dépassent des flancs, puis la caisse.
+  for (const wy of [y + 22, y + h - 40]) { R(x - 4, wy, 5, 16, PAL.ink); R(x + w - 1, wy, 5, 16, PAL.ink); R(x - 3, wy + 2, 2, 12, PAL.slate); R(x + w + 1, wy + 2, 2, 12, PAL.slate) }
+  R(x - 1, y - 1, w + 2, h + 2, PAL.ink)
+  R(x, y, w, h, PAL.blueD)
+  // Flancs : bandeau de vitres avec montants, et liseré tricolore.
+  for (const sx of [x + 1, x + w - 8]) {
+    R(sx, y + 14, 7, h - 36, PAL.cyan)
+    for (let j = y + 14; j < y + h - 22; j += 12) R(sx, j, 7, 2, PAL.ink)
+    R(sx, y + h - 22, 7, 2, PAL.blue); R(sx, y + h - 20, 7, 2, PAL.white); R(sx, y + h - 18, 7, 2, PAL.red)
+  }
+  // Toit : plus clair, bande blanche, deux blocs de clim, et le nom.
+  R(x + 9, y + 10, w - 18, h - 30, PAL.blue)
+  R(x + 11, y + 12, w - 22, h - 34, PAL.blue)
+  R(x + w / 2 - 2, y + 12, 4, h - 34, PAL.white)
+  R(x + 12, y + 30, w - 24, 10, PAL.grey1); R(x + 13, y + 31, w - 26, 2, PAL.white)
+  R(x + 12, y + h - 56, w - 24, 10, PAL.grey1); R(x + 13, y + h - 55, w - 26, 2, PAL.white)
+  g.save(); g.translate(x + w / 2, y + h / 2 - 2); g.rotate(-Math.PI / 2)
+  text('FC MMA', 0, -9, { size: 10, color: PAL.white, align: 'center' })
+  text('SUPPORTERS', 0, 2, { size: 6, color: PAL.yellow, align: 'center' })
   g.restore()
-  if (b.state !== 'park') for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(192,203,220,0.5)'; g.fillRect(x + rr(0, r.w), y + (b.state === 'in' ? -6 - i * 6 : r.h + i * 6), 4, 3) }
+  // Arrière (en haut) : lunette, feux rouges, plaque.
+  R(x + 8, y + 2, w - 16, 7, PAL.slateD); R(x + 9, y + 3, w - 18, 2, PAL.grey2)
+  R(x + 3, y + 3, 5, 4, PAL.red); R(x + w - 8, y + 3, 5, 4, PAL.red)
+  // Avant (en bas) : pare-brise incliné, essuie-glaces, calandre, phares, pare-chocs, rétros.
+  R(x + 4, y + h - 20, w - 8, 12, PAL.cyan); R(x + 5, y + h - 19, w - 10, 2, PAL.white); R(x + 6, y + h - 12, 10, 1, PAL.ink); R(x + w - 16, y + h - 12, 10, 1, PAL.ink)
+  R(x + 4, y + h - 8, w - 8, 4, PAL.slate); for (let i = x + 8; i < x + w - 8; i += 4) R(i, y + h - 7, 1, 2, PAL.ink)
+  R(x + 3, y + h - 7, 7, 4, PAL.yellow); R(x + w - 10, y + h - 7, 7, 4, PAL.yellow); R(x + 4, y + h - 6, 2, 2, PAL.white); R(x + w - 9, y + h - 6, 2, 2, PAL.white)
+  R(x, y + h - 3, w, 3, PAL.grey2); R(x + w / 2 - 6, y + h - 3, 12, 3, PAL.white)
+  R(x - 5, y + h - 24, 5, 3, PAL.ink); R(x - 5, y + h - 24, 3, 2, PAL.grey1); R(x + w, y + h - 24, 5, 3, PAL.ink); R(x + w + 2, y + h - 24, 3, 2, PAL.grey1)
+  // Phares allumés quand il roule, et fumée.
+  if (b.state !== 'park') {
+    g.fillStyle = 'rgba(254,231,97,0.25)'; g.beginPath(); g.moveTo(x + 6, y + h); g.lineTo(x - 10, y + h + 40); g.lineTo(x + 20, y + h + 40); g.fill(); g.beginPath(); g.moveTo(x + w - 6, y + h); g.lineTo(x + w - 20, y + h + 40); g.lineTo(x + w + 10, y + h + 40); g.fill()
+    for (let i = 0; i < 4; i++) { g.fillStyle = 'rgba(192,203,220,0.5)'; g.fillRect(x + 4 + rr(0, w - 8), y + (b.state === 'in' ? -6 - i * 7 : h + 4 + i * 7), 5, 4) }
+  }
 }
 
 /* ---------- vagues : le banc, puis la presse, puis la tribune ---------- */
