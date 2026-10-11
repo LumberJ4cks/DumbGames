@@ -140,13 +140,14 @@ const FR = [{ skin: 'skinPale', hair: 'hairBlond' }]
 const paintLook = (look) => (p) => recolor(p, look, { nearest })
 FR.forEach((look, i) => atlas('france-' + i, pick('idle', 'run', 'hit', 'fall', 'ko', 'knocked'), paintLook(look)))
 // Le n°4.
-// Le n°4 : export dédié (export-08), déjà en maillot du Paraguay. Poses manquantes (throw, tackle, knee, kick, header, hit) remplacées provisoirement.
+// Le n°4 : export dédié (export-08), déjà en maillot du Paraguay. Export complet (paraDEF) : toutes les poses du jeu.
 const PAR = 'carton-plein/art/pixellab/export-08-paraguay'
 const parRot = (folder) => Object.fromEntries(DIRS.map((d, i) => [SHORT[i], [toPix(path.join(PAR, folder, 'rotations', d + '.png'), false)]]))
 const parAnim = (folder) => Object.fromEntries(DIRS.map((d, i) => { const dir = path.join(PAR, folder, d); return [SHORT[i], fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => toPix(path.join(dir, f), false))] }))
 const parQuant = (p) => { const q = p.clone(); for (let i = 0; i < q.data.length; i++) if (q.data[i]) q.data[i] = nearest(q.data[i]); return q }
 const parIdle = parRot('Idle'), parGuard = parRot('fighting_pose'), parPunch = parRot('straight_punch'), parFly = parRot('Chibi_cartoon_soccer'), parSprint = parAnim('Idle/animations/Full_Sprint')
-atlas('paraguay', { stance: parGuard, run: parSprint, throw: parGuard, tackle: parFly, punch: parPunch, knee: parPunch, kick: parPunch, flykick: parFly, header: parPunch, hit: parIdle }, parQuant)
+const parKnee = parRot('Character_doing_a_fl'), parKick = parRot('Character_doing_a_po'), parHeader = parRot('Character_doing_a_vi'), parTackle = parRot('Character_sliding_on'), parHit = parRot('Character_staggering'), parThrow = parAnim('Idle/animations/Throw_Object')
+atlas('paraguay', { stance: parGuard, run: parSprint, throw: parThrow, tackle: parTackle, punch: parPunch, knee: parKnee, kick: parKick, flykick: parFly, header: parHeader, hit: parHit }, parQuant)
 // Les absurdes : dessinés en procédural dans absurdes.mjs, loin du pantin des joueurs.
 for (const name of ABSURD_NAMES) atlas(name, absurdFrames(name), (p) => p, { koOff: 0 })
 // L'arbitre : jaune fluo, cheveux gris. Le gardien : violet, chauve, barbu, avec son plongeon.
