@@ -15,7 +15,8 @@ const W = 640
 const H = 360
 const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré pour que ça se bouscule
 const GOAL_H = 120
-const MATCH_SECONDS = 90
+const MATCH_SECONDS = 90 // ne sert plus qu'au bot : la partie s'arrête au 3e but
+const LIVES = 3
 const DIRS = ['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']
 const PAL = { ink: '#181425', white: '#ffffff', grey1: '#c0cbdc', grey2: '#8b9bb4', slate: '#3a4466', slateD: '#262b44', green: '#63c74d', greenL: '#7fd36a', greenM: '#3e8948', greenD: '#265c42', yellow: '#fee761', amber: '#feae34', orange: '#f77622', red: '#e43b44', redD: '#a22633', pink: '#f6757a', cyan: '#2ce8f5', blue: '#0099db', sand: '#e4a672', clay: '#b86f50' }
 
@@ -205,7 +206,7 @@ function foul(name, victim, extra = {}) {
   if (victim && victim.card === 1) { pts *= 1.5; mods.push('CIBLE') }
   if (victim && french.some((g) => g.atlas === 'commentateur' && g.state === 'play' && dist(g, victim) < 130)) { pts *= 1.25; mods.push('EN DIRECT'); S.shake = Math.max(S.shake, 5) }
   if (S.fire > 0) { pts *= 2; mods.push('FEU') }
-  if (S.clock > RUN) { pts *= 2; mods.push('ARRETS DE JEU') }
+  if (S.goals === LIVES - 1) { pts *= 1.5; mods.push('DERNIER BALLON') }
   if (S.refDown > 0 && name !== "FAUTE SUR L'ARBITRE") { pts *= 0.5; mods.push('PAS VU') }
   if (extra.penalty) { pts += 250; mods.push('PENALTY') }
   S.combo++
@@ -454,6 +455,15 @@ function dominoes(f) {
     knockDown(g, 0.5, f.z > 6 ? 160 : 0)
     foul('DOMINO', g)
   }
+}
+/** Pendant un arrêt général, les corps en l'air continuent de voler et les sauts retombent. */
+function settleAir(dt) {
+  for (const f of [...french, ...npcs]) {
+    if (f.state === 'fall') { updateFall(f, dt); continue }
+    if (f.vz || f.z > 0) { f.z += f.vz * dt; f.vz -= 900 * dt; if (f.z <= 0) { f.z = 0; f.vz = 0 } f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.9; f.vy *= 0.9 }
+  }
+  if (ref.down > 0 && !ref.landed) { ref.x += ref.vx * dt; ref.y += ref.vy * dt; ref.z += ref.vz * dt; ref.vz -= 900 * dt; if (ref.z <= 0 && ref.vz < 0) { ref.z = 0; ref.vz = 0; ref.landed = true; ref.vx = ref.vy = 0; ref.anim = 'ko' } }
+  for (const f of [...french, ...npcs]) if (f.state === 'fall' || f.z > 0) f.ft += dt
 }
 function updateFall(f, dt) {
   f.fly -= dt
@@ -771,7 +781,7 @@ function updateFrench(dt) {
     if (!carrier && dh < 56 && (!regroup || S.phase === 'goal')) { target = { x: f.x + (f.x - hero.x) * 2, y: f.y + (f.y - hero.y) * 2 } }
     const dx = target.x - f.x, dy = target.y - f.y
     const d = Math.hypot(dx, dy)
-    const sp = f.speed * (carrier ? 0.95 : 1) * (regroup ? (S.phase === 'goal' ? 0.8 : 1.3) : 1)
+    const sp = f.speed * (carrier ? 0.95 : 1) * (regroup ? (S.phase === 'goal' ? 0.8 : 1.3) : 1) * (f.intruder ? 1 : 1 + Math.min(0.5, Math.floor(S.clock / 30) * 0.08)) // la France accélère toutes les 30 s
     if (d > 6) { f.vx = (dx / d) * sp; f.vy = (dy / d) * sp } else { f.vx = f.vy = 0 }
     // Séparation entre Français.
     for (const g of french) if (g !== f && g.state === 'play') { const dd = dist(f, g); const rad = (g.r > 12 ? g.r + 14 : 26); if (dd < rad && dd > 0) { const k = g.r > 12 ? 260 : 110; f.vx += ((f.x - g.x) / dd) * k; f.vy += ((f.y - g.y) / dd) * k } }
@@ -919,7 +929,7 @@ function updateWaves(dt) {
   if (S.koCount < 12) return // les onze premiers tombent, puis n'importe qui entre
   S.waveT -= dt
   const alive = french.filter((f) => f.state === 'play').length
-  const late = S.clock > RUN * 0.65
+  const late = S.clock > 70 || S.goals >= 2
   const crowd = S.fury > 0 || late
   if (S.waveT > 0 || alive > (crowd ? 44 : 16)) return
   const w = WAVES[Math.min(S.wave, WAVES.length - 1)]
@@ -963,7 +973,11 @@ function goalScored() {
   ball.x = FIELD.x + FIELD.w + 14
   S.phase = 'goal'
   S.phaseT = 12 // garde-fou : si l'arbitre n'y arrive pas, on relance
-  banner('BUT POUR LA FRANCE (SANS IMPORTANCE)', PAL.grey1)
+  S.lifeLostT = 0
+  S.shake = Math.max(S.shake, 10)
+  const left = LIVES - S.goals
+  if (left <= 0) { banner('TROISIEME BUT. C\'EST FINI.', PAL.red); S.endAt = 1.6 }
+  else banner(left === 1 ? 'BUT POUR LA FRANCE. DERNIER BALLON !' : 'BUT POUR LA FRANCE. IL T\'EN RESTE ' + left, PAL.red)
   beep('goal')
 }
 
@@ -1049,12 +1063,11 @@ function update(dt) {
   if (S.phase === 'title' || S.phase === 'end') { if (attackPressed) { attackPressed = false; startMatch() } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
-  if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; return }
+  if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
   S.t += dt
-  const total = RUN + S.added
   if (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'card' || S.phase === 'goal') S.clock += dt
-  if (S.clock >= total) { endMatch(); return }
-  if (!S.addedShown && S.clock >= RUN * 0.94) { S.addedShown = true; S.added = Math.min(15, Math.floor(S.fouls / 6)); banner('TEMPS ADDITIONNEL : +' + S.added + ' (' + S.fouls + ' FAUTES)', PAL.grey1) }
+  S.lifeLostT = (S.lifeLostT || 9) + dt
+  if (S.endAt !== undefined) { S.endAt -= dt; if (S.endAt <= 0) { S.endAt = undefined; endMatch(); return } }
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') kickoff(); else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
   if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = 'play' }
@@ -1062,7 +1075,7 @@ function update(dt) {
   if (attackPressed) { attackPressed = false; heroAttack() }
   updateHero(dt)
   updateBall(dt)
-  if (S.stopAll > 0) S.stopAll -= dt
+  if (S.stopAll > 0) { S.stopAll -= dt; settleAir(dt) }
   else { updateFrench(dt); updateRef(dt); updateNpcs(dt); updateWaves(dt) }
   for (const d of S.debris) { if (d.t < 0) continue; d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 300 * dt; if (d.t > 0.6) { d.t = -1; d.vx = d.vy = 0 } }
   // Combo, feu.
@@ -1092,7 +1105,7 @@ function update(dt) {
 }
 function endMatch() {
   S.phase = 'end'
-  S.final = S.score + (S.goals * 0) + 100 * S.added
+  S.final = S.score
   const best = Number(localStorage.getItem('carton.record') || 0)
   S.record = Math.max(best, S.final)
   localStorage.setItem('carton.record', String(S.record))
@@ -1237,14 +1250,21 @@ function segments(x, y, w, h, n, frac, on, off = PAL.slateD) {
   for (let i = 0; i < n; i++) { g.fillStyle = i < Math.round(frac * n) ? on : off; g.fillRect(Math.round(x + i * (sw + 1)), y, Math.floor(sw), h) }
 }
 function drawHUD() {
-  const t = Math.min(S.clock, RUN + S.added)
-  const minute = Math.floor((t / RUN) * 90)
-  // Tableau d'affichage, en haut à gauche : minute, drapeaux, score du match.
-  panel(6, 6, 172, 28, PAL.yellow)
-  text(`${String(minute).padStart(2, '0')}'${S.clock > RUN ? '+' : ''}`, 16, 12, { size: 14, color: PAL.yellow })
-  flag(60, 15, [PAL.blue, PAL.white, PAL.red]); text('FRA', 74, 14, { size: 8, color: PAL.grey1 })
-  text(`${S.goals} - 0`, 118, 12, { size: 12, color: PAL.white, align: 'center' })
-  text('PAR', 138, 14, { size: 8, color: PAL.grey1 }); flag(162, 15, [PAL.red, PAL.white, PAL.blue])
+  // Tableau d'affichage, en haut à gauche : chrono qui monte, et nos trois ballons de vie.
+  panel(6, 6, 172, 28, S.goals >= 2 ? PAL.red : PAL.yellow)
+  const mm = Math.floor(S.clock / 60), ss = Math.floor(S.clock % 60)
+  text(`${mm}:${String(ss).padStart(2, '0')}`, 16, 12, { size: 14, color: PAL.yellow })
+  flag(72, 15, [PAL.blue, PAL.white, PAL.red]); text('FRA ' + S.goals, 86, 14, { size: 8, color: PAL.grey1 })
+  for (let i = 0; i < LIVES; i++) {
+    const alive = i < LIVES - S.goals
+    const justLost = !alive && i === LIVES - S.goals && S.lifeLostT < 0.6
+    const bx = 128 + i * 16, by = 20
+    const r = justLost ? 6 + Math.round((0.6 - S.lifeLostT) * 8) : 6
+    g.fillStyle = PAL.ink; g.beginPath(); g.arc(bx, by, r + 1, 0, Math.PI * 2); g.fill()
+    g.fillStyle = alive ? PAL.white : justLost && Math.floor(S.t * 12) % 2 ? PAL.red : PAL.slate; g.beginPath(); g.arc(bx, by, r, 0, Math.PI * 2); g.fill()
+    if (alive) { g.fillStyle = PAL.ink; g.fillRect(bx - 1, by - 2, 3, 3); g.fillRect(bx - 4, by + 1, 2, 2); g.fillRect(bx + 3, by + 1, 2, 2); g.fillRect(bx - 1, by - 6, 2, 2) }
+    else if (!justLost) { g.fillStyle = PAL.slateD; g.fillRect(bx - 4, by - 1, 8, 2) }
+  }
   // Score, en haut à droite : points, fautes, état de l'équipe de France.
   panel(W - 178, 6, 172, 28, PAL.amber)
   text(String(S.score).padStart(7, '0'), W - 12, 10, { size: 14, color: PAL.yellow, align: 'right' })
@@ -1314,8 +1334,9 @@ function drawTitle() {
   text('UN PARAGUAYEN. ONZE FRANCAIS. ZERO INTENTION DE JOUER AU BALLON.', W / 2, 108, { size: 8, color: PAL.grey1, align: 'center' })
   text('FLECHES : BOUGER   ESPACE / CLIC DROIT : FRAPPER', W / 2, 140, { size: 9, align: 'center' })
   text('LOIN = TACLE GLISSE     COLLE = POING, GENOU, PIED, PROJECTION', W / 2, 156, { size: 9, align: 'center' })
-  text('FAIS LE PLUS DE FAUTES POSSIBLE EN 90 SECONDES. LES BUTS NE COMPTENT PAS.', W / 2, 180, { size: 8, color: PAL.grey1, align: 'center' })
-  text("QUAND L'ARBITRE CRAQUE, UNE GROSSE FAUTE = CARTON POUR LA FRANCE", W / 2, 194, { size: 8, color: PAL.grey1, align: 'center' })
+  text('TROIS BALLONS DE VIE : AU TROISIEME BUT ENCAISSE, C\'EST FINI.', W / 2, 180, { size: 8, color: PAL.grey1, align: 'center' })
+  text('FAIS UN MAXIMUM DE DEGATS AVANT. LA FRANCE ACCELERE AVEC LE TEMPS.', W / 2, 192, { size: 8, color: PAL.grey1, align: 'center' })
+  text("QUAND L'ARBITRE CRAQUE, UNE GROSSE FAUTE = CARTON POUR LA FRANCE", W / 2, 206, { size: 8, color: PAL.grey1, align: 'center' })
   const blink = Math.floor(performance.now() / 500) % 2 === 0
   if (blink) text('ESPACE POUR COMMENCER', W / 2, 250, { size: 12, color: PAL.yellow, align: 'center' })
   text('RECORD ' + (localStorage.getItem('carton.record') || 0), W / 2, 300, { size: 8, color: PAL.grey2, align: 'center' })
@@ -1330,8 +1351,8 @@ function drawEnd() {
   const lines = [
     ['Fautes sifflees', S.fouls], ['  dont grosses fautes', S.bigFouls], ["  dont sur l'arbitre", S.refHits],
     ['Cartons jaunes (France)', S.yellows], ['Cartons rouges (France)', S.reds], ['Francais defonces', S.koCount + '/22' + (S.teamDoneAt ? '   (equipe entiere en ' + S.teamDoneAt.toFixed(1) + ' s)' : '')],
-    ['Boosts EN FEU', S.fires], ['Furies', S.furies], ['Combo maximum', '×' + S.maxCombo], ['Temps additionnel', '+' + S.added],
-    ['Buts encaisses', S.goals + '   (sans importance)'],
+    ['Boosts EN FEU', S.fires], ['Furies', S.furies], ['Combo maximum', '×' + S.maxCombo], ['Temps tenu', Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0')],
+    ['Buts encaisses', S.goals + ' / ' + LIVES],
   ]
   lines.forEach(([k, v], i) => { text(k, 90, 80 + i * 13, { size: 8, color: PAL.grey1 }); text(String(v), W - 90, 80 + i * 13, { size: 8, align: 'right' }) })
   text('SCORE', 90, 220, { size: 12, color: PAL.yellow }); text(String(S.final), W - 90, 220, { size: 12, color: PAL.yellow, align: 'right' })
