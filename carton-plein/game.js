@@ -1614,6 +1614,17 @@ function drawPitch() {
     g.fillRect(side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
   }
 }
+/** Pastille sous le n°4 : anneau clair qui respire, doré en furie, pour ne jamais le perdre dans la mêlée. */
+function drawHeroRing(x, y) {
+  if (S.phase === 'title' || S.phase === 'end') return
+  const pulse = 1 + Math.sin(S.t * 5) * 0.06
+  const rx = Math.round(15 * pulse), ry = Math.round(6 * pulse)
+  const c = S.fury > 0 ? PAL.yellow : S.fire > 0 ? PAL.orange : PAL.white
+  g.save()
+  g.globalAlpha = 0.22; g.fillStyle = c; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), rx, ry, 0, 0, Math.PI * 2); g.fill()
+  g.globalAlpha = 0.9; g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), rx, ry, 0, 0, Math.PI * 2); g.stroke()
+  g.restore()
+}
 function drawShadow(x, y, rx = 12) { g.fillStyle = 'rgba(24,20,37,0.22)'; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), rx, 4, 0, 0, Math.PI * 2); g.fill() }
 function drawFlame(x, y, t, fury = false) {
   // Aura en briques derrière le n°4 : goutte, langues, particules. Dorée et deux fois plus haute en furie.
@@ -1668,6 +1679,7 @@ function render() {
   ents.sort((a, b) => (flat(a) ? 0 : 1) - (flat(b) ? 0 : 1) || a.y - b.y)
   // Ombres et marquage.
   if (S.bus) { g.fillStyle = 'rgba(24,20,37,0.25)'; const r = busRect(S.bus); g.fillRect(Math.round(r.x + cx + 4), Math.round(r.y + cy + 6), r.w, r.h) }
+  drawHeroRing(hero.x + cx, hero.y + cy + 1)
   for (const e of ents) if (!e.isProp && !e.isBus && e.state !== 'ko' && e.state !== 'fade' && !(e === ref && ref.landed && ref.down > 0)) drawShadow(e.x + cx, e.y + cy + 1, Math.max(6, (e.state === 'fall' ? 14 : 12) - (e.z || 0) * 0.15))
   drawShadow(ball.x + cx, ball.y + cy + 2, Math.max(2, 4 - (ball.z || 0) / 40))
   if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t, S.fury > 0)
