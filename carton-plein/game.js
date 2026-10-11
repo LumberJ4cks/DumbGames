@@ -986,8 +986,9 @@ function goalScored() {
   S.lifeLostT = 0
   S.shake = Math.max(S.shake, 10)
   const left = LIVES - S.goals
-  if (left <= 0) { banner('TROISIEME BUT. C\'EST FINI.', PAL.red); S.endAt = 1.6 }
-  else banner(left === 1 ? 'BUT POUR LA FRANCE. DERNIER BALLON !' : 'BUT POUR LA FRANCE. IL T\'EN RESTE ' + left, PAL.red)
+  S.goalFx = 0
+  S.goalFxSub = left <= 0 ? 'C\'EST FINI' : left === 1 ? 'DERNIER BALLON !' : 'IL T\'EN RESTE ' + left
+  if (left <= 0) S.endAt = 1.6
   beep('goal')
 }
 
@@ -1058,6 +1059,7 @@ function updateRef(dt) {
 
 /* ---------- boucle ---------- */
 function startMatch() {
+  S.goalFx = undefined
   Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
@@ -1078,6 +1080,7 @@ function update(dt) {
   S.t += dt
   if (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'card' || S.phase === 'goal') S.clock += dt
   S.lifeLostT = (S.lifeLostT || 9) + dt
+  if (S.goalFx !== undefined) { S.goalFx += dt; if (S.goalFx > 1) S.goalFx = undefined }
   if (S.endAt !== undefined) { S.endAt -= dt; if (S.endAt <= 0) { S.endAt = undefined; endMatch(); return } }
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
@@ -1262,6 +1265,32 @@ function segments(x, y, w, h, n, frac, on, off = PAL.slateD) {
   const sw = (w - (n - 1)) / n
   for (let i = 0; i < n; i++) { g.fillStyle = i < Math.round(frac * n) ? on : off; g.fillRect(Math.round(x + i * (sw + 1)), y, Math.floor(sw), h) }
 }
+function drawGoalFx(t) {
+  const bh = Math.round(H * 0.25), by = Math.round(H / 2 - bh / 2)
+  // 0 → 0,1 s : la bande entre par la gauche ; 0,75 → 0,95 s : elle sort par la droite.
+  const slideIn = Math.min(1, t / 0.1), slideOut = t > 0.75 ? Math.min(1, (t - 0.75) / 0.2) : 0
+  const ox = Math.round(-W * (1 - slideIn) + W * slideOut)
+  const jitter = t < 0.3 ? Math.round(rr(-3, 3)) : 0
+  g.save(); g.translate(ox, jitter)
+  g.fillStyle = PAL.ink; g.fillRect(-4, by - 3, W + 8, bh + 6)
+  const cols = [PAL.blue, PAL.white, PAL.red]
+  for (let i = 0; i < 3; i++) { g.fillStyle = cols[i]; g.fillRect(0, by + Math.round((bh / 3) * i), W, Math.ceil(bh / 3)) }
+  // Rayures diagonales qui défilent, pour que ça vibre.
+  g.fillStyle = 'rgba(24,20,37,0.18)'
+  for (let x = -bh + ((t * 600) % 24); x < W + bh; x += 24) { g.beginPath(); g.moveTo(x, by); g.lineTo(x + 12, by); g.lineTo(x + 12 - bh, by + bh); g.lineTo(x - bh, by + bh); g.fill() }
+  // Le mot s'écrase : énorme puis à sa taille en 0,12 s, et il tremble.
+  const k = t < 0.12 ? 1 + (0.12 - t) * 14 : 1
+  const size = Math.round(bh * 0.62 * k)
+  g.font = `bold ${size}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle'
+  const txt = 'BUUUUUT !!!'
+  const cx = W / 2 + (t < 0.3 ? Math.round(rr(-4, 4)) : 0), cy = by + bh / 2 - 4
+  g.fillStyle = PAL.ink
+  for (const [dx, dy] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [2, -2], [-2, 2], [0, 5], [4, 4]]) g.fillText(txt, cx + dx, cy + dy)
+  g.fillStyle = t < 0.2 && Math.floor(t * 40) % 2 ? PAL.white : PAL.yellow
+  g.fillText(txt, cx, cy)
+  if (t > 0.25) outlined(S.goalFxSub || '', W / 2, by + bh - 14, { size: 9, color: PAL.white })
+  g.restore()
+}
 function drawHUD() {
   // Tableau d'affichage, en haut à gauche : chrono qui monte, et nos trois ballons de vie.
   panel(6, 6, 172, 28, S.goals >= 2 ? PAL.red : PAL.yellow)
@@ -1324,6 +1353,7 @@ function drawHUD() {
   text('ARBITRE', W - 168, H - 25, { size: 9, color: ref.patience <= 0 ? PAL.red : PAL.grey1 })
   segments(W - 108, H - 23, 96, 10, 10, ref.patience / 100, ref.patience > 40 ? PAL.green : ref.patience > 0 ? PAL.amber : PAL.red)
   if (ref.patience <= 0 && Math.floor(S.t * 4) % 2) text('IL CRAQUE', W - 60, H - 21, { size: 8, color: PAL.white, align: 'center' })
+  if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
   // Bandeaux : texte cerné, sans bande, qui glisse depuis le haut.
   S.banners.forEach((b, i) => {
     const a = b.t < 0.15 ? b.t / 0.15 : b.t > 1.4 ? (1.8 - b.t) / 0.4 : 1
