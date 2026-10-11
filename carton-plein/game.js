@@ -71,6 +71,19 @@ function drawSprite(g, name, anim, dir, frame, x, y, flip = false) {
 /* ---------- son (synthétisé) ---------- */
 const audio = { ctx: null, muted: localStorage.getItem('carton.muted') === '1' }
 const beepLast = {}
+/* ---------- musique : démarre à la première mise en jeu, en boucle, coupée par M ---------- */
+const music = { el: null, started: false }
+function startMusic() {
+  if (music.started) return
+  music.started = true
+  try {
+    music.el = new Audio('audio/mma_foot.mp3')
+    music.el.loop = true
+    music.el.volume = 0.55
+    music.el.muted = audio.muted
+    music.el.play().catch(() => { music.started = false }) // bloqué par le navigateur : on réessaiera au prochain geste
+  } catch (e) { /* pas de musique */ }
+}
 let noiseBuf = null
 function noise(c) {
   if (!noiseBuf) { noiseBuf = c.createBuffer(1, c.sampleRate * 0.5, c.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1 }
@@ -188,7 +201,7 @@ addEventListener('keydown', (e) => {
   keys[e.code] = true
   if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
-  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0') }
+  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0'); if (music.el) music.el.muted = audio.muted }
 })
 addEventListener('keyup', (e) => { keys[e.code] = false })
 addEventListener('contextmenu', (e) => e.preventDefault())
@@ -1102,6 +1115,7 @@ function startMatch() {
   resetTeam()
   makeProps()
   kickoff()
+  startMusic()
   S.cam.x = clamp(hero.x - W / 2, 0, FIELD.x * 2 + FIELD.w - W); S.cam.y = clamp(hero.y - H / 2, 0, FIELD.y * 2 + FIELD.h - H)
   beep('whistle')
 }
