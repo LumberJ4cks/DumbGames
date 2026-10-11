@@ -1286,6 +1286,7 @@ function text(t, x, y, { size = 8, color = PAL.white, align = 'left', shadow = t
 }
 /* ---------- gradins : des rangées de marches et une foule de têtes qui fait la ola ---------- */
 let crowd = null
+let rowHTop = 24
 const CROWD_ATLASES = ['echarpe', 'echarpe', 'echarpe', 'supporter', 'supporter', 'supporter', 'banane', 'poule', 'mascotte', 'crs', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'musicien', 'dino', 'president', 'pigeon']
 function makeCrowd() {
   // Les personnages de la foule, debout dans les gradins. Ils y restent : ce sont des places, pas des acteurs.
@@ -1293,14 +1294,18 @@ function makeCrowd() {
   const pw = FIELD.w + 2 * FIELD.x, ph = FIELD.h + 2 * FIELD.y
   const pick = () => CROWD_ATLASES[(rnd() * CROWD_ATLASES.length) | 0]
   const rowH = 24, colW = 26
+  rowHTop = rowH
   // En haut : six rangées, les plus hautes derrière.
-  for (let r = 0; r < 6; r++) for (let x = -STAND + 20 + (r % 2) * 13; x < pw + STAND - 10; x += colW) crowd.push({ x: x + rr(-3, 3), y: -STAND + 34 + r * rowH - 6, atlas: pick(), dir: 's', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2) })
+  for (let r = 0; r < 6; r++) for (let x = -STAND + 20 + (r % 2) * 13; x < pw + STAND - 10; x += colW) crowd.push({ x: x + rr(-3, 3), y: -STAND + 34 + r * rowH - 6, atlas: pick(), dir: 's', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'top', row: r })
   // À gauche et à droite : six colonnes de places, les plus éloignées contre le mur.
   for (let c = 0; c < 6; c++) for (let y = 30 + (c % 2) * 11; y < ph - 10; y += 22) {
-    crowd.push({ x: -STAND + 22 + c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'e', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2) })
-    crowd.push({ x: pw + STAND - 22 - c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'w', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2) })
+    crowd.push({ x: -STAND + 22 + c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'e', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'left', row: c })
+    crowd.push({ x: pw + STAND - 22 - c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'w', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2), side: 'right', row: c })
   }
   crowd.sort((a, b) => a.y - b.y)
+  // Regroupées par gradin et par rangée, du fond vers la pelouse, pour intercaler les rebords.
+  crowd.rows = {}
+  for (const c of crowd) { const k = c.side + c.row; (crowd.rows[k] = crowd.rows[k] || []).push(c) }
 }
 function drawStands(cx, cy) {
   if (!crowd) makeCrowd()
@@ -1321,12 +1326,19 @@ function drawStands(cx, cy) {
   // La foule : les personnages du jeu, debout, qui se balancent légèrement en décalé. Seulement ce qui est à l'écran.
   const t = S.t
   const hot = S.combo >= 4 || S.fury > 0
-  for (const c of crowd) {
-    const sx = c.x + cx, sy = c.y + cy
-    if (sx < -30 || sx > W + 30 || sy < -10 || sy > H + 50) continue
-    const bob = Math.round(Math.sin(t * c.sp * (hot ? 1.8 : 1) + c.ph) * c.amp * (hot ? 1.8 : 1))
-    drawSprite(g, c.atlas, 'idle', c.dir, 0, sx, sy - bob)
+  const drawRow = (list) => { for (const c of list) { const sx = c.x + cx, sy = c.y + cy; if (sx < -30 || sx > W + 30 || sy < -10 || sy > H + 50) continue; const bob = Math.round(Math.sin(t * c.sp * (hot ? 1.8 : 1) + c.ph) * c.amp * (hot ? 1.8 : 1)); drawSprite(g, c.atlas, 'idle', c.dir, 0, sx, sy - bob) } }
+  // Rebord de marche : un muret clair avec son ombre, qui cache le bas du corps de la rangée derrière.
+  const ledge = (x, y, w, h) => { g.fillStyle = PAL.ink; g.fillRect(Math.round(x + cx), Math.round(y + cy), Math.round(w), 1); g.fillStyle = PAL.grey2; g.fillRect(Math.round(x + cx), Math.round(y + cy) + 1, Math.round(w), Math.round(h) - 1); g.fillStyle = PAL.grey1; g.fillRect(Math.round(x + cx), Math.round(y + cy) + 1, Math.round(w), 2) }
+  // En haut : du fond vers la pelouse, chaque rangée puis le rebord devant elle.
+  for (let r = 0; r < 6; r++) { drawRow(crowd.rows['top' + r] || []); const fy = -STAND + 34 + r * rowHTop - 6; ledge(-STAND, fy - 14, pw + 2 * STAND, 14) }
+  // Sur les côtés : du mur vers la pelouse, chaque colonne puis le rebord côté pelouse.
+  for (let c = 0; c < 6; c++) {
+    drawRow(crowd.rows['left' + c] || [])
+    drawRow(crowd.rows['right' + c] || [])
   }
+  // Parapet du premier rang, le long de la pelouse, avec la rambarde par-dessus.
+  g.fillStyle = PAL.grey3; g.fillRect(-STAND + cx, -16 + cy, pw + 2 * STAND, 14); g.fillRect(-18 + cx, cy, 16, ph); g.fillRect(pw + 2 + cx, cy, 16, ph)
+  g.fillStyle = PAL.grey1; g.fillRect(-STAND + cx, -16 + cy, pw + 2 * STAND, 2); g.fillRect(-18 + cx, cy, 2, ph); g.fillRect(pw + 16 + cx, cy, 2, ph)
 }
 function drawPitch() {
   const cx = -Math.round(S.cam.x), cy = -Math.round(S.cam.y)
