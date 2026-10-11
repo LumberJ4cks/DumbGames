@@ -287,11 +287,11 @@ function makeProps() {
   for (const [cx, cy] of [[FIELD.x, FIELD.y], [FIELD.x + FIELD.w, FIELD.y], [FIELD.x, FIELD.y + FIELD.h], [FIELD.x + FIELD.w, FIELD.y + FIELD.h]]) props.push({ kind: 'flag', x: cx - 3, y: cy - 24, w: 6, h: 24, hp: 1 })
   props.push({ kind: 'goal', x: FIELD.x - 28, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 3, side: 0 })
   props.push({ kind: 'goal', x: FIELD.x + FIELD.w, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 3, side: 1 })
-  props.push({ kind: 'bench', x: FIELD.x + FIELD.w / 2 - 150, y: FIELD.y + FIELD.h + 34, w: 130, h: 16, hp: 1 })
+  props.push({ kind: 'bench', x: FIELD.x + FIELD.w / 2 - 270, y: FIELD.y + FIELD.h + 34, w: 250, h: 16, hp: 1 })
   props.push({ kind: 'cooler', x: FIELD.x + FIELD.w / 2 - 20, y: FIELD.y + FIELD.h + 36, w: 12, h: 14, hp: 1 })
   props.push({ kind: 'camera', x: FIELD.x + FIELD.w / 2 + 60, y: FIELD.y - 44, w: 14, h: 22, hp: 1 })
   // Remplaçants assis, sélectionneur, kiné.
-  for (let i = 0; i < 3; i++) npcs.push({ ...makeFrench(5, nextLook++), x: FIELD.x + FIELD.w / 2 - 130 + i * 44, y: FIELD.y + FIELD.h + 44, team: 'staff', role: 'sub', dir: 'n', anim: 'idle' })
+  for (let i = 0; i < 11; i++) npcs.push({ ...makeFrench(5, nextLook++), x: FIELD.x + FIELD.w / 2 - 260 + i * 23, y: FIELD.y + FIELD.h + 44, team: 'staff', role: 'sub', dir: 'n', anim: 'idle', number: 12 + i })
   npcs.push({ ...makeFrench(5, 10), x: FIELD.x + FIELD.w / 2 + 40, y: FIELD.y + FIELD.h + 46, team: 'staff', role: 'coach', atlas: 'france-0', dir: 'w', anim: 'idle', speed: 70, name: 'LE SELECTIONNEUR' })
   npcs.push({ ...makeFrench(5, 8), x: FIELD.x + FIELD.w / 2 + 120, y: FIELD.y + FIELD.h + 46, team: 'staff', role: 'kine', atlas: 'france-0', dir: 'w', anim: 'idle', speed: 150, name: 'LE KINE' })
 }
@@ -738,15 +738,18 @@ function removePlayer(f) {
   if (!f.intruder && subsUsed < 11) substitute(f)
   else { const i = french.indexOf(f); if (i >= 0) french.splice(i, 1) }
 }
-function substitute(f, stretcher = false) {
+function substitute(f) {
   const idx = french.indexOf(f)
-  const n = makeFrench(f.slot, nextLook++)
   subsUsed++
-  n.x = FIELD.x + FIELD.w / 2 + rr(-100, 100)
-  n.y = f.y < FIELD.y + FIELD.h / 2 ? FIELD.y - 40 : FIELD.y + FIELD.h + 40
-  n.number = f.number
-  french[idx] = n
-  banner('REMPLACANT N°' + (11 + subsUsed) + (subsUsed >= 11 ? ' (LE DERNIER)' : ''), PAL.grey1)
+  const bench = npcs.find((n) => n.role === 'sub')
+  let n
+  if (bench) {
+    // Il se lève du banc, même sonné, et entre en jeu (la France fait entrer n'importe qui).
+    npcs.splice(npcs.indexOf(bench), 1)
+    n = Object.assign(bench, { team: 'fra', role: undefined, slot: f.slot, gk: f.gk, atlas: f.gk ? 'gardien' : 'france-0', state: 'play', hp: 3, stun: 0, down: 0, anim: 'run', card: 0, intruder: false })
+  } else { n = makeFrench(f.slot, nextLook++); n.x = FIELD.x + FIELD.w / 2; n.y = FIELD.y + FIELD.h + 40; n.number = 11 + subsUsed }
+  if (idx >= 0) french[idx] = n; else french.push(n)
+  banner('ENTREE DU N°' + n.number + (subsUsed >= 11 ? ' (LE DERNIER DU BANC)' : ''), PAL.grey1)
 }
 
 /* ---------- vagues : le banc, puis la presse, puis la tribune ---------- */
@@ -1051,7 +1054,7 @@ function drawHUD() {
   text(String(S.score).padStart(6, '0'), W - 12, 12, { color: PAL.yellow, align: 'right' })
   text('FAUTES ' + S.fouls, W - 118, 12, { color: PAL.grey1 })
   g.fillStyle = 'rgba(24,20,37,0.85)'; g.fillRect(W - 126, 28, 120, 14)
-  text('FRANCE ' + Math.min(22, S.koCount) + '/22' + (S.teamDoneAt ? ' EN ' + S.teamDoneAt.toFixed(0) + 'S' : ''), W - 12, 31, { size: 7, color: S.koCount >= 22 ? PAL.orange : PAL.grey1, align: 'right' })
+  text('FRANCE ' + Math.min(22, S.koCount) + '/22   BANC ' + npcs.filter((n) => n.role === 'sub').length + (S.teamDoneAt ? '   EN ' + S.teamDoneAt.toFixed(0) + 'S' : ''), W - 12, 31, { size: 7, color: S.koCount >= 22 ? PAL.orange : PAL.grey1, align: 'right' })
   // Combo au centre.
   if (S.combo > 0) {
     const m = comboMult()
