@@ -1286,47 +1286,46 @@ function text(t, x, y, { size = 8, color = PAL.white, align = 'left', shadow = t
 }
 /* ---------- gradins : des rangées de marches et une foule de têtes qui fait la ola ---------- */
 let crowd = null
+const CROWD_ATLASES = ['echarpe', 'echarpe', 'echarpe', 'supporter', 'supporter', 'supporter', 'banane', 'poule', 'mascotte', 'crs', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'musicien', 'dino', 'president', 'pigeon']
 function makeCrowd() {
+  // Les personnages de la foule, debout dans les gradins. Ils y restent : ce sont des places, pas des acteurs.
   crowd = []
-  const pal = [PAL.blue, PAL.white, PAL.red, PAL.blue, PAL.white, PAL.red, PAL.yellow, PAL.pink, PAL.cyan, PAL.grey1, PAL.orange, PAL.green]
-  const skin = [PAL.skinL, PAL.skin, PAL.clay, PAL.sand]
   const pw = FIELD.w + 2 * FIELD.x, ph = FIELD.h + 2 * FIELD.y
-  const rows = (x0, y0, w, h, dir) => {
-    // dir : 'top' (rangées horizontales qui montent vers le haut), 'left' / 'right' (rangées verticales).
-    const step = 14
-    if (dir === 'top') for (let r = 0; r * step < h; r++) for (let x = x0 + 6 + ((r % 2) * 5); x < x0 + w - 6; x += 10) crowd.push({ x: x + rr(-1, 1), y: y0 + h - r * step - 6, c: pal[(rnd() * pal.length) | 0], s: skin[(rnd() * skin.length) | 0], ph: rnd() * 6.28, r, dir })
-    else for (let r = 0; r * step < w; r++) for (let y = y0 + 6 + ((r % 2) * 5); y < y0 + h - 6; y += 10) crowd.push({ x: dir === 'left' ? x0 + w - r * step - 6 : x0 + r * step + 6, y: y + rr(-1, 1), c: pal[(rnd() * pal.length) | 0], s: skin[(rnd() * skin.length) | 0], ph: rnd() * 6.28, r, dir })
+  const pick = () => CROWD_ATLASES[(rnd() * CROWD_ATLASES.length) | 0]
+  const rowH = 24, colW = 26
+  // En haut : six rangées, les plus hautes derrière.
+  for (let r = 0; r < 6; r++) for (let x = -STAND + 20 + (r % 2) * 13; x < pw + STAND - 10; x += colW) crowd.push({ x: x + rr(-3, 3), y: -STAND + 34 + r * rowH - 6, atlas: pick(), dir: 's', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2) })
+  // À gauche et à droite : six colonnes de places, les plus éloignées contre le mur.
+  for (let c = 0; c < 6; c++) for (let y = 30 + (c % 2) * 11; y < ph - 10; y += 22) {
+    crowd.push({ x: -STAND + 22 + c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'e', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2) })
+    crowd.push({ x: pw + STAND - 22 - c * 22, y: y + rr(-2, 2), atlas: pick(), dir: 'w', ph: rnd() * 6.28, sp: rr(1.6, 2.6), amp: rr(1, 2) })
   }
-  rows(-STAND, -STAND, pw + 2 * STAND, STAND - 10, 'top')
-  rows(-STAND, 0, STAND - 10, ph, 'left')
-  rows(pw + 10, 0, STAND - 10, ph, 'right')
+  crowd.sort((a, b) => a.y - b.y)
 }
 function drawStands(cx, cy) {
   if (!crowd) makeCrowd()
   const pw = FIELD.w + 2 * FIELD.x, ph = FIELD.h + 2 * FIELD.y
   // Marches en béton, du plus sombre (haut) au plus clair (bas des gradins, près de la pelouse).
   const band = (x, y, w, h, i) => { g.fillStyle = i % 2 ? PAL.slate : PAL.grey3; g.fillRect(Math.round(x + cx), Math.round(y + cy), Math.round(w), Math.round(h)) }
-  for (let r = 0; r * 14 < STAND; r++) {
-    band(-STAND, -14 - r * 14, pw + 2 * STAND, 14, r)
-    band(-14 - r * 14, 0, 14, ph, r)
-    band(pw + r * 14, 0, 14, ph, r)
+  for (let r = 0; r * 24 < STAND; r++) {
+    band(-STAND, -24 - r * 24, pw + 2 * STAND, 24, r)
+    band(-22 - r * 22, 0, 22, ph, r)
+    band(pw + r * 22, 0, 22, ph, r)
   }
-  // Rambarde et bord de pelouse.
+  // Rambarde et bord de pelouse, banderoles.
   g.fillStyle = PAL.grey1; g.fillRect(-STAND + cx, -2 + cy, pw + 2 * STAND, 2); g.fillRect(-2 + cx, cy, 2, ph); g.fillRect(pw + cx, cy, 2, ph)
-  // Banderoles.
-  g.fillStyle = PAL.white; g.fillRect(pw / 2 - 160 + cx, -STAND + 30 + cy, 320, 14)
-  text('ALLEZ LES BLEUS', pw / 2 + cx, -STAND + 33 + cy, { size: 9, color: PAL.blueD, align: 'center', shadow: false })
-  g.fillStyle = PAL.red; g.fillRect(-STAND + 20 + cx, ph / 2 - 60 + cy, 14, 120)
-  g.save(); g.translate(-STAND + 27 + cx, ph / 2 + cy); g.rotate(-Math.PI / 2); text('PARAGUAY', 0, -4, { size: 8, color: PAL.white, align: 'center', shadow: false }); g.restore()
-  // La foule : une tête et des épaules par place, qui sautille en ola. Seulement ce qui est à l'écran.
+  g.fillStyle = PAL.white; g.fillRect(pw / 2 - 160 + cx, -STAND + 4 + cy, 320, 14)
+  text('ALLEZ LES BLEUS', pw / 2 + cx, -STAND + 7 + cy, { size: 9, color: PAL.blueD, align: 'center', shadow: false })
+  g.fillStyle = PAL.red; g.fillRect(-STAND + 2 + cx, ph / 2 - 60 + cy, 10, 120)
+  g.save(); g.translate(-STAND + 7 + cx, ph / 2 + cy); g.rotate(-Math.PI / 2); text('PARAGUAY', 0, -4, { size: 7, color: PAL.white, align: 'center', shadow: false }); g.restore()
+  // La foule : les personnages du jeu, debout, qui se balancent légèrement en décalé. Seulement ce qui est à l'écran.
   const t = S.t
-  const wave = (S.combo >= 4 || S.fury > 0) ? 2 : 1
+  const hot = S.combo >= 4 || S.fury > 0
   for (const c of crowd) {
     const sx = c.x + cx, sy = c.y + cy
-    if (sx < -6 || sx > W + 6 || sy < -8 || sy > H + 8) continue
-    const bob = Math.round(Math.sin(t * 4 * wave + c.ph + (c.dir === 'top' ? c.x : c.y) * 0.02) * (wave > 1 ? 3 : 1.5))
-    g.fillStyle = c.c; g.fillRect(Math.round(sx) - 3, Math.round(sy) - bob, 6, 4)
-    g.fillStyle = c.s; g.fillRect(Math.round(sx) - 2, Math.round(sy) - 4 - bob, 4, 4)
+    if (sx < -30 || sx > W + 30 || sy < -10 || sy > H + 50) continue
+    const bob = Math.round(Math.sin(t * c.sp * (hot ? 1.8 : 1) + c.ph) * c.amp * (hot ? 1.8 : 1))
+    drawSprite(g, c.atlas, 'idle', c.dir, 0, sx, sy - bob)
   }
 }
 function drawPitch() {
