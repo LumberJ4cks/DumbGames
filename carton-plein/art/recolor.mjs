@@ -96,13 +96,17 @@ if (process.argv[1] && process.argv[1].endsWith('recolor.mjs')) {
  * blancs, bandeau rouge sur le front, barbe noire. `headEnd` : dernière rangée de la tête,
  * `shortsEnd` : dernière rangée du short ; au-dessous, ce qui est blanc est chaussette.
  */
-export function paraguay(raw, { nearest, look = { skin: 'skinTan', hair: 'hairBlack' } }) {
+/**
+ * Change le kit d'un sprite : `kit` = { jersey, jersey2 (rayures), shorts, socks, boots } en noms de
+ * rampes (null = inchangé), `look` = { skin, hair, band, beard }. Les blancs sous le haut du maillot
+ * sont le short et les chaussettes ; les rouges sous le bas du maillot sont les crampons.
+ */
+export function rekit(raw, { nearest, kit = {}, look = { skin: 'skinPale', hair: 'hairBrown' } }) {
   const fam = { hair: HAIR, skin: SKIN, blue: BLUE, white: WHITE, red: RED }
   const kind = new Map()
   const k = (c) => { if (!kind.has(c)) kind.set(c, classify(c, fam)); return kind.get(c) }
   const base = recolor(raw, look, { nearest })
   const q = base.clone()
-  // Repères calculés sur l'image : le maillot (bleus) borne la tête au-dessus et le short au-dessous.
   let jerseyTop = raw.h, jerseyBottom = -1
   for (let y = 0; y < raw.h; y++) for (let x = 0; x < raw.w; x++) if (raw.get(x, y) && k(raw.get(x, y)) === 'blue') { jerseyTop = Math.min(jerseyTop, y); jerseyBottom = Math.max(jerseyBottom, y) }
   let faceTop = -1, chin = -1, hx0 = raw.w, hx1 = -1
@@ -118,13 +122,18 @@ export function paraguay(raw, { nearest, look = { skin: 'skinTan', hair: 'hairBl
       const c = raw.get(x, y)
       if (!c) continue
       const f = k(c)
-      if (f === 'blue') q.px(x, y, Math.floor((x - raw.ax + 30) / 3) % 2 ? tone(c, BLUE, RAMP.white) : tone(c, BLUE, RAMP.red))
-      else if (f === 'white' && y > jerseyTop + 2) q.px(x, y, tone(c, WHITE, RAMP.blueLight)) // short et chaussettes (les yeux sont au-dessus du maillot)
-      else if (f === 'red' && y > jerseyBottom) q.px(x, y, tone(c, RED, RAMP.white)) // crampons blancs
-      // Bandeau : deux rangées sur le front, sur toute la largeur de la tête.
-      if (y >= faceTop && y <= faceTop + 1 && x >= hx0 && x <= hx1 && (f === 'hair' || f === 'skin')) q.px(x, y, lum(c) > 120 ? P.red : P.redD)
-      // Barbe : la peau des quatre dernières rangées du visage, sauf la bouche.
-      if (f === 'skin' && y >= chin - 3 && y <= chin && y <= jerseyTop && !(Math.abs(x - raw.ax) <= 1 && y >= chin - 3 && y <= chin - 2)) q.px(x, y, lum(c) > 190 ? P.slate : P.slateD)
+      if (f === 'blue' && kit.jersey) {
+        const stripe = kit.jersey2 && Math.floor((x - raw.ax + 30) / 3) % 2 === 1
+        q.px(x, y, tone(c, BLUE, RAMP[stripe ? kit.jersey2 : kit.jersey]))
+      } else if (f === 'white' && y > jerseyTop + 2 && y <= jerseyBottom + 2 && kit.shorts) q.px(x, y, tone(c, WHITE, RAMP[kit.shorts]))
+      else if (f === 'white' && y > jerseyBottom + 2 && kit.socks) q.px(x, y, tone(c, WHITE, RAMP[kit.socks]))
+      else if (f === 'red' && y > jerseyBottom && kit.boots) q.px(x, y, tone(c, RED, RAMP[kit.boots]))
+      if (look.band && y >= faceTop && y <= faceTop + 1 && x >= hx0 && x <= hx1 && (f === 'hair' || f === 'skin')) q.px(x, y, lum(c) > 120 ? P.red : P.redD)
+      if (look.beard && f === 'skin' && y >= chin - 3 && y <= chin && y <= jerseyTop && !(Math.abs(x - raw.ax) <= 1 && y >= chin - 3 && y <= chin - 2)) q.px(x, y, lum(c) > 190 ? P.slate : P.slateD)
     }
   return q
+}
+/** Le Paraguayen n°4 : rayures rouge et blanc, bleu clair, crampons blancs, bandeau, barbe. */
+export function paraguay(raw, { nearest, look = { skin: 'skinTan', hair: 'hairBlack', band: true, beard: true } }) {
+  return rekit(raw, { nearest, kit: { jersey: 'red', jersey2: 'white', shorts: 'blueLight', socks: 'blueLight', boots: 'white' }, look })
 }
