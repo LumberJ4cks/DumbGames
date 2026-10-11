@@ -15,6 +15,7 @@ const W = 640
 const H = 360
 const FIELD = { x: 72, y: 64, w: 940, h: 500 } // monde, en pixels : resserré pour que ça se bouscule
 const GOAL_H = 120
+const GRASS = { w: 72 * 2 + 940, h: 64 * 2 + 500 } // surface d'herbe totale (pelouse + dégagements), 1084×628
 const STAND = 150 // profondeur des gradins, à gauche, à droite et en haut
 const WORLD = { x0: -STAND, y0: -STAND, x1: 72 * 2 + 940 + STAND, y1: 64 * 2 + 500 }
 const MATCH_SECONDS = 90 // ne sert plus qu'au bot : la partie s'arrête au 3e but
@@ -347,7 +348,7 @@ function giveCard(victim) {
   }
   ref.patience = 60
   ref.cardTarget = null
-  ref.cardShow = 0.9
+  ref.cardShow = 1.2
   beep('card')
 }
 function startFire() {
@@ -1379,10 +1380,10 @@ function updateRef(dt) {
     } else {
       ref.vx = ref.vy = 0
       const nd = dirOf(dx, dy); if (nd) ref.dir = nd
-      if (ref.cardT === 0) { S.phase = 'card'; S.phaseT = 1.1; S.freeze = 0.05; beep('whistle'); ball.vx = ball.vy = 0; if (ball.owner && ball.owner !== hero) ball.owner = null; ref.ft = 0 }
+      if (ref.cardT === 0) { S.phase = 'card'; S.phaseT = 1.6; S.freeze = 0.05; beep('whistle'); ball.vx = ball.vy = 0; if (ball.owner && ball.owner !== hero) ball.owner = null; ref.ft = 0 }
       ref.cardT += dt
       ref.anim = ct.card === 1 ? 'redcard' : 'card'; ref.frame = Math.floor(ref.ft * 8)
-      if (ref.cardT > 0.6) { giveCard(ct); S.phase = resumePhase() }
+      if (ref.cardT > 1.15) { giveCard(ct); S.phase = resumePhase() }
     }
     return
   }
@@ -1391,7 +1392,7 @@ function updateRef(dt) {
   else if (S.phase === 'goal' && !french.some((f) => f.carryBack && f.state === 'play')) target = ball.owner === ref ? { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 } : { x: ball.x, y: ball.y }
   else if (S.phase === 'goal') target = { x: FIELD.x + FIELD.w / 2 - 60, y: FIELD.y + FIELD.h / 2 - 90 }
   else target = { x: ball.x - 110, y: ball.y - 80 }
-  if (ref.cardShow > 0) { ref.vx = ref.vy = 0; ref.frame = Math.floor(ref.ft * 10); return }
+  if (ref.cardShow > 0) { ref.vx = ref.vy = 0; ref.frame = 8; return } // il tient le carton levé
   const dx = target.x - ref.x, dy = target.y - ref.y
   const d = Math.hypot(dx, dy)
   const sp = ref.flee > 0 ? 170 : S.phase === 'goal' ? 150 : d > 160 ? 180 : 95
@@ -1588,8 +1589,9 @@ function drawPitch() {
   g.fillStyle = PAL.slateD
   g.fillRect(0, 0, W, H)
   drawStands(cx, cy)
-  // Pelouse à bandes.
-  for (let x = 0; x < FIELD.w + 2 * FIELD.x; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? PAL.green : PAL.greenL; g.fillRect(x + cx, cy, 40, FIELD.h + 2 * FIELD.y) }
+  // Pelouse : image externe sprites/gazon.png (1084×628, 1 px = 1 px monde) si elle existe, sinon bandes procédurales. Les lignes et les buts sont toujours posés par-dessus.
+  if (IMG.gazon) g.drawImage(IMG.gazon, cx, cy, GRASS.w, GRASS.h)
+  else for (let x = 0; x < GRASS.w; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? PAL.green : PAL.greenL; g.fillRect(x + cx, cy, 40, GRASS.h) }
   // Lignes.
   g.strokeStyle = PAL.white
   g.lineWidth = 2
@@ -1674,7 +1676,7 @@ function render() {
     if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
     if (e.state === 'fade') { g.globalAlpha = clamp((Math.floor(e.ft * 24) % 2 ? 0.15 : 0.9) * Math.min(1, e.fadeT / 0.5 + 0.2), 0, 1); drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); g.globalAlpha = 1; continue }
     if (e.state === 'fall') { const z = e.z || 0; if (z > 2) { g.save(); g.translate(e.x + cx, e.y + cy - z); g.rotate(Math.sin(e.ft * 9) * 0.5); drawSprite(g, e.atlas, 'knocked', e.dir, e.frame, 0, 0); g.restore() } else drawSprite(g, e.atlas, z > 0 ? 'knocked' : 'fall', e.dir, e.frame, e.x + cx, e.y + cy - z); continue }
-    if (e === ref && ref.down > 0) { if (!ref.landed) { g.save(); g.translate(e.x + cx, e.y + cy - ref.z); g.rotate(Math.sin(e.ft * 9) * 0.6); drawSprite(g, 'arbitre', 'fall', e.dir, e.frame, 0, 0); g.restore() } else { drawSprite(g, 'arbitre', 'ko', e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t) } continue }
+    if (e === ref && ref.down > 0) { if (!ref.landed) { g.save(); g.translate(e.x + cx, e.y + cy - ref.z - 22); g.rotate(Math.sin(e.ft * 6) * 0.12); drawSprite(g, 'arbitre', 'ko', e.dir, 0, 0, 0); g.restore() } else { drawSprite(g, 'arbitre', 'ko', e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t) } continue }
     let anim = e.anim
     if (e === hero && hero.act && hero.act !== 'tackle') anim = hero.act === 'ballthrow' ? 'throw' : hero.act
     if (e === hero && S.fieldTf !== undefined && IMG['sayan-perso']) {
@@ -1944,7 +1946,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }

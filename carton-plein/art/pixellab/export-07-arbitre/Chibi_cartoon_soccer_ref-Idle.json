@@ -1,0 +1,173 @@
+{
+  "character": {
+    "id": "b6c0e18c-1d5d-47f9-be93-cbbd89ea6d63",
+    "name": "Idle",
+    "prompt": "Chibi cartoon soccer referee, pixel art, big head about half of total height, large white eyes with thick eyebrows, tiny mouth, big moustache, black hair, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. FIFA official team kit: flash yellow jersey, black shorts, black socks, black soccer shoes. Light skin.",
+    "size": {
+      "width": 48,
+      "height": 48
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Chibi_cartoon_soccer_ref-Idle.png",
+    "cell_size": {
+      "width": 64,
+      "height": 64
+    },
+    "sheet_size": {
+      "width": 576,
+      "height": 1088
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "south-east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "east"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "north-east"
+      },
+      {
+        "row": 5,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "north"
+      },
+      {
+        "row": 6,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "north-west"
+      },
+      {
+        "row": 7,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "west"
+      },
+      {
+        "row": 8,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "the referee whistles with a whistle and then holds a red card with his hand and shows it.",
+        "animation_group_id": "a501e710-e14e-41ca-a4fa-276d5654b92d",
+        "direction": "south-west"
+      },
+      {
+        "row": 9,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "south"
+      },
+      {
+        "row": 10,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "south-east"
+      },
+      {
+        "row": 11,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "east"
+      },
+      {
+        "row": 12,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "north-east"
+      },
+      {
+        "row": 13,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "north"
+      },
+      {
+        "row": 14,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "north-west"
+      },
+      {
+        "row": 15,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "west"
+      },
+      {
+        "row": 16,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "Running",
+        "animation_group_id": "cf5736f8-6e79-478e-9332-0c7972f7140b",
+        "direction": "south-west"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-11T21:37:16.123221+00:00"
+}

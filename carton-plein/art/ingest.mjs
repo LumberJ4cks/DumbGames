@@ -59,8 +59,8 @@ function atlas(name, anims, paint, extra = {}) {
   const sheet = new Pix(COLS * CELL, rows * CELL)
   frames.forEach((p, i) => {
     // Rotations 48 × 48 : pieds en 47, centre 24. Animations 80 × 80 : pieds en 63, centre 40.
-    const ox = p.w === 48 ? 8 : -8
-    const oy = p.w === 48 ? 13 : -3
+    const ox = p.w === 48 ? 8 : p.w === 64 ? 0 : -8
+    const oy = p.w === 48 ? 13 : p.w === 64 ? 7 : -3 // 64 × 64 (arbitre) : pieds en 53
     const x0 = (i % COLS) * CELL, y0 = Math.floor(i / COLS) * CELL
     for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) { const c = p.data[y * p.w + x]; const tx = x + ox, ty = y + oy; if (c && tx >= 0 && ty >= 0 && tx < CELL && ty < CELL) sheet.px(x0 + tx, y0 + ty, c) }
   })
@@ -144,5 +144,14 @@ atlas('paraguay', pick('stance', 'run', 'throw', 'tackle', 'punch', 'knee', 'kic
 // Les absurdes : dessinés en procédural dans absurdes.mjs, loin du pantin des joueurs.
 for (const name of ABSURD_NAMES) atlas(name, absurdFrames(name), (p) => p, { koOff: 0 })
 // L'arbitre : jaune fluo, cheveux gris. Le gardien : violet, chauve, barbu, avec son plongeon.
-atlas('arbitre', { ...pick('idle', 'run', 'walk', 'hit', 'fall', 'ko'), card: allDirs(CARD.map((p) => paintRefCard(p, RAMP.yellow))), redcard: allDirs(CARD.map((p) => paintRefCard(p, RAMP.red))) }, (p) => p.painted ? p : rekit(p, { nearest, kit: { jersey: 'yellow', shorts: 'black', socks: 'black', boots: 'black' }, look: { skin: 'skinPale', hair: 'hairGrey' } }))
+// L'arbitre : export dédié (export-07), déjà en jaune, moustache et cheveux noirs. On quantifie seulement.
+const REF = 'carton-plein/art/pixellab/export-07-arbitre'
+const refAnim = (name) => Object.fromEntries(DIRS.map((d, i) => { const dir = path.join(REF, 'Idle/animations', name, d); return [SHORT[i], fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => toPix(path.join(dir, f), false))] }))
+const refRot = (folder) => Object.fromEntries(DIRS.map((d, i) => [SHORT[i], [toPix(path.join(REF, folder, 'rotations', d + '.png'), false)]]))
+const quant = (p) => { const q = p.clone(); for (let i = 0; i < q.data.length; i++) if (q.data[i]) q.data[i] = nearest(q.data[i]); return q }
+/** Le carton de l'animation est rouge : version jaune pour le premier avertissement. */
+const yellowCard = (p) => { const q = p.clone(); for (let i = 0; i < q.data.length; i++) { const c = q.data[i]; if (!c) continue; const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16); if (r > 150 && g < 90 && b < 90) q.data[i] = r > 190 ? RAMP.yellow[3] : RAMP.yellow[2] } return q }
+const refIdle = refRot('Idle'), refRun = refAnim('Running'), refLying = refRot('lying_on_his_back_c'), refCard = refAnim('the_referee_whistles_with_a_whistle_and_then_holds')
+const mapDirs = (anim, fn) => Object.fromEntries(Object.entries(anim).map(([d, list]) => [d, list.map(fn)]))
+atlas('arbitre', { idle: refIdle, run: refRun, walk: refRun, hit: refIdle, fall: refLying, ko: refLying, card: mapDirs(refCard, yellowCard), redcard: refCard }, quant, { koOff: 22 })
 atlas('gardien', { ...pick('idle', 'run', 'hit', 'fall', 'ko'), dive: A.dive }, (p) => rekit(p, { nearest, kit: { jersey: 'purple', shorts: 'black', socks: 'purple', boots: 'red' }, look: { skin: 'skinDark', hair: 'hairBlack', beard: true } }))

@@ -1,0 +1,206 @@
+{
+  "group_id": "0f5c62de-33d8-4bd5-a172-ff82fb15acd2",
+  "states": [
+    {
+      "character": {
+        "id": "b6c0e18c-1d5d-47f9-be93-cbbd89ea6d63",
+        "name": "Idle",
+        "prompt": "Chibi cartoon soccer referee, pixel art, big head about half of total height, large white eyes with thick eyebrows, tiny mouth, big moustache, black hair, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. FIFA official team kit: flash yellow jersey, black shorts, black socks, black soccer shoes. Light skin.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T20:28:48.183512+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "the_referee_whistles_with_a_whistle_and_then_holds": {
+            "south-east": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-east/frame_008.png"
+            ],
+            "west": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/west/frame_008.png"
+            ],
+            "north-west": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-west/frame_008.png"
+            ],
+            "south": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south/frame_008.png"
+            ],
+            "north": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north/frame_008.png"
+            ],
+            "east": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/east/frame_008.png"
+            ],
+            "south-west": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/south-west/frame_008.png"
+            ],
+            "north-east": [
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_000.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_001.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_002.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_003.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_004.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_005.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_006.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_007.png",
+              "Idle/animations/the_referee_whistles_with_a_whistle_and_then_holds/north-east/frame_008.png"
+            ]
+          },
+          "Running": {
+            "west": [
+              "Idle/animations/Running/west/frame_000.png",
+              "Idle/animations/Running/west/frame_001.png",
+              "Idle/animations/Running/west/frame_002.png",
+              "Idle/animations/Running/west/frame_003.png"
+            ],
+            "east": [
+              "Idle/animations/Running/east/frame_000.png",
+              "Idle/animations/Running/east/frame_001.png",
+              "Idle/animations/Running/east/frame_002.png",
+              "Idle/animations/Running/east/frame_003.png"
+            ],
+            "south-east": [
+              "Idle/animations/Running/south-east/frame_000.png",
+              "Idle/animations/Running/south-east/frame_001.png",
+              "Idle/animations/Running/south-east/frame_002.png",
+              "Idle/animations/Running/south-east/frame_003.png"
+            ],
+            "south": [
+              "Idle/animations/Running/south/frame_000.png",
+              "Idle/animations/Running/south/frame_001.png",
+              "Idle/animations/Running/south/frame_002.png",
+              "Idle/animations/Running/south/frame_003.png"
+            ],
+            "north": [
+              "Idle/animations/Running/north/frame_000.png",
+              "Idle/animations/Running/north/frame_001.png",
+              "Idle/animations/Running/north/frame_002.png",
+              "Idle/animations/Running/north/frame_003.png"
+            ],
+            "north-west": [
+              "Idle/animations/Running/north-west/frame_000.png",
+              "Idle/animations/Running/north-west/frame_001.png",
+              "Idle/animations/Running/north-west/frame_002.png",
+              "Idle/animations/Running/north-west/frame_003.png"
+            ],
+            "south-west": [
+              "Idle/animations/Running/south-west/frame_000.png",
+              "Idle/animations/Running/south-west/frame_001.png",
+              "Idle/animations/Running/south-west/frame_002.png",
+              "Idle/animations/Running/south-west/frame_003.png"
+            ],
+            "north-east": [
+              "Idle/animations/Running/north-east/frame_000.png",
+              "Idle/animations/Running/north-east/frame_001.png",
+              "Idle/animations/Running/north-east/frame_002.png",
+              "Idle/animations/Running/north-east/frame_003.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "character": {
+        "id": "c97b6ec4-f3aa-42ea-b52b-9f0fb644ba41",
+        "name": "lying on his back, c",
+        "prompt": "Chibi cartoon soccer referee, pixel art, big head about half of total height, large white eyes with thick eyebrows, tiny mouth, big moustache, black hair, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. FIFA official team kit: flash yellow jersey, black shorts, black socks, black soccer shoes. Light skin.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T21:28:53.973937+00:00"
+      },
+      "folder": "lying_on_his_back_c",
+      "frames": {
+        "rotations": {
+          "south": "lying_on_his_back_c/rotations/south.png",
+          "south-east": "lying_on_his_back_c/rotations/south-east.png",
+          "east": "lying_on_his_back_c/rotations/east.png",
+          "north-east": "lying_on_his_back_c/rotations/north-east.png",
+          "north": "lying_on_his_back_c/rotations/north.png",
+          "north-west": "lying_on_his_back_c/rotations/north-west.png",
+          "west": "lying_on_his_back_c/rotations/west.png",
+          "south-west": "lying_on_his_back_c/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-11T21:36:53.831120"
+}
