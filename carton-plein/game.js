@@ -72,16 +72,21 @@ function drawSprite(g, name, anim, dir, frame, x, y, flip = false) {
 const audio = { ctx: null, muted: localStorage.getItem('carton.muted') === '1' }
 const beepLast = {}
 /* ---------- musique : démarre à la première mise en jeu, en boucle, coupée par M ---------- */
-const music = { el: null, started: false }
+const music = { buf: null, src: null, gain: null, loading: false, wanted: false }
+function ctx() { if (!audio.ctx) audio.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {}); return audio.ctx }
 function startMusic() {
-  if (music.started) return
-  music.started = true
+  music.wanted = true
   try {
-    music.el = new Audio('audio/mma_foot.mp3')
-    music.el.loop = true
-    music.el.volume = 0.55
-    music.el.muted = audio.muted
-    music.el.play().catch(() => { music.started = false }) // bloqué par le navigateur : on réessaiera au prochain geste
+    const c = ctx()
+    if (music.src) return
+    if (!music.buf) {
+      if (music.loading) return
+      music.loading = true
+      fetch('audio/mma_foot.mp3').then((r) => r.arrayBuffer()).then((ab) => c.decodeAudioData(ab)).then((buf) => { music.buf = buf; music.loading = false; if (music.wanted) startMusic() }).catch(() => { music.loading = false })
+      return
+    }
+    music.gain = c.createGain(); music.gain.gain.value = audio.muted ? 0 : 0.55; music.gain.connect(c.destination)
+    music.src = c.createBufferSource(); music.src.buffer = music.buf; music.src.loop = true; music.src.connect(music.gain); music.src.start()
   } catch (e) { /* pas de musique */ }
 }
 let noiseBuf = null
@@ -106,8 +111,7 @@ function beep(kind) {
   if (beepLast[kind] && now - beepLast[kind] < 70) return // une rafale de coups = un seul son
   beepLast[kind] = now
   try {
-    if (!audio.ctx) audio.ctx = new (window.AudioContext || window.webkitAudioContext)()
-    const c = audio.ctx
+    const c = ctx()
     const t = c.currentTime
     if (kind === 'hit') return thud(c, t, { low: 160, drop: 50, body: 0.1, bodyGain: 0.45, air: 0.05, airGain: 0.3, airFreq: 1100 })
     if (kind === 'hitBig') return thud(c, t, { low: 110, drop: 35, body: 0.2, bodyGain: 0.7, air: 0.09, airGain: 0.45, airFreq: 700, q: 0.6 })
@@ -198,19 +202,22 @@ const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_B
 const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
 addEventListener('keydown', (e) => {
   if (e.repeat) return
+  if (music.wanted && !music.src) startMusic()
   keys[e.code] = true
   if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
-  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0'); if (music.el) music.el.muted = audio.muted }
+  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0'); if (music.gain) music.gain.gain.value = audio.muted ? 0 : 0.55 }
 })
 addEventListener('keyup', (e) => { keys[e.code] = false })
 addEventListener('contextmenu', (e) => e.preventDefault())
 const canvas = document.getElementById('c')
 addEventListener('mousedown', (e) => {
+  if (music.wanted && !music.src) startMusic()
   if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
   if (e.button === 2 || S.phase === 'title') attackPressed = true
 })
 canvas.addEventListener('pointerdown', (e) => {
+  if (music.wanted && !music.src) startMusic()
   if (e.pointerType === 'mouse') return
   const { x, y } = canvasXY(e)
   if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
@@ -287,8 +294,8 @@ function foul(name, victim, extra = {}) {
   if (S.hitStopCd <= 0 && S.fury <= 0) { S.freeze = Math.max(S.freeze, def.big ? 0.07 : 0.035); S.hitStopCd = 0.3 }
   if (S.shakeCd <= 0) { S.shake = Math.max(S.shake, def.big ? 6 : 3); S.shakeCd = 0.12 }
   S.lastPts = pts; S.lastPtsT = 0
-  if (def.noWhistle) { beep('hit'); return }
-  beep('whistle')
+  if (def.noWhistle) return
+  if (def.big && S.t - (S.lastWhistle || -9) > 1.5) { S.lastWhistle = S.t; beep('whistle') }
   if (victim && victim.team === 'fra') freeKick(vx, vy, victim)
 }
 function startCard(victim) {
@@ -666,8 +673,6 @@ function updateHero(dt) {
     const d = dirOf(v.dx, v.dy)
     if (d) hero.dir = d
     if (S.fury > 0) { for (const f of [...french, ...npcs]) if (f.state === 'play' && dist(hero, f) < 30) hitFrench(f, 'SOUFFLE', { knock: 340 }); if (S.refDown <= 0 && dist(hero, ref) < 28) hitRef() }
-    else if (S.fire > 0) for (const f of french) if (f.state === 'play' && f.stun <= 0 && dist(hero, f) < 24) { hitFrench(f, 'PERCUTE'); f.vx *= 2.5; f.vy *= 2.5 }
-    if (S.fire > 0) hitProps('tackle')
     // Le ballon à portée : on le ramasse et on le balance loin, comme une brute.
     const wants = v.dx || v.dy // c'est le n°4 qui va au ballon, jamais l'inverse
     if ((S.phase === 'play' || S.phase === 'freekick' || S.phase === 'goal') && wants && (ball.z || 0) < 12 && dist(hero, ball) < 22 && ball.owner !== hero) {
@@ -1028,7 +1033,7 @@ function goalScored() {
   ball.vx = ball.vy = 0
   ball.x = FIELD.x + FIELD.w + 14
   S.phase = 'goal'
-  S.phaseT = 12 // garde-fou : si l'arbitre n'y arrive pas, on relance
+  S.phaseT = 6 // garde-fou : si l'arbitre n'y arrive pas, on relance
   S.kickedOff = false // pas de nouveau but tant que le ballon n'a pas été remis en jeu au centre
   S.lifeLostT = 0
   S.shake = Math.max(S.shake, 10)
@@ -1051,7 +1056,7 @@ function updateRef(dt) {
       if (ref.z <= 0 && ref.vz < 0) { ref.z = 0; ref.vz = 0; ref.landed = true; ref.vx = ref.vy = 0; ref.anim = 'ko'; S.shake = Math.max(S.shake, 4); for (let i = 0; i < 6; i++) S.particles.push({ x: ref.x + rr(-8, 8), y: ref.y, vx: rr(-50, 50), vy: rr(-40, -5), t: 0, life: 0.4, c: PAL.sand }) }
     }
     ref.frame = Math.floor(ref.ft * 8)
-    if (ref.down <= 0) { ref.flee = 5; ref.anim = 'run'; ref.ft = 0; ref.z = 0 }
+    if (ref.down <= 0) { ref.flee = S.phase === 'goal' ? 0 : 5; ref.anim = 'run'; ref.ft = 0; ref.z = 0 }
     return
   }
   S.refDown = 0
@@ -1081,6 +1086,7 @@ function updateRef(dt) {
     }
     return
   }
+  if (S.phase === 'goal') ref.flee = 0
   if (ref.flee > 0) { ref.flee -= dt; const dx = ref.x - hero.x, dy = ref.y - hero.y; const d = Math.hypot(dx, dy) || 1; target = { x: ref.x + (dx / d) * 100, y: ref.y + (dy / d) * 100 } }
   else if (S.phase === 'goal') target = ball.owner === ref ? { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 } : { x: ball.x, y: ball.y }
   else target = { x: ball.x - 110, y: ball.y - 80 }
@@ -1517,6 +1523,6 @@ Promise.all(['paraguay', 'arbitre', 'gardien', 'france-0', 'banane', 'echarpe', 
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
