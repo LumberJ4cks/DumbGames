@@ -787,7 +787,8 @@ function updateFrench(dt) {
     const carrier = ball.owner === f
     if (S.phase === 'goal') target = slotPos(f, FIELD.x + FIELD.w / 2 - 120)
     else if (regroup) {
-      const near = french.filter((g) => g.state === 'play' && !g.gk).sort((a, b) => dist(a, ball) - dist(b, ball)).slice(0, 4)
+      const near = french.filter((g) => g.state === 'play' && !g.gk).sort((a, b) => (dist(a, ball) - (a.near ? 60 : 0)) - (dist(b, ball) - (b.near ? 60 : 0))).slice(0, 4)
+      for (const g of french) g.near = near.includes(g)
       target = near.includes(f) ? { x: ball.x + (f.slot % 2 ? -1 : 1) * (16 + (f.slot % 3) * 14), y: ball.y + ((f.slot % 4) - 1.5) * 16 } : slotPos(f, ball.x)
     } else if (carrier) {
       target = { x: goal.x, y: goal.y + (f.slot % 2 ? -30 : 30) }
@@ -806,7 +807,8 @@ function updateFrench(dt) {
       const o = ball.owner
       target = { x: Math.min(FIELD.x + FIELD.w - 60, o.x + 150), y: clamp(o.y + (f.runner === 1 ? -90 : 90), FIELD.y + 30, FIELD.y + FIELD.h - 30) }
     } else if (!ball.owner && !f.gk) {
-      const chasers = french.filter((g) => g.state === 'play' && !g.gk && !(g.intruder && g.role !== 'player')).sort((a, b) => dist(a, ball) - dist(b, ball)).slice(0, 2)
+      const chasers = french.filter((g) => g.state === 'play' && !g.gk && !(g.intruder && g.role !== 'player')).sort((a, b) => (dist(a, ball) - (a.chaser ? 40 : 0)) - (dist(b, ball) - (b.chaser ? 40 : 0))).slice(0, 2)
+      if (f === french[0] || !S.chaserTick || S.chaserTick !== S.t) { S.chaserTick = S.t; for (const g of french) g.chaser = false; for (const g of chasers) g.chaser = true }
       target = chasers.includes(f) ? { x: ball.x + ball.vx * 0.25, y: ball.y + ball.vy * 0.25, exact: true } : slotPos(f, ball.x)
     } else target = slotPos(f, ball.x)
     if (f.intruder && !carrier && !regroup) {
@@ -831,21 +833,27 @@ function updateFrench(dt) {
     if (f.gk) target = { x: FIELD.x + 30, y: clamp(ball.y, FIELD.y + FIELD.h / 2 - 50, FIELD.y + FIELD.h / 2 + 50) }
     // Évitement léger du n°4 pour les non-porteurs.
     const dh = dist(f, hero)
-    if (!carrier && dh < 56 && (!regroup || S.phase === 'goal')) { target = { x: f.x + (f.x - hero.x) * 2, y: f.y + (f.y - hero.y) * 2 } }
+    if (!carrier && dh < 80 && dh > 0.01 && (!regroup || S.phase === 'goal')) { const k = clamp((80 - dh) / 40, 0, 1); target = { x: target.x + ((f.x - hero.x) / dh) * 140 * k, y: target.y + ((f.y - hero.y) / dh) * 140 * k, exact: target.exact } } // déviation progressive, jamais une bascule
+    f.tgt = target
     const dx = target.x - f.x, dy = target.y - f.y
     const d = Math.hypot(dx, dy)
     const sp = f.speed * (carrier ? 0.95 : 1) * (regroup ? (S.phase === 'goal' ? 0.8 : 1.3) : 1) * (f.intruder ? 1 : 1 + Math.min(0.5, Math.floor(S.clock / 30) * 0.08)) // la France accélère toutes les 30 s
     if (d > 6) { f.vx = (dx / d) * sp; f.vy = (dy / d) * sp } else { f.vx = f.vy = 0 }
     // Séparation entre Français.
-    for (const g of french) if (g !== f && g.state === 'play') { const dd = dist(f, g); const rad = (g.r > 12 ? g.r + 14 : 26); if (dd < rad && dd > 0) { const k = g.r > 12 ? 260 : 110; f.vx += ((f.x - g.x) / dd) * k; f.vy += ((f.y - g.y) / dd) * k } }
+    const px0 = f.x, py0 = f.y
     f.x += f.vx * dt; f.y += f.vy * dt
+    // Séparation : un glissement de position (un tiers du chevauchement), jamais une vitesse, sinon ça tremble sur place.
+    for (const g of french) if (g !== f && g.state === 'play') { const dd = dist(f, g); const rad = (g.r > 12 ? g.r + 14 : 22); if (dd < rad && dd > 0.01) { const k = (rad - dd) * (g.r > 12 ? 0.6 : 0.33); f.x += ((f.x - g.x) / dd) * k; f.y += ((f.y - g.y) / dd) * k } }
     const m = ball.out && target.exact ? -16 : f.role === 'ballboy' ? 2 : 8
     f.x = clamp(f.x, FIELD.x + m, FIELD.x + FIELD.w - m)
     f.y = clamp(f.y, FIELD.y + m, FIELD.y + FIELD.h - m)
-    const spd = Math.hypot(f.vx, f.vy)
-    const moving = f.anim === 'run' ? spd > 12 : spd > 30 // hystérésis : pas de va-et-vient course/arrêt
-    const nd = dirOf(f.vx, f.vy)
-    if (moving && nd && spd > 30) { if (nd !== f.dir) { f.dirT = (f.dirT || 0) + dt; if (f.dirT > 0.08) { f.dir = nd; f.dirT = 0 } } else f.dirT = 0 }
+    // Animation sur le déplacement réel, lissé : pas de course sur place, pas de direction qui saute.
+    const mvx = (f.x - px0) / Math.max(dt, 0.001), mvy = (f.y - py0) / Math.max(dt, 0.001)
+    f.svx = (f.svx || 0) * 0.7 + mvx * 0.3; f.svy = (f.svy || 0) * 0.7 + mvy * 0.3
+    const spd = Math.hypot(f.svx, f.svy)
+    const moving = f.anim === 'run' ? spd > 14 : spd > 34 // hystérésis : pas de va-et-vient course/arrêt
+    const nd = dirOf(f.svx, f.svy)
+    if (moving && nd && spd > 34) { if (nd !== f.dir) { f.dirT = (f.dirT || 0) + dt; if (f.dirT > 0.1) { f.dir = nd; f.dirT = 0 } } else f.dirT = 0 }
     const anim = moving ? 'run' : 'idle'
     if (anim !== f.anim) f.anim = anim // le compteur continue : l'image avance toujours
     f.frame = Math.floor(f.ft * (moving ? 8 : 4))
