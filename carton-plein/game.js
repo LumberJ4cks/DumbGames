@@ -321,6 +321,12 @@ function inputVector() {
 /* ---------- fautes, combo, feu ---------- */
 function popup(x, y, text, color = PAL.white, big = false) { S.popups.push({ x, y, text, color, t: 0, big }) }
 function banner(text, color = PAL.yellow) { S.banners.push({ text, color, t: 0 }) }
+/** Annonce façon Street Fighter : deux panneaux obliques qui claquent depuis les côtés, lignes de vitesse, gros titre. */
+function callout(text, color = PAL.yellow, dur = 2.3) {
+  const lines = []
+  for (let i = 0; i < 26; i++) lines.push({ y: Math.random(), len: 30 + Math.random() * 130, off: Math.random() * W, v: 700 + Math.random() * 600, w: Math.random() < 0.3 ? 2 : 1 })
+  S.callout = { text, color, t: 0, dur, lines }
+}
 function comboMult() { let m = 1; for (let i = 1; i < COMBO_STEPS.length; i++) if (S.combo >= COMBO_STEPS[i]) m = i + 1; return m }
 function foul(name, victim, extra = {}) {
   const def = FOULS[name]
@@ -1072,6 +1078,7 @@ function startVar(victim) {
   S.var = { t: 0, victim, cursor: 0, dir: 1, zone: rr(0.3, 0.6), zoneW: 0.16, done: null, doneT: 0, speed: 1.1 }
   S.freeze = 0; attackPressed = false
   S.banners = []
+  callout('VAR ACTIVÉE', PAL.cyan)
   beep('whistle')
   setTimeout(() => { if (S.phase === 'var' && !audio.muted) sample('var-voice', { gain: 1.1, vary: 0 }) }, 350) // « Je l'ai pas touché ! »
 }
@@ -1208,7 +1215,7 @@ function callBus() {
   S.busUsed = true
   const gy = FIELD.y + FIELD.h / 2
   S.bus = { x: FIELD.x + FIELD.w - BUS.w / 2 - 6, y: FIELD.y - 200, state: 'in', t: 0, hit: new Set(), ty: gy } // collé à la ligne de but
-  banner('LE BUS DES SUPPORTERS DEBARQUE', PAL.cyan)
+  callout('ON PLANTE LE BUS', PAL.cyan)
   S.shake = Math.max(S.shake, 8)
   beep('horn')
 }
@@ -1311,6 +1318,7 @@ function updateWaves(dt) {
   S.waveT = crowd ? rr(1.2, 2.5) : Math.max(8, 15 - S.wave)
   const n = crowd ? w.n + 4 : w.n
   for (let k = 0; k < n; k++) { if (k % 2) spawnIntruder(w.role, k); else spawnAbsurd(ABSURD[(S.intruders + k) % ABSURD.length]) }
+  if (w.role === 'fan' && !S.invasionShown) { S.invasionShown = true; callout('LES SUPPORTERS ENVAHISSENT LE TERRAIN', PAL.pink, 2.8) }
   if (crowd && S.wave % 3 === 0) banner('LA FOULE DESCEND SUR LA PELOUSE', PAL.pink)
   S.shake = Math.max(S.shake, 5)
 }
@@ -1462,7 +1470,7 @@ function updateRef(dt) {
 /* ---------- boucle ---------- */
 function startMatch() {
   S.goalFx = undefined
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, sayanSeen: false, fieldTf: undefined, kickStage: 'count', refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, sayanSeen: false, fieldTf: undefined, callout: null, invasionShown: false, kickStage: 'count', refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -1527,6 +1535,7 @@ function update(dt) {
   S.popups = S.popups.filter((p) => p.t < 0.7)
   if (S.popups.length > 14) S.popups.splice(0, S.popups.length - 14)
   for (const b of S.banners) b.t += dt
+  if (S.callout) { S.callout.t += dt; if (S.callout.t >= S.callout.dur) S.callout = null }
   S.banners = S.banners.filter((b) => b.t < 1.8)
   if (S.banners.length > 2) S.banners.splice(0, S.banners.length - 2)
   for (const p of S.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt }
@@ -1764,6 +1773,7 @@ function render() {
   }
   g.restore()
   drawHUD()
+  if (S.callout) drawCallout(S.callout)
   if (S.phase === 'end') drawEnd()
 }
 function panel(x, y, w, h, accent) {
@@ -1782,6 +1792,46 @@ function flag(x, y, cols) { cols.forEach((c, i) => { g.fillStyle = c; g.fillRect
 function segments(x, y, w, h, n, frac, on, off = PAL.slateD) {
   const sw = (w - (n - 1)) / n
   for (let i = 0; i < n; i++) { g.fillStyle = i < Math.round(frac * n) ? on : off; g.fillRect(Math.round(x + i * (sw + 1)), y, Math.floor(sw), h) }
+}
+function drawCallout(c) {
+  const IN = 0.28, OUT = 0.3
+  const ease = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3)
+  const kin = ease(c.t / IN), kout = c.t > c.dur - OUT ? ease((c.t - (c.dur - OUT)) / OUT) : 0
+  const slide = (1 - kin) + kout // 1 = hors écran, 0 = en place
+  const bandY = Math.round(H * 0.38), bandH = 60, skew = 26
+  g.save()
+  // Lignes de vitesse sur toute la largeur, derrière les panneaux.
+  g.globalAlpha = clamp(1 - kout, 0, 1) * 0.75
+  g.fillStyle = PAL.white
+  for (const l of c.lines) {
+    const y = Math.round(bandY - 40 + l.y * (bandH + 80))
+    const leftSide = l.y < 0.5
+    const x = leftSide ? W / 2 - ((l.off + c.t * l.v) % (W / 2 + l.len)) : W / 2 + ((l.off + c.t * l.v) % (W / 2 + l.len)) - l.len
+    g.fillRect(Math.round(x), y, Math.round(l.len), l.w)
+  }
+  g.globalAlpha = 1
+  // Panneaux : le gauche vient de la gauche, le droit de la droite, ils se rejoignent en biseau au centre.
+  const dx = Math.round(slide * (W / 2 + skew + 20))
+  const panelL = (fill) => { g.fillStyle = fill; g.beginPath(); g.moveTo(-skew - dx, bandY); g.lineTo(W / 2 + skew - dx, bandY); g.lineTo(W / 2 - skew - dx, bandY + bandH); g.lineTo(-skew - dx, bandY + bandH); g.closePath(); g.fill() }
+  const panelR = (fill) => { g.fillStyle = fill; g.beginPath(); g.moveTo(W / 2 + skew + dx, bandY); g.lineTo(W + skew + dx, bandY); g.lineTo(W + skew + dx, bandY + bandH); g.lineTo(W / 2 - skew + dx, bandY + bandH); g.closePath(); g.fill() }
+  panelL(c.color); panelR(c.color)
+  g.save(); g.translate(0, 4); panelL('rgba(24,20,37,0.92)'); panelR('rgba(24,20,37,0.92)'); g.restore()
+  // Éclair blanc au moment où les panneaux claquent.
+  if (c.t > IN - 0.04 && c.t < IN + 0.12) { g.globalAlpha = 0.8 * (1 - (c.t - (IN - 0.04)) / 0.16); g.fillStyle = PAL.white; g.fillRect(0, bandY + 4, W, bandH); g.globalAlpha = 1 }
+  // Titre : apparaît à l'impact, gros puis se tasse, tremble un peu.
+  if (c.t > IN - 0.02 && kout < 1) {
+    const tt = clamp((c.t - IN + 0.02) / 0.22, 0, 1)
+    const scale = 1.7 - 0.7 * ease(tt)
+    const size = c.text.length > 22 ? 16 : c.text.length > 14 ? 20 : 26
+    const jx = tt < 1 ? Math.round((Math.random() - 0.5) * 4) : 0, jy = tt < 1 ? Math.round((Math.random() - 0.5) * 3) : 0
+    g.save(); g.globalAlpha = clamp(1 - kout, 0, 1); g.translate(W / 2 + jx, bandY + 4 + bandH / 2 + jy); g.scale(scale, scale)
+    g.font = `bold ${size}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle'
+    g.fillStyle = PAL.ink; for (const [ox, oy] of [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [2, 2], [2, -2], [-2, 2], [0, 3], [3, 0]]) g.fillText(c.text, ox, oy)
+    g.fillStyle = c.color; g.fillText(c.text, 0, 2)
+    g.fillStyle = PAL.white; g.fillText(c.text, 0, 0)
+    g.restore()
+  }
+  g.restore()
 }
 function drawCountdown() {
   const n = Math.ceil(S.phaseT - 0.9) // 3, 2, 1 puis 0 = GO
@@ -2010,6 +2060,6 @@ Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), l
   fontReady = true
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, sfx, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
