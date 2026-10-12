@@ -101,7 +101,7 @@ function startMusic() {
   } catch (e) { /* pas de musique */ }
 }
 /* ---------- échantillons : coups, tacles, sifflets, passes, foule (audio/sfx) ---------- */
-const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6 }
+const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1 }
 const sfx = { bank: {}, loaded: false, loading: false, crowd: null, crowdGain: null, crowdBuf: null }
 function loadSfx() {
   if (sfx.loading || sfx.loaded) return
@@ -1073,6 +1073,7 @@ function startVar(victim) {
   S.freeze = 0; attackPressed = false
   S.banners = []
   beep('whistle')
+  setTimeout(() => { if (S.phase === 'var' && !audio.muted) sample('var-voice', { gain: 1.1, vary: 0 }) }, 350) // « Je l'ai pas touché ! »
 }
 function updateVar(dt) {
   const v = S.var
