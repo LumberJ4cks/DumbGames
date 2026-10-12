@@ -1391,7 +1391,7 @@ function goalScored() {
   const near = french.filter((f) => f.state === 'play' && !f.gk && !f.intruder).sort((a, b) => dist(a, ball) - dist(b, ball))[0]
   if (near && dist(near, ball) < dist(ref, ball) && S.goals < LIVES) near.carryBack = true
   S.phase = 'goal'
-  S.phaseT = 20 // garde-fou lointain : on ne téléporte le ballon au centre que si personne n'arrive à le ramener
+  S.phaseT = 6 // sans effet sur le ballon : il reste où il est jusqu'à ce qu'on le ramène (technique de gain autorisée)
   S.kickedOff = false // pas de nouveau but tant que le ballon n'a pas été remis en jeu au centre
   S.lifeLostT = 0
   S.shake = Math.max(S.shake, 10)
@@ -1518,7 +1518,7 @@ function update(dt) {
     return
   }
   if (S.phase === 'kickoff' && !S.goals) { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } else if (n <= 0) { beep('whistle'); S.shake = Math.max(S.shake, 8) } } }
-  if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
+  if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { /* pas de téléportation : le ballon reste où il est tant que personne ne le ramène au centre */ } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
   if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = resumePhase() }
   if (!S.kickedOff && S.phase === 'play') { S.phase = 'goal'; S.phaseT = Math.max(S.phaseT, 12) } // filet de sécurité : jamais de jeu sans remise en jeu
