@@ -53,6 +53,7 @@ const ATLAS = {}
 const IMG = {}
 function loadImage(name) { return new Promise((res) => { const i = new Image(); i.onload = () => { IMG[name] = i; res() }; i.onerror = () => res(); i.src = `sprites/${name}.png` }) }
 const endVideo = (() => { try { const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; for (const [src, type] of [['video/fin.mp4', 'video/mp4'], ['video/fin.webm', 'video/webm']]) { const so = document.createElement('source'); so.src = src; so.type = type; v.appendChild(so) } v.load(); return v } catch (e) { return null } })()
+const sayanVideo = (() => { try { const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; for (const [src, type] of [['video/sayan.mp4', 'video/mp4'], ['video/sayan.webm', 'video/webm']]) { const so = document.createElement('source'); so.src = src; so.type = type; v.appendChild(so) } v.load(); return v } catch (e) { return null } })()
 const START_BTN = { x: 232.2, y: 279.4, w: 175.7, h: 45.0 } // le bouton START dans l'image titre, à l'échelle du canvas
 const mouse = { x: -1, y: -1 }
 let startPress = 0
@@ -435,6 +436,7 @@ function startFury() {
     S.sayanT = 0
     S.banners = []
     S.freeze = 0; S.stopAll = 0
+    if (sayanVideo) { try { sayanVideo.currentTime = 0; sayanVideo.play().catch(() => {}) } catch (e) { /* pas de vidéo */ } }
     beep('fire'); if (!audio.muted) sample('sayan', { gain: 1, vary: 0 })
   } else {
     S.fieldTf = 0
@@ -1158,17 +1160,19 @@ function drawSayan() {
   const total = SAYAN.frames / SAYAN.fps
   const fi = Math.min(SAYAN.frames - 1, Math.floor(t * SAYAN.fps))
   const boom = fi >= 15 // les deux dernières images : l'explosion
-  // Fond : motion design, rayons qui tournent de plus en plus vite, anneaux qui pulsent.
+  // Fond : la vidéo de power-up si elle est prête, sinon les rayons procéduraux.
   g.fillStyle = boom ? PAL.yellow : PAL.ink; g.fillRect(0, 0, W, H)
   const cx = W / 2, cy = H / 2 + 10
+  const vid = sayanVideo && sayanVideo.readyState >= 2
+  if (vid) { const vw = sayanVideo.videoWidth, vh = sayanVideo.videoHeight, k = Math.max(W / vw, H / vh) * (1 + Math.min(0.12, t * 0.035)); g.globalAlpha = boom ? 0.5 : 1; g.drawImage(sayanVideo, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k); g.globalAlpha = 1 }
   const spin = t * (0.6 + t * 0.5)
   g.save(); g.translate(cx, cy)
-  for (let i = 0; i < 24; i++) {
+  if (!vid) for (let i = 0; i < 24; i++) {
     const a0 = spin + (i / 24) * Math.PI * 2, a1 = a0 + (Math.PI * 2 / 24) * 0.5
     g.fillStyle = boom ? (i % 2 ? PAL.white : PAL.amber) : i % 3 === 0 ? 'rgba(254,174,52,0.35)' : i % 3 === 1 ? 'rgba(254,231,97,0.22)' : 'rgba(247,118,34,0.18)'
     g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 520, a0, a1); g.closePath(); g.fill()
   }
-  for (let r = 0; r < 5; r++) { const rad = ((t * 160 + r * 90) % 450); g.strokeStyle = `rgba(254,231,97,${0.35 * (1 - rad / 450)})`; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, rad, 0, Math.PI * 2); g.stroke() }
+  if (!vid) for (let r = 0; r < 5; r++) { const rad = ((t * 160 + r * 90) % 450); g.strokeStyle = `rgba(254,231,97,${0.35 * (1 - rad / 450)})`; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, rad, 0, Math.PI * 2); g.stroke() }
   g.restore()
   // Secousse qui monte avec la tension.
   const sh = Math.min(6, t * 1.5) * (boom ? 2 : 1)
@@ -1533,6 +1537,7 @@ function update(dt) {
   if (S.phase === 'var') { updateVar(dt); return }
   if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT >= GAMEOVER_MIN && S.endT < GAMEOVER) { S.endT = GAMEOVER; beep('click') } else if (S.endT > GAMEOVER + 2) { beep('click'); startMatch() } } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
+  if (sayanVideo && !sayanVideo.paused && S.phase !== 'sayan') sayanVideo.pause()
   if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('click') } } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
@@ -2303,6 +2308,6 @@ Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), l
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, endMatch, startVar, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, endMatch, startVar, sayanVideo, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
