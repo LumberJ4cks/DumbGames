@@ -262,7 +262,8 @@ const keys = {}
 const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null }
 let attackPressed = false
 let restartPressed = false
-const GAMEOVER = 2.6 // secondes de carton GAME OVER avant le récap
+const GAMEOVER_MIN = 3 // le carton GAME OVER ne peut pas être passé avant 3 s
+const GAMEOVER = 5 // puis il laisse place au récap, de lui-même ou sur un appui
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
 const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_BTN.w && y >= RESTART_BTN.y && y <= RESTART_BTN.y + RESTART_BTN.h
 const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
@@ -283,14 +284,14 @@ const inStart = (x, y) => x >= START_BTN.x && x <= START_BTN.x + START_BTN.w && 
 addEventListener('mousedown', (e) => {
   if (music.wanted && !music.src) startMusic()
   if (S.phase === 'title') { const { x, y } = canvasXY(e); if (inStart(x, y) && !startPress) { startPress = 0.16; beep('click') } return }
-  if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
+  if (S.phase === 'end') { const { x, y } = canvasXY(e); if ((S.endT || 0) < GAMEOVER || inRestart(x, y)) restartPressed = true; return }
   if (e.button === 2) attackPressed = true
 })
 canvas.addEventListener('pointerdown', (e) => {
   if (music.wanted && !music.src) startMusic()
   if (e.pointerType === 'mouse') return
   const { x, y } = canvasXY(e)
-  if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
+  if (S.phase === 'end') { if ((S.endT || 0) < GAMEOVER || inRestart(x, y)) restartPressed = true; return }
   if (S.phase === 'title') { if (inStart(x, y) && !startPress) { startPress = 0.16; beep('click') } return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
   else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
@@ -1495,7 +1496,7 @@ function update(dt) {
   if (S.phase === 'sayan') { S.sayanT += dt; S.t += dt; attackPressed = false; if (S.sayanT >= SAYAN.frames / SAYAN.fps + SAYAN.outro) endSayan(); return }
   if (S.fieldTf !== undefined) { S.fieldTf += dt; hero.vx = hero.vy = 0; attackPressed = false; if (S.fieldTf >= SAYAN.frames / 10) { S.fieldTf = undefined; endSayan() } }
   if (S.phase === 'var') { updateVar(dt); return }
-  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > GAMEOVER + 2) { beep('click'); startMatch() } } return }
+  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT >= GAMEOVER_MIN && S.endT < GAMEOVER) { S.endT = GAMEOVER; beep('click') } else if (S.endT > GAMEOVER + 2) { beep('click'); startMatch() } } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
   if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('click') } } return }
   if (S.paused) { attackPressed = false; return }
@@ -2025,6 +2026,7 @@ function drawGameOver(T) {
   g.fillStyle = PAL.red; g.fillText('GAME OVER', 0, 0)
   g.restore()
   if (T > 0.9) { g.globalAlpha = Math.min(1, (T - 0.9) / 0.3); outlined('3 BUTS ENCAISSES', W / 2, H / 2 + 22, { size: 11, color: PAL.grey1 }); g.globalAlpha = 1 }
+  if (T >= GAMEOVER_MIN && Math.floor(T * 2) % 2 === 0) outlined('APPUIE POUR CONTINUER', W / 2, H - 40, { size: 8, color: PAL.white })
 }
 function drawEnd() {
   if ((S.endT || 0) < GAMEOVER) { drawGameOver(S.endT || 0); return }
