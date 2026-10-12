@@ -1974,8 +1974,9 @@ function icon(name, x, y, scale = 1) {
 function drawHUD() {
   const mm = Math.floor(S.clock / 60), ss = Math.floor(S.clock % 60)
   // ----- Chrono + vies, en haut à gauche -----
-  const TY = H - 40 // tout le HUD en bas, police seule
+  const TY = 6 // HUD en haut, police seule sur un léger voile
   const clock = `${mm}:${String(ss).padStart(2, '0')}`
+  g.fillStyle = 'rgba(24,20,37,0.38)'; g.fillRect(4, TY, 196, 30); g.fillRect(W - 140, TY, 136, 36)
   sevenSeg(clock, 11, TY + 7, { dw: 12, dh: 16, t: 3, gap: 4, on: PAL.ink, off: 'rgba(0,0,0,0)' })
   g.save(); g.shadowColor = 'rgba(254,231,97,0.55)'; g.shadowBlur = 6; sevenSeg(clock, 10, TY + 6, { dw: 12, dh: 16, t: 3, gap: 4, on: S.goals >= 2 ? PAL.red : PAL.yellow, off: 'rgba(24,20,37,0.25)' }); g.restore()
   flag(84, TY + 8, [PAL.blue, PAL.white, PAL.red])
@@ -1991,13 +1992,13 @@ function drawHUD() {
     else if (!justLost) { g.fillStyle = PAL.slateD; g.fillRect(bx - 4, by - 1, 8, 2) }
   }
   // ----- Dégâts et banc, en haut à droite : chiffres seuls, sans plaque -----
-  sevenSeg(String(S.score).padStart(7, '0'), W - 9, H - 33, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', on: PAL.ink, off: 'rgba(0,0,0,0)' }) // ombre portée 1 px, pas de contour
-  g.save(); g.shadowColor = S.lastPtsT < 0.3 ? 'rgba(255,255,255,0.9)' : 'rgba(254,231,97,0.55)'; g.shadowBlur = S.lastPtsT < 0.3 ? 12 : 6; sevenSeg(String(S.score).padStart(7, '0'), W - 10, H - 34, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', off: 'rgba(24,20,37,0.25)' }); g.restore()
-  if (S.lastPtsT < 0.8 && S.lastPts) outlined((S.lastPts > 0 ? '+' : '') + S.lastPts, W - 12, H - 48, { size: 8, color: S.lastPts > 0 ? PAL.white : PAL.red, align: 'right' })
+  sevenSeg(String(S.score).padStart(7, '0'), W - 9, TY + 5, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', on: PAL.ink, off: 'rgba(0,0,0,0)' }) // ombre portée 1 px, pas de contour
+  g.save(); g.shadowColor = S.lastPtsT < 0.3 ? 'rgba(255,255,255,0.9)' : 'rgba(254,231,97,0.55)'; g.shadowBlur = S.lastPtsT < 0.3 ? 12 : 6; sevenSeg(String(S.score).padStart(7, '0'), W - 10, TY + 4, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', off: 'rgba(24,20,37,0.25)' }); g.restore()
+  if (S.lastPtsT < 0.8 && S.lastPts) outlined((S.lastPts > 0 ? '+' : '') + S.lastPts, W - 12, TY + 38, { size: 8, color: S.lastPts > 0 ? PAL.white : PAL.red, align: 'right' })
   const bench = npcs.filter((n) => n.role === 'sub').length
   const onField = french.filter((f) => f.state === 'play' && f.team === 'fra' && !f.intruder).length
-  crans(W - 104, H - 12, 56, 5, 11, (11 - Math.min(11, onField)) / 11, PAL.cyan, { off: 'rgba(24,20,37,0.45)' })
-  outlined(S.teamDoneAt ? 'KO ' + S.teamDoneAt.toFixed(0) + 'S' : 'BANC ' + bench, W - 10, H - 15, { size: 8, color: S.teamDoneAt ? PAL.orange : PAL.white, align: 'right' })
+  crans(W - 104, TY + 26, 56, 5, 11, (11 - Math.min(11, onField)) / 11, PAL.cyan, { off: 'rgba(24,20,37,0.45)' })
+  outlined(S.teamDoneAt ? 'KO ' + S.teamDoneAt.toFixed(0) + 'S' : 'BANC ' + bench, W - 10, TY + 23, { size: 8, color: S.teamDoneAt ? PAL.orange : PAL.white, align: 'right' })
   // ----- Combo : barre de briques en haut au centre, basse pour laisser voir le jeu -----
   if (S.combo > 0) {
     const m = comboMult()
@@ -2022,7 +2023,7 @@ function drawHUD() {
   S.banners.forEach((b, i) => {
     const a = b.t < 0.15 ? b.t / 0.15 : b.t > 1.4 ? (1.8 - b.t) / 0.4 : 1
     g.globalAlpha = clamp(a, 0, 1)
-    outlined(b.text, W / 2, 96 + i * 18 - Math.round((1 - Math.min(1, b.t / 0.15)) * 10), { size: 11, color: b.color })
+    outlined(b.text, W / 2, 30 + i * 14 - Math.round((1 - Math.min(1, b.t / 0.15)) * 10), { size: 11, color: b.color })
     g.globalAlpha = 1
   })
   // Tactile : joystick et bouton.
@@ -2031,7 +2032,7 @@ function drawHUD() {
   if (['play', 'freekick', 'goal', 'kickoff'].includes(S.phase)) {
     const bx = ball.x - S.cam.x, by = ball.y - S.cam.y - (ball.z || 0)
     if (bx < -6 || bx > W + 6 || by < -6 || by > H + 6) {
-      const px = clamp(bx, 14, W - 14), py = clamp(by, 20, H - 50)
+      const px = clamp(bx, 14, W - 14), py = clamp(by, 48, H - 14)
       const a = Math.atan2(by - py, bx - px) || (bx < 0 ? Math.PI : 0)
       const bob = Math.sin(S.t * 8) * 2
       g.save(); g.translate(px + Math.cos(a) * bob, py + Math.sin(a) * bob); g.rotate(a)
@@ -2042,7 +2043,7 @@ function drawHUD() {
   }
   // Repère de l'arbitre quand il est hors champ.
   { const rx = ref.x - S.cam.x, ry = ref.y - S.cam.y - 30
-    if (rx < 0 || rx > W || ry < 0 || ry > H) { const px = clamp(rx, 30, W - 30), py = clamp(ry, 16, H - 46); outlined('ARBITRE', px, py - 4, { size: 7, color: PAL.amber }) } }
+    if (rx < 0 || rx > W || ry < 0 || ry > H) { const px = clamp(rx, 30, W - 30), py = clamp(ry, 50, H - 10); outlined('ARBITRE', px, py - 4, { size: 7, color: PAL.amber }) } }
   if (S.phase === 'card' && ref.cardTarget) outlined('JEU ARRETE', W / 2, H / 2 - 40, { size: 12, color: PAL.yellow })
   if (S.paused) outlined('PAUSE', W / 2, H / 2 - 8, { size: 16 })
 }
