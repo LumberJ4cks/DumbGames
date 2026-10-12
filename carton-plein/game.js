@@ -204,7 +204,7 @@ function beep(kind) {
 const S = {
   phase: 'title', // title | play | kickoff | freekick | goal | end
   t: 0, clock: 0, added: 0, addedShown: false,
-  score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0,
+  score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, hitPlayers: 0, hitFans: 0, throws: 0, propsBroken: 0,
   combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0,
   popups: [], banners: [], particles: [], debris: [], log: [],
   cam: { x: 0, y: 0 }, shake: 0, freeze: 0,
@@ -491,6 +491,7 @@ function breakProp(p, how) {
   S.shake = Math.max(S.shake, 6)
   if (p.hp > 0) { popup(c.x, c.y - 20, 'CRAC', PAL.grey1); beep('hit'); return }
   p.broken = true
+  S.propsBroken = (S.propsBroken || 0) + 1
   if (p.kind === 'goal') foul('LA CAGE EST PAR TERRE', null)
   else if (p.kind === 'bench') { foul('FAUTE SUR LE BANC', null); for (const n of npcs) if (n.role === 'sub' && n.state === 'play') { n.vx = rr(-150, 150); n.vy = rr(-120, -60); knockDown(n, 0.4) } }
   else { foul('CASSE', null); popup(c.x, c.y - 30, 'CRAC', PAL.white, true) }
@@ -576,6 +577,7 @@ function nearestFrench(from, maxD, pred = () => true, withStaff = true) {
 }
 function hitFrench(f, name, { throwIt = false, knock = 0 } = {}) {
   if (f.hp <= 0) { foul('ACHARNEMENT', f); return }
+  if (f.team === 'fra' && !f.intruder) S.hitPlayers = (S.hitPlayers || 0) + 1; else S.hitFans = (S.hitFans || 0) + 1
   if (f.absurd) name = f.absurd.name
   else if (f.team === 'staff') { const k = f.kind || f.role; name = k === 'sub' ? 'FAUTE SUR LE BANC' : k === 'press' ? 'FAUTE SUR UN JOURNALISTE' : k === 'fan' ? 'FAUTE SUR UN SUPPORTER' : 'FAUTE SUR LE STAFF' }
   else if (f.gk && name !== "FAUTE SUR L'ARBITRE") name = 'FAUTE SUR LE GARDIEN'
@@ -806,6 +808,7 @@ function updateHero(dt) {
 }
 function throwBall() {
   ball.owner = null
+  S.throws = (S.throws || 0) + 1
   const dx = hero.dir.includes('e') ? 1 : hero.dir.includes('w') ? -1 : 0
   const dy = hero.dir.includes('s') ? 1 : hero.dir.includes('n') ? -1 : 0
   const d = Math.hypot(dx, dy) || 1
@@ -1488,7 +1491,7 @@ function updateRef(dt) {
 /* ---------- boucle ---------- */
 function startMatch() {
   S.goalFx = undefined
-  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, sayanSeen: false, fieldTf: undefined, callout: null, invasionShown: false, kickStage: 'count', refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
+  Object.assign(S, { phase: 'kickoff', t: 0, clock: 0, added: 0, addedShown: false, score: 0, fouls: 0, bigFouls: 0, goals: 0, yellows: 0, reds: 0, refHits: 0, maxCombo: 1, fires: 0, evac: 0, koCount: 0, teamDoneAt: 0, hitPlayers: 0, hitFans: 0, throws: 0, propsBroken: 0, combo: 0, comboT: 0, comboAt: 0, tier: 1, fuego: 0, fire: 0, fury: 0, furyCharge: 0, furies: 0, hitStopCd: 0, shakeCd: 0, lastPts: 0, lastPtsT: 9, chains: 0, busUsed: false, busDue: 0, bus: null, busHits: 0, varDone: false, varDue: 0, var: null, sayanSeen: false, fieldTf: undefined, callout: null, invasionShown: false, kickStage: 'count', refDown: 0, wave: 0, waveT: 14, intruders: 0, stopAll: 0, popups: [], banners: [], particles: [], debris: [], log: [], shake: 0, freeze: 0 })
   Object.assign(ref, { patience: 100, calm: 0, down: 0, flee: 0, hits: 0, strict: 0, anim: 'idle', cardTarget: null, cardT: 0, cardShow: 0 })
   Object.assign(hero, { act: null, chain: 0, stun: 0, anim: 'stance', z: 0, vz: 0 })
   subsUsed = 0
@@ -1574,7 +1577,7 @@ function endMatch() {
   const best = Number(localStorage.getItem('carton.record') || 0)
   S.newRecord = S.final > best
   S.record = Math.max(best, S.final)
-  S.endT = 0; S.stampShake = undefined; S.goShown = false; S.shake = Math.max(S.shake, 10)
+  S.endT = 0; S.stampShake = undefined; S.goShown = false; for (let i = 0; i < 16; i++) delete S['endTick' + i]; S.shake = Math.max(S.shake, 10)
   if (endVideo) { try { endVideo.currentTime = 0; endVideo.play().catch(() => {}) } catch (e) { /* pas de vidéo */ } }
   localStorage.setItem('carton.record', String(S.record))
   beep('whistle'); setTimeout(() => beep('whistle'), 350); setTimeout(() => beep('horn'), 700) // coup de sifflet final
@@ -2051,33 +2054,45 @@ function drawEnd() {
   panel(6, 6, 150, 26, PAL.red)
   text('FIN DU MATCH', 16, 10, { size: 9, color: PAL.white })
   text('3 BUTS  ·  TENU ' + Math.floor(S.clock / 60) + ':' + String(Math.floor(S.clock % 60)).padStart(2, '0'), 16, 21, { size: 6, color: PAL.grey1 })
-  // Le score, énorme, au centre entre les deux joueurs.
-  if (T > 0.5) {
-    const pop = Math.max(0, 1 - (T - 0.5) * 4)
-    g.fillStyle = 'rgba(24,20,37,0.78)'; g.fillRect(W / 2 - 78, 100, 156, 60)
-    g.fillStyle = PAL.yellow; g.fillRect(W / 2 - 78, 100, 156, 3)
-    text('DEGATS', W / 2, 105, { size: 8, color: PAL.yellow, align: 'center' })
-    outlined(String(S.final).padStart(7, '0'), W / 2, 115 - Math.round(pop * 4), { size: Math.round(22 + pop * 12), color: PAL.yellow })
-    text(S.newRecord && S.final > 0 ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, W / 2, 146, { size: 6, color: S.newRecord ? PAL.orange : PAL.grey1, align: 'center' })
+  // Le détail, ligne par ligne, dans la colonne entre les deux joueurs : pas de fond, juste l'ombre du texte.
+  const lines = [
+    ['JOUEURS FRAPPES', S.hitPlayers || 0], ['SUPPORTERS FRAPPES', S.hitFans || 0], ['FAUTES SIFFLEES', S.fouls], ['GROSSES FAUTES', S.bigFouls],
+    ['KO', S.koCount + ' / 22'], ['FAUTES SUR L\'ARBITRE', S.refHits], ['BALLONS RENVOYES', S.throws || 0], ['DECORS DETRUITS', S.propsBroken || 0],
+    ['CARTONS', S.yellows + ' J  ' + S.reds + ' R'], ['FEUX / FURIES', S.fires + ' / ' + S.furies],
+  ]
+  if (S.busHits) lines.push(['ECRASES PAR LE BUS', S.busHits])
+  const x0 = W / 2 - 74, x1 = W / 2 + 74, y0 = 98, lh = 9 // sous le logo de la vidéo
+  lines.forEach(([k, v], i) => {
+    const at = 0.3 + i * 0.07
+    if (T < at) return
+    const a = Math.min(1, (T - at) / 0.12)
+    g.globalAlpha = fade * a
+    const dx = Math.round((1 - a) * 12)
+    text(k, x0 - dx, y0 + i * lh, { size: 6, color: PAL.grey1 })
+    text(String(v), x1 + dx, y0 + i * lh, { size: 7, color: PAL.white, align: 'right' })
+    if (a < 1 && !S['endTick' + i]) { S['endTick' + i] = true; beep('tick') }
+  })
+  g.globalAlpha = fade
+  const yC = y0 + lines.length * lh + 6
+  // Combo max, puis le score final en gros.
+  if (T > 0.3 + lines.length * 0.07 + 0.1) outlined('COMBO MAX  ×' + S.maxCombo, W / 2, yC, { size: 10, color: PAL.orange })
+  const tS = 0.3 + lines.length * 0.07 + 0.45
+  if (T > tS) {
+    const pop = Math.max(0, 1 - (T - tS) * 4)
+    text('SCORE FINAL', W / 2, yC + 16, { size: 7, color: PAL.yellow, align: 'center' })
+    outlined(String(S.final).padStart(7, '0'), W / 2, yC + 25 - Math.round(pop * 4), { size: Math.round(22 + pop * 12), color: PAL.yellow })
+    text(S.newRecord && S.final > 0 ? 'NOUVEAU RECORD !' : 'RECORD ' + S.record, W / 2, yC + 54, { size: 6, color: S.newRecord ? PAL.orange : PAL.grey1, align: 'center' })
   }
-  // Le tampon, qui claque.
-  if (T > 1.2) {
-    const k = Math.max(0, 1 - (T - 1.2) * 5)
+  // Le tampon, qui claque, sous le score.
+  const tK = tS + 0.6
+  if (T > tK) {
+    const k = Math.max(0, 1 - (T - tK) * 5)
     const stamp = S.final < 15000 ? 'FAIR-PLAY' : S.final < 40000 ? 'RUGUEUX' : S.final < 80000 ? 'BOUCHER' : S.final < 150000 ? 'CARTON PLEIN' : 'LEGENDE DU GUARANI'
     if (k > 0 && S.stampShake === undefined) { S.stampShake = 1; S.shake = Math.max(S.shake, 8); beep('hit') }
-    g.save(); g.translate(W / 2, 184); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
-    g.fillStyle = 'rgba(24,20,37,0.55)'; g.fillRect(-72, -11, 144, 22)
+    g.save(); g.translate(W / 2, yC + 76); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
     g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-72, -11, 144, 22)
     text(stamp, 0, -6, { size: 11, color: PAL.red, align: 'center', shadow: false })
     g.restore(); g.globalAlpha = fade
-  }
-  // Le détail des dégâts, en petit, dans un bandeau tout en bas pour ne pas couvrir les joueurs.
-  if (T > 1.6) {
-    const items = [['FAUTES', S.fouls], ['GROSSES', S.bigFouls], ['ARBITRE', S.refHits], ['KO', S.koCount + '/22'], ['JAUNES', S.yellows], ['ROUGES', S.reds], ['COMBO', '×' + S.maxCombo], ['FEUX', S.fires], ['FURIES', S.furies]]
-    if (S.busHits) items.push(['BUS', S.busHits])
-    g.fillStyle = 'rgba(24,20,37,0.82)'; g.fillRect(0, H - 76, W, 22)
-    const cw = W / items.length
-    items.forEach(([k, v], i) => { text(k, cw * i + cw / 2, H - 73, { size: 6, color: PAL.grey2, align: 'center' }); text(String(v), cw * i + cw / 2, H - 64, { size: 8, color: PAL.white, align: 'center' }) })
   }
   g.globalAlpha = 1
   // Le bouton, seul moyen de relancer à la souris.
