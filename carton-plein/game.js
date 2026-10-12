@@ -262,6 +262,7 @@ const keys = {}
 const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null }
 let attackPressed = false
 let restartPressed = false
+const GAMEOVER = 2.6 // secondes de carton GAME OVER avant le récap
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
 const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_BTN.w && y >= RESTART_BTN.y && y <= RESTART_BTN.y + RESTART_BTN.h
 const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
@@ -1390,7 +1391,7 @@ function goalScored() {
   const near = french.filter((f) => f.state === 'play' && !f.gk && !f.intruder).sort((a, b) => dist(a, ball) - dist(b, ball))[0]
   if (near && dist(near, ball) < dist(ref, ball) && S.goals < LIVES) near.carryBack = true
   S.phase = 'goal'
-  S.phaseT = 6 // garde-fou : si l'arbitre n'y arrive pas, on relance
+  S.phaseT = 20 // garde-fou lointain : on ne téléporte le ballon au centre que si personne n'arrive à le ramener
   S.kickedOff = false // pas de nouveau but tant que le ballon n'a pas été remis en jeu au centre
   S.lifeLostT = 0
   S.shake = Math.max(S.shake, 10)
@@ -1445,6 +1446,11 @@ function updateRef(dt) {
     return
   }
   if (S.phase === 'goal') ref.flee = 0
+  if (S.phase === 'goal' && S.goals < LIVES && !ball.owner && !french.some((f) => f.carryBack && f.state === 'play') && french.some((f) => f.carryBack)) {
+    for (const f of french) f.carryBack = false
+    const near = french.filter((f) => f.state === 'play' && !f.gk && !f.intruder).sort((a, b) => dist(a, ball) - dist(b, ball))[0]
+    if (near && dist(near, ball) < dist(ref, ball)) near.carryBack = true
+  }
   if (ref.flee > 0) { ref.flee -= dt; const dx = ref.x - hero.x, dy = ref.y - hero.y; const d = Math.hypot(dx, dy) || 1; target = { x: ref.x + (dx / d) * 100, y: ref.y + (dy / d) * 100 } }
   else if (S.phase === 'goal' && !french.some((f) => f.carryBack && f.state === 'play')) target = ball.owner === ref ? { x: FIELD.x + FIELD.w / 2, y: FIELD.y + FIELD.h / 2 } : { x: ball.x, y: ball.y }
   else if (S.phase === 'goal') target = { x: FIELD.x + FIELD.w / 2 - 60, y: FIELD.y + FIELD.h / 2 - 90 }
@@ -1489,7 +1495,7 @@ function update(dt) {
   if (S.phase === 'sayan') { S.sayanT += dt; S.t += dt; attackPressed = false; if (S.sayanT >= SAYAN.frames / SAYAN.fps + SAYAN.outro) endSayan(); return }
   if (S.fieldTf !== undefined) { S.fieldTf += dt; hero.vx = hero.vy = 0; attackPressed = false; if (S.fieldTf >= SAYAN.frames / 10) { S.fieldTf = undefined; endSayan() } }
   if (S.phase === 'var') { updateVar(dt); return }
-  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) { beep('click'); startMatch() } } return }
+  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > GAMEOVER + 2) { beep('click'); startMatch() } } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
   if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('click') } } return }
   if (S.paused) { attackPressed = false; return }
@@ -1515,7 +1521,7 @@ function update(dt) {
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { if (ball.owner === ref) ball.owner = null; kickoff() } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
   if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = resumePhase() }
-  if (!S.kickedOff && S.phase === 'play') { S.phase = 'goal'; S.phaseT = Math.max(S.phaseT, 3) } // filet de sécurité : jamais de jeu sans remise en jeu
+  if (!S.kickedOff && S.phase === 'play') { S.phase = 'goal'; S.phaseT = Math.max(S.phaseT, 12) } // filet de sécurité : jamais de jeu sans remise en jeu
   if (S.phase === 'freekick') { S.phaseT -= dt; if (S.phaseT <= 0) { S.phase = resumePhase(); const taker = nearestFrench(ball, 80, (f) => !f.gk); if (taker && S.phase === 'play') ball.owner = taker } }
   if (attackPressed) { attackPressed = false; if (!(S.phase === 'kickoff' && !S.goals) && S.phase !== 'var') heroAttack() }
   updateHero(dt)
@@ -1558,10 +1564,10 @@ function endMatch() {
   const best = Number(localStorage.getItem('carton.record') || 0)
   S.newRecord = S.final > best
   S.record = Math.max(best, S.final)
-  S.endT = 0; S.stampShake = undefined
+  S.endT = 0; S.stampShake = undefined; S.goShown = false; S.shake = Math.max(S.shake, 10)
   if (endVideo) { try { endVideo.currentTime = 0; endVideo.play().catch(() => {}) } catch (e) { /* pas de vidéo */ } }
   localStorage.setItem('carton.record', String(S.record))
-  beep('whistle')
+  beep('whistle'); setTimeout(() => beep('whistle'), 350); setTimeout(() => beep('horn'), 700) // coup de sifflet final
 }
 
 /* ---------- rendu ---------- */
@@ -1962,6 +1968,19 @@ function drawHUD() {
   })
   // Tactile : joystick et bouton.
   if (touch.joy) { g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 2; g.beginPath(); g.arc(touch.joy.x, touch.joy.y, 24, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(touch.joy.x + touch.jx * 24, touch.joy.y + touch.jy * 24, 8, 0, Math.PI * 2); g.fill() }
+  // Flèche vers le ballon quand il est hors champ (triangle blanc au bord de l'écran).
+  if (['play', 'freekick', 'goal', 'kickoff'].includes(S.phase)) {
+    const bx = ball.x - S.cam.x, by = ball.y - S.cam.y - (ball.z || 0)
+    if (bx < -6 || bx > W + 6 || by < -6 || by > H + 6) {
+      const px = clamp(bx, 14, W - 14), py = clamp(by, 60, H - 44)
+      const a = Math.atan2(by - py, bx - px) || (bx < 0 ? Math.PI : 0)
+      const bob = Math.sin(S.t * 8) * 2
+      g.save(); g.translate(px + Math.cos(a) * bob, py + Math.sin(a) * bob); g.rotate(a)
+      g.beginPath(); g.moveTo(9, 0); g.lineTo(-6, -7); g.lineTo(-3, 0); g.lineTo(-6, 7); g.closePath()
+      g.fillStyle = PAL.ink; g.lineWidth = 3; g.strokeStyle = PAL.ink; g.stroke(); g.fillStyle = PAL.white; g.fill()
+      g.restore()
+    }
+  }
   // Repère de l'arbitre quand il est hors champ.
   { const rx = ref.x - S.cam.x, ry = ref.y - S.cam.y - 30
     if (rx < 0 || rx > W || ry < 0 || ry > H) { const px = clamp(rx, 30, W - 30), py = clamp(ry, 56, H - 40); outlined('ARBITRE', px, py - 4, { size: 7, color: PAL.amber }) } }
@@ -1991,8 +2010,26 @@ function drawTitle() {
   text('ESPACE OU START', W / 2, H - 9, { size: 6, color: PAL.grey2, align: 'center' })
   text('RECORD ' + (localStorage.getItem('carton.record') || 0), W - 8, H - 9, { size: 6, color: PAL.grey2, align: 'right' })
 }
+function drawGameOver(T) {
+  // Scène figée qui s'assombrit, GAME OVER qui tombe du ciel et rebondit, puis petit tremblement.
+  g.fillStyle = `rgba(24,20,37,${Math.min(0.75, T * 1.5)})`; g.fillRect(0, 0, W, H)
+  const k = Math.min(1, T / 0.35)
+  const drop = (1 - Math.pow(1 - k, 3)) // chute
+  const bounce = T > 0.35 && T < 0.6 ? Math.sin((T - 0.35) / 0.25 * Math.PI) * 6 : 0
+  const y = -40 + (H / 2 - 10 + 40) * drop - bounce
+  const jx = T > 0.35 && T < 0.55 ? Math.round((Math.random() - 0.5) * 6) : 0
+  g.save(); g.translate(W / 2 + jx, y); g.scale(1 + (1 - k) * 0.8, 1 + (1 - k) * 0.8)
+  g.font = 'bold 40px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'
+  g.fillStyle = PAL.ink; for (const [ox, oy] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-3, -3], [3, 3], [3, -3], [-3, 3], [0, 4], [4, 0], [0, 5]]) g.fillText('GAME OVER', ox, oy)
+  g.fillStyle = PAL.redD; g.fillText('GAME OVER', 0, 3)
+  g.fillStyle = PAL.red; g.fillText('GAME OVER', 0, 0)
+  g.restore()
+  if (T > 0.9) { g.globalAlpha = Math.min(1, (T - 0.9) / 0.3); outlined('3 BUTS ENCAISSES', W / 2, H / 2 + 22, { size: 11, color: PAL.grey1 }); g.globalAlpha = 1 }
+}
 function drawEnd() {
-  const T = S.endT || 0
+  if ((S.endT || 0) < GAMEOVER) { drawGameOver(S.endT || 0); return }
+  if (!S.goShown) { S.goShown = true; if (endVideo) { try { endVideo.currentTime = 0 } catch (e) { /* rien */ } } }
+  const T = (S.endT || 0) - GAMEOVER
   // Fond : la vidéo si elle est prête, sinon la scène figée assombrie.
   const vid = endVideo && endVideo.readyState >= 2
   if (vid) { const vw = endVideo.videoWidth, vh = endVideo.videoHeight, k = Math.max(W / vw, H / vh); g.drawImage(endVideo, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k) }
@@ -2063,6 +2100,6 @@ Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), l
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, endMatch, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
