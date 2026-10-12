@@ -262,6 +262,7 @@ const keys = {}
 const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null }
 let attackPressed = false
 let restartPressed = false
+const VARMOTION = 2.3 // durée du motion design VAR ACTIVÉE
 const GAMEOVER_MIN = 3 // le carton GAME OVER ne peut pas être passé avant 3 s
 const GAMEOVER = 5 // puis il laisse place au récap, de lui-même ou sur un appui
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
@@ -1097,13 +1098,13 @@ function spawnAbsurd(kind, near) {
 function startVar(victim) {
   if (!victim || !french.includes(victim)) { return }
   S.prevPhase = S.phase
-  S.phase = 'varintro'; S.varIntroT = 1.5 // le panneau VAR ACTIVÉE d'abord, le mini-jeu ensuite
+  S.phase = 'varintro'; S.varIntroT = VARMOTION // le motion VAR ACTIVÉE d'abord, jeu figé, puis le mini-jeu
   S.var = { t: 0, victim, cursor: 0, dir: 1, zone: rr(0.3, 0.6), zoneW: 0.16, done: null, doneT: 0, speed: 1.1 }
   S.freeze = 0; attackPressed = false
   S.banners = []
-  callout('VAR ACTIVÉE', PAL.cyan, 1.5)
+  if (!IMG['var/text']) callout('VAR ACTIVÉE', PAL.cyan, 1.5)
   beep('whistle')
-  setTimeout(() => { if ((S.phase === 'var' || S.phase === 'varintro') && !audio.muted) sample('var-voice', { gain: 1.1, vary: 0 }) }, 1500) // « Je l'ai pas touché ! » quand le moniteur s'allume
+  setTimeout(() => { if ((S.phase === 'var' || S.phase === 'varintro') && !audio.muted) sample('var-voice', { gain: 1.1, vary: 0 }) }, VARMOTION * 1000) // « Je l'ai pas touché ! » quand le moniteur s'allume
 }
 function updateVar(dt) {
   const v = S.var
@@ -1819,6 +1820,7 @@ function render() {
   }
   g.restore()
   drawHUD()
+  if (S.phase === 'varintro' && IMG['var/text']) drawVarMotion(VARMOTION - S.varIntroT)
   if (S.callout) drawCallout(S.callout)
   if (S.phase === 'end') drawEnd()
 }
@@ -1834,6 +1836,38 @@ function flag(x, y, cols) { cols.forEach((c, i) => { g.fillStyle = c; g.fillRect
 function segments(x, y, w, h, n, frac, on, off = PAL.slateD) {
   const sw = (w - (n - 1)) / n
   for (let i = 0; i < n; i++) { g.fillStyle = i < Math.round(frac * n) ? on : off; g.fillRect(Math.round(x + i * (sw + 1)), y, Math.floor(sw), h) }
+}
+/** Motion design VAR ACTIVÉE : les calques fournis (panneau REC à gauche, panneau sifflet à droite, titre) claquent sur le jeu figé. */
+function drawVarMotion(t) {
+  const L = IMG['var/left'], R = IMG['var/right'], T = IMG['var/text']
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3)
+  const easeIn = (x) => Math.pow(clamp(x, 0, 1), 2)
+  const out = t > VARMOTION - 0.3 ? easeIn((t - (VARMOTION - 0.3)) / 0.3) : 0
+  // Voile qui s'assombrit, puis lignes de vitesse horizontales.
+  g.fillStyle = `rgba(10,20,40,${0.55 * Math.min(1, t / 0.2) * (1 - out)})`; g.fillRect(0, 0, W, H)
+  if (t > 0.1 && out < 1) {
+    g.globalAlpha = 0.5 * (1 - out)
+    g.fillStyle = PAL.cyan
+    for (let i = 0; i < 18; i++) { const y = (i * 37 + 11) % H; const len = 40 + (i * 53) % 120; const v = 500 + (i * 97) % 500; const left = i % 2 === 0; const x = left ? W / 2 - ((i * 71 + t * v) % (W / 2 + len)) : W / 2 + ((i * 71 + t * v) % (W / 2 + len)) - len; g.fillRect(Math.round(x), y, len, i % 3 === 0 ? 2 : 1) }
+    g.globalAlpha = 1
+  }
+  // Les panneaux : glissent depuis les côtés en 0,35 s, avec une légère surcourse.
+  const kin = easeOut((t - 0.05) / 0.35)
+  const over = t > 0.4 && t < 0.6 ? Math.sin((t - 0.4) / 0.2 * Math.PI) * 6 : 0
+  const dx = Math.round((1 - kin) * (W / 2 + 40)) - Math.round(over) + Math.round(out * (W / 2 + 40))
+  g.globalAlpha = 1 - out
+  if (L) g.drawImage(L, 0, 0, 1280, 720, -dx, 0, W, H)
+  if (R) g.drawImage(R, 0, 0, 1280, 720, dx, 0, W, H)
+  // Éclair à l'impact.
+  if (t > 0.38 && t < 0.52) { g.globalAlpha = 0.75 * (1 - (t - 0.38) / 0.14); g.fillStyle = PAL.white; g.fillRect(0, 0, W, H); g.globalAlpha = 1 - out }
+  // Le titre : surgit à l'impact, très gros puis se tasse, tremble, puis respire.
+  if (t > 0.4 && T) {
+    const tt = clamp((t - 0.4) / 0.25, 0, 1)
+    const sc = (2.4 - 1.4 * easeOut(tt)) * (1 + Math.sin(t * 6) * 0.01) * (1 + out * 0.4)
+    const jx = tt < 1 ? Math.round((Math.random() - 0.5) * 8) : 0, jy = tt < 1 ? Math.round((Math.random() - 0.5) * 5) : 0
+    g.save(); g.globalAlpha = Math.min(1, tt * 3) * (1 - out); g.translate(W / 2 + jx, H / 2 + jy); g.scale(sc, sc); g.drawImage(T, 0, 0, 1280, 720, -W / 2, -H / 2, W, H); g.restore()
+  }
+  g.globalAlpha = 1
 }
 function drawCallout(c) {
   const IN = 0.28, OUT = 0.3
@@ -2168,7 +2202,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
