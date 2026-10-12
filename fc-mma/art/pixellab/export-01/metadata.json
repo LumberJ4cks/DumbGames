@@ -1,0 +1,36 @@
+{
+  "group_id": "322b3907-937c-4c53-818d-25055c4371bc",
+  "states": [
+    {
+      "character": {
+        "id": "812e17a0-9e59-45c3-a644-e3260a051684",
+        "name": "Idle",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T17:54:52.727774+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-10T18:04:01.802445"
+}

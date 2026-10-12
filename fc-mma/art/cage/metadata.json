@@ -1,0 +1,69 @@
+{
+  "group_id": "6600a0d1-a984-45bf-b549-11715ecad97f",
+  "objects": [
+    {
+      "id": "2d5fb1be-72bc-4a48-a868-90f5f21f928a",
+      "name": "base",
+      "prompt": "Pixel art football goal viewed from high above, bird's eye view like a top-down retro soccer game (Sensible Soccer, Kunio-kun Nekketsu Soccer). The goal stands on the LEFT goal line of the pitch: the goal line runs vertically on the screen. The goal is a TALL NARROW shape, much taller than wide: two white posts, one at the top and one at the bottom, connected by a vertical white crossbar drawn slightly to the left of the posts because we see it from above. The goal opening faces RIGHT toward the pitch. The white net is a flat box extending to the LEFT of the goal line, seen from above as a light grey 1px mesh with a slightly darker back edge. No grass, no shadow, nothing drawn to the right of the posts. Clean 1px dark outline, flat colors, one shadow tone, no gradients, no dithering, transparent background, readable at 1x.",
+      "size": {
+        "width": 152,
+        "height": 152
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Pixel_art_football_goal_viewed.png"
+      },
+      "animations": {
+        "slight_mouvement_of_the_net_on_the_left": {
+          "directions": {
+            "unknown": {
+              "frames": [
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_000.png",
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_001.png",
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_002.png",
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_003.png",
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_004.png",
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_005.png",
+                "animations/slight_mouvement_of_the_net_on_the_left/unknown/frame_006.png"
+              ],
+              "frame_count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "91d52880-64d1-4129-84ff-265f4a2cbb44",
+      "name": "Same football goal,",
+      "prompt": "Pixel art football goal viewed from high above, bird's eye view like a top-down retro soccer game (Sensible Soccer, Kunio-kun Nekketsu Soccer). The goal stands on the LEFT goal line of the pitch: the goal line runs vertically on the screen. The goal is a TALL NARROW shape, much taller than wide: two white posts, one at the top and one at the bottom, connected by a vertical white crossbar drawn slightly to the left of the posts because we see it from above. The goal opening faces RIGHT toward the pitch. The white net is a flat box extending to the LEFT of the goal line, seen from above as a light grey 1px mesh with a slightly darker back edge. No grass, no shadow, nothing drawn to the right of the posts. Clean 1px dark outline, flat colors, one shadow tone, no gradients, no dithering, transparent background, readable at 1x.",
+      "size": {
+        "width": 152,
+        "height": 152
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Same_football_goal.png"
+      },
+      "animations": {}
+    },
+    {
+      "id": "17ec418e-c24c-41ed-b4db-9dff3e3064dd",
+      "name": "Same football goal,",
+      "prompt": "Pixel art football goal viewed from high above, bird's eye view like a top-down retro soccer game (Sensible Soccer, Kunio-kun Nekketsu Soccer). The goal stands on the LEFT goal line of the pitch: the goal line runs vertically on the screen. The goal is a TALL NARROW shape, much taller than wide: two white posts, one at the top and one at the bottom, connected by a vertical white crossbar drawn slightly to the left of the posts because we see it from above. The goal opening faces RIGHT toward the pitch. The white net is a flat box extending to the LEFT of the goal line, seen from above as a light grey 1px mesh with a slightly darker back edge. No grass, no shadow, nothing drawn to the right of the posts. Clean 1px dark outline, flat colors, one shadow tone, no gradients, no dithering, transparent background, readable at 1x.",
+      "size": {
+        "width": 152,
+        "height": 152
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Same_football_goal_2.png"
+      },
+      "animations": {}
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-10-12T02:36:38.420993"
+}

@@ -1,0 +1,36 @@
+{
+  "group_id": "322b3907-937c-4c53-818d-25055c4371bc",
+  "states": [
+    {
+      "character": {
+        "id": "bd7862bb-1a5a-4f9a-955d-b7f903e5e626",
+        "name": "Slide tackle pose, f",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T18:24:03.644033+00:00"
+      },
+      "folder": "Slide_tackle_pose_f",
+      "frames": {
+        "rotations": {
+          "south": "Slide_tackle_pose_f/rotations/south.png",
+          "south-east": "Slide_tackle_pose_f/rotations/south-east.png",
+          "east": "Slide_tackle_pose_f/rotations/east.png",
+          "north-east": "Slide_tackle_pose_f/rotations/north-east.png",
+          "north": "Slide_tackle_pose_f/rotations/north.png",
+          "north-west": "Slide_tackle_pose_f/rotations/north-west.png",
+          "west": "Slide_tackle_pose_f/rotations/west.png",
+          "south-west": "Slide_tackle_pose_f/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-10T18:26:44.847695"
+}

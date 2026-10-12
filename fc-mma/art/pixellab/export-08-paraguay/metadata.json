@@ -1,0 +1,447 @@
+{
+  "group_id": "a9ad5176-a6bf-4929-a98a-1f67b3f5c8cd",
+  "states": [
+    {
+      "character": {
+        "id": "0e58c619-6aa0-4cce-b32d-76041457807a",
+        "name": "Idle",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T21:16:00.823879+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "Throw_Object": {
+            "east": [
+              "Idle/animations/Throw_Object/east/frame_000.png",
+              "Idle/animations/Throw_Object/east/frame_001.png",
+              "Idle/animations/Throw_Object/east/frame_002.png",
+              "Idle/animations/Throw_Object/east/frame_003.png",
+              "Idle/animations/Throw_Object/east/frame_004.png",
+              "Idle/animations/Throw_Object/east/frame_005.png",
+              "Idle/animations/Throw_Object/east/frame_006.png"
+            ],
+            "south-west": [
+              "Idle/animations/Throw_Object/south-west/frame_000.png",
+              "Idle/animations/Throw_Object/south-west/frame_001.png",
+              "Idle/animations/Throw_Object/south-west/frame_002.png",
+              "Idle/animations/Throw_Object/south-west/frame_003.png",
+              "Idle/animations/Throw_Object/south-west/frame_004.png",
+              "Idle/animations/Throw_Object/south-west/frame_005.png",
+              "Idle/animations/Throw_Object/south-west/frame_006.png"
+            ],
+            "north": [
+              "Idle/animations/Throw_Object/north/frame_000.png",
+              "Idle/animations/Throw_Object/north/frame_001.png",
+              "Idle/animations/Throw_Object/north/frame_002.png",
+              "Idle/animations/Throw_Object/north/frame_003.png",
+              "Idle/animations/Throw_Object/north/frame_004.png",
+              "Idle/animations/Throw_Object/north/frame_005.png",
+              "Idle/animations/Throw_Object/north/frame_006.png"
+            ],
+            "south": [
+              "Idle/animations/Throw_Object/south/frame_000.png",
+              "Idle/animations/Throw_Object/south/frame_001.png",
+              "Idle/animations/Throw_Object/south/frame_002.png",
+              "Idle/animations/Throw_Object/south/frame_003.png",
+              "Idle/animations/Throw_Object/south/frame_004.png",
+              "Idle/animations/Throw_Object/south/frame_005.png",
+              "Idle/animations/Throw_Object/south/frame_006.png"
+            ],
+            "south-east": [
+              "Idle/animations/Throw_Object/south-east/frame_000.png",
+              "Idle/animations/Throw_Object/south-east/frame_001.png",
+              "Idle/animations/Throw_Object/south-east/frame_002.png",
+              "Idle/animations/Throw_Object/south-east/frame_003.png",
+              "Idle/animations/Throw_Object/south-east/frame_004.png",
+              "Idle/animations/Throw_Object/south-east/frame_005.png",
+              "Idle/animations/Throw_Object/south-east/frame_006.png"
+            ],
+            "west": [
+              "Idle/animations/Throw_Object/west/frame_000.png",
+              "Idle/animations/Throw_Object/west/frame_001.png",
+              "Idle/animations/Throw_Object/west/frame_002.png",
+              "Idle/animations/Throw_Object/west/frame_003.png",
+              "Idle/animations/Throw_Object/west/frame_004.png",
+              "Idle/animations/Throw_Object/west/frame_005.png",
+              "Idle/animations/Throw_Object/west/frame_006.png"
+            ],
+            "north-west": [
+              "Idle/animations/Throw_Object/north-west/frame_000.png",
+              "Idle/animations/Throw_Object/north-west/frame_001.png",
+              "Idle/animations/Throw_Object/north-west/frame_002.png",
+              "Idle/animations/Throw_Object/north-west/frame_003.png",
+              "Idle/animations/Throw_Object/north-west/frame_004.png",
+              "Idle/animations/Throw_Object/north-west/frame_005.png",
+              "Idle/animations/Throw_Object/north-west/frame_006.png"
+            ],
+            "north-east": [
+              "Idle/animations/Throw_Object/north-east/frame_000.png",
+              "Idle/animations/Throw_Object/north-east/frame_001.png",
+              "Idle/animations/Throw_Object/north-east/frame_002.png",
+              "Idle/animations/Throw_Object/north-east/frame_003.png",
+              "Idle/animations/Throw_Object/north-east/frame_004.png",
+              "Idle/animations/Throw_Object/north-east/frame_005.png",
+              "Idle/animations/Throw_Object/north-east/frame_006.png"
+            ]
+          },
+          "Full_Sprint": {
+            "south": [
+              "Idle/animations/Full_Sprint/south/frame_000.png",
+              "Idle/animations/Full_Sprint/south/frame_001.png",
+              "Idle/animations/Full_Sprint/south/frame_002.png",
+              "Idle/animations/Full_Sprint/south/frame_003.png",
+              "Idle/animations/Full_Sprint/south/frame_004.png",
+              "Idle/animations/Full_Sprint/south/frame_005.png",
+              "Idle/animations/Full_Sprint/south/frame_006.png",
+              "Idle/animations/Full_Sprint/south/frame_007.png"
+            ],
+            "north-east": [
+              "Idle/animations/Full_Sprint/north-east/frame_000.png",
+              "Idle/animations/Full_Sprint/north-east/frame_001.png",
+              "Idle/animations/Full_Sprint/north-east/frame_002.png",
+              "Idle/animations/Full_Sprint/north-east/frame_003.png",
+              "Idle/animations/Full_Sprint/north-east/frame_004.png",
+              "Idle/animations/Full_Sprint/north-east/frame_005.png",
+              "Idle/animations/Full_Sprint/north-east/frame_006.png",
+              "Idle/animations/Full_Sprint/north-east/frame_007.png"
+            ],
+            "south-east": [
+              "Idle/animations/Full_Sprint/south-east/frame_000.png",
+              "Idle/animations/Full_Sprint/south-east/frame_001.png",
+              "Idle/animations/Full_Sprint/south-east/frame_002.png",
+              "Idle/animations/Full_Sprint/south-east/frame_003.png",
+              "Idle/animations/Full_Sprint/south-east/frame_004.png",
+              "Idle/animations/Full_Sprint/south-east/frame_005.png",
+              "Idle/animations/Full_Sprint/south-east/frame_006.png",
+              "Idle/animations/Full_Sprint/south-east/frame_007.png"
+            ],
+            "west": [
+              "Idle/animations/Full_Sprint/west/frame_000.png",
+              "Idle/animations/Full_Sprint/west/frame_001.png",
+              "Idle/animations/Full_Sprint/west/frame_002.png",
+              "Idle/animations/Full_Sprint/west/frame_003.png",
+              "Idle/animations/Full_Sprint/west/frame_004.png",
+              "Idle/animations/Full_Sprint/west/frame_005.png",
+              "Idle/animations/Full_Sprint/west/frame_006.png",
+              "Idle/animations/Full_Sprint/west/frame_007.png"
+            ],
+            "east": [
+              "Idle/animations/Full_Sprint/east/frame_000.png",
+              "Idle/animations/Full_Sprint/east/frame_001.png",
+              "Idle/animations/Full_Sprint/east/frame_002.png",
+              "Idle/animations/Full_Sprint/east/frame_003.png",
+              "Idle/animations/Full_Sprint/east/frame_004.png",
+              "Idle/animations/Full_Sprint/east/frame_005.png",
+              "Idle/animations/Full_Sprint/east/frame_006.png",
+              "Idle/animations/Full_Sprint/east/frame_007.png"
+            ],
+            "south-west": [
+              "Idle/animations/Full_Sprint/south-west/frame_000.png",
+              "Idle/animations/Full_Sprint/south-west/frame_001.png",
+              "Idle/animations/Full_Sprint/south-west/frame_002.png",
+              "Idle/animations/Full_Sprint/south-west/frame_003.png",
+              "Idle/animations/Full_Sprint/south-west/frame_004.png",
+              "Idle/animations/Full_Sprint/south-west/frame_005.png",
+              "Idle/animations/Full_Sprint/south-west/frame_006.png",
+              "Idle/animations/Full_Sprint/south-west/frame_007.png"
+            ],
+            "north-west": [
+              "Idle/animations/Full_Sprint/north-west/frame_000.png",
+              "Idle/animations/Full_Sprint/north-west/frame_001.png",
+              "Idle/animations/Full_Sprint/north-west/frame_002.png",
+              "Idle/animations/Full_Sprint/north-west/frame_003.png",
+              "Idle/animations/Full_Sprint/north-west/frame_004.png",
+              "Idle/animations/Full_Sprint/north-west/frame_005.png",
+              "Idle/animations/Full_Sprint/north-west/frame_006.png",
+              "Idle/animations/Full_Sprint/north-west/frame_007.png"
+            ],
+            "north": [
+              "Idle/animations/Full_Sprint/north/frame_000.png",
+              "Idle/animations/Full_Sprint/north/frame_001.png",
+              "Idle/animations/Full_Sprint/north/frame_002.png",
+              "Idle/animations/Full_Sprint/north/frame_003.png",
+              "Idle/animations/Full_Sprint/north/frame_004.png",
+              "Idle/animations/Full_Sprint/north/frame_005.png",
+              "Idle/animations/Full_Sprint/north/frame_006.png",
+              "Idle/animations/Full_Sprint/north/frame_007.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "character": {
+        "id": "68155cac-7255-47f6-82c5-29cde53dee36",
+        "name": "fighting pose",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T21:26:38.866576+00:00"
+      },
+      "folder": "fighting_pose",
+      "frames": {
+        "rotations": {
+          "south": "fighting_pose/rotations/south.png",
+          "south-east": "fighting_pose/rotations/south-east.png",
+          "east": "fighting_pose/rotations/east.png",
+          "north-east": "fighting_pose/rotations/north-east.png",
+          "north": "fighting_pose/rotations/north.png",
+          "north-west": "fighting_pose/rotations/north-west.png",
+          "west": "fighting_pose/rotations/west.png",
+          "south-west": "fighting_pose/rotations/south-west.png"
+        },
+        "animations": {
+          "A_giant_halo_beam_is_behind_the_character_while_he": {
+            "south": [
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_000.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_001.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_002.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_003.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_004.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_005.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_006.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_007.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_008.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_009.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_010.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_011.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_012.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_013.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_014.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_015.png",
+              "fighting_pose/animations/A_giant_halo_beam_is_behind_the_character_while_he/south/frame_016.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "character": {
+        "id": "9ef00bfc-0775-4a0f-b66f-127a055975b7",
+        "name": "Chibi cartoon soccer",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T21:40:54.031027+00:00"
+      },
+      "folder": "Chibi_cartoon_soccer",
+      "frames": {
+        "rotations": {
+          "south": "Chibi_cartoon_soccer/rotations/south.png",
+          "south-east": "Chibi_cartoon_soccer/rotations/south-east.png",
+          "east": "Chibi_cartoon_soccer/rotations/east.png",
+          "north-east": "Chibi_cartoon_soccer/rotations/north-east.png",
+          "north": "Chibi_cartoon_soccer/rotations/north.png",
+          "north-west": "Chibi_cartoon_soccer/rotations/north-west.png",
+          "west": "Chibi_cartoon_soccer/rotations/west.png",
+          "south-west": "Chibi_cartoon_soccer/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "b6428dc7-ee47-4353-842a-d5b8d7960144",
+        "name": "straight punch",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T21:49:26.518958+00:00"
+      },
+      "folder": "straight_punch",
+      "frames": {
+        "rotations": {
+          "south": "straight_punch/rotations/south.png",
+          "south-east": "straight_punch/rotations/south-east.png",
+          "east": "straight_punch/rotations/east.png",
+          "north-east": "straight_punch/rotations/north-east.png",
+          "north": "straight_punch/rotations/north.png",
+          "north-west": "straight_punch/rotations/north-west.png",
+          "west": "straight_punch/rotations/west.png",
+          "south-west": "straight_punch/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "e60db195-ef47-4bbd-920d-0ba2ab16d502",
+        "name": "Character sliding on",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T23:14:04.399645+00:00"
+      },
+      "folder": "Character_sliding_on",
+      "frames": {
+        "rotations": {
+          "south": "Character_sliding_on/rotations/south.png",
+          "south-east": "Character_sliding_on/rotations/south-east.png",
+          "east": "Character_sliding_on/rotations/east.png",
+          "north-east": "Character_sliding_on/rotations/north-east.png",
+          "north": "Character_sliding_on/rotations/north.png",
+          "north-west": "Character_sliding_on/rotations/north-west.png",
+          "west": "Character_sliding_on/rotations/west.png",
+          "south-west": "Character_sliding_on/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "3ba33461-8ea4-474d-a870-f0b1e937a1a2",
+        "name": "Character doing a fl",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T23:14:29.791175+00:00"
+      },
+      "folder": "Character_doing_a_fl",
+      "frames": {
+        "rotations": {
+          "south": "Character_doing_a_fl/rotations/south.png",
+          "south-east": "Character_doing_a_fl/rotations/south-east.png",
+          "east": "Character_doing_a_fl/rotations/east.png",
+          "north-east": "Character_doing_a_fl/rotations/north-east.png",
+          "north": "Character_doing_a_fl/rotations/north.png",
+          "north-west": "Character_doing_a_fl/rotations/north-west.png",
+          "west": "Character_doing_a_fl/rotations/west.png",
+          "south-west": "Character_doing_a_fl/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "ea103f63-264f-4344-bc3d-5d3bd33dc03e",
+        "name": "Character doing a po",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T23:14:49.872139+00:00"
+      },
+      "folder": "Character_doing_a_po",
+      "frames": {
+        "rotations": {
+          "south": "Character_doing_a_po/rotations/south.png",
+          "south-east": "Character_doing_a_po/rotations/south-east.png",
+          "east": "Character_doing_a_po/rotations/east.png",
+          "north-east": "Character_doing_a_po/rotations/north-east.png",
+          "north": "Character_doing_a_po/rotations/north.png",
+          "north-west": "Character_doing_a_po/rotations/north-west.png",
+          "west": "Character_doing_a_po/rotations/west.png",
+          "south-west": "Character_doing_a_po/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "dbae63f7-e1a2-4af3-a894-890d3023a144",
+        "name": "Character doing a vi",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T23:15:10.401697+00:00"
+      },
+      "folder": "Character_doing_a_vi",
+      "frames": {
+        "rotations": {
+          "south": "Character_doing_a_vi/rotations/south.png",
+          "south-east": "Character_doing_a_vi/rotations/south-east.png",
+          "east": "Character_doing_a_vi/rotations/east.png",
+          "north-east": "Character_doing_a_vi/rotations/north-east.png",
+          "north": "Character_doing_a_vi/rotations/north.png",
+          "north-west": "Character_doing_a_vi/rotations/north-west.png",
+          "west": "Character_doing_a_vi/rotations/west.png",
+          "south-west": "Character_doing_a_vi/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "10dbb189-e1f4-4f65-8493-e0fbf49bcf22",
+        "name": "Character staggering",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. Paraguay national team kit: red and white vertical striped jersey, blue shorts, white socks with red accents, black boots. Light to medium skin, dark messy hair, clean shaven. Aggressive brawler attitude, fists up like a street fighter, leaning forward, intense expression, ready to punch, tackle, or charge at an opponent.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T23:15:33.331360+00:00"
+      },
+      "folder": "Character_staggering",
+      "frames": {
+        "rotations": {
+          "south": "Character_staggering/rotations/south.png",
+          "south-east": "Character_staggering/rotations/south-east.png",
+          "east": "Character_staggering/rotations/east.png",
+          "north-east": "Character_staggering/rotations/north-east.png",
+          "north": "Character_staggering/rotations/north.png",
+          "north-west": "Character_staggering/rotations/north-west.png",
+          "west": "Character_staggering/rotations/west.png",
+          "south-west": "Character_staggering/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-11T23:22:37.625436"
+}

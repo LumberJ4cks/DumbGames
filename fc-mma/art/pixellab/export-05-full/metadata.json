@@ -1,0 +1,802 @@
+{
+  "group_id": "322b3907-937c-4c53-818d-25055c4371bc",
+  "states": [
+    {
+      "character": {
+        "id": "812e17a0-9e59-45c3-a644-e3260a051684",
+        "name": "Idle",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T17:54:52.727774+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "Running": {
+            "north": [
+              "Idle/animations/Running/north/frame_000.png",
+              "Idle/animations/Running/north/frame_001.png",
+              "Idle/animations/Running/north/frame_002.png",
+              "Idle/animations/Running/north/frame_003.png"
+            ],
+            "north-west": [
+              "Idle/animations/Running/north-west/frame_000.png",
+              "Idle/animations/Running/north-west/frame_001.png",
+              "Idle/animations/Running/north-west/frame_002.png",
+              "Idle/animations/Running/north-west/frame_003.png"
+            ],
+            "south-east": [
+              "Idle/animations/Running/south-east/frame_000.png",
+              "Idle/animations/Running/south-east/frame_001.png",
+              "Idle/animations/Running/south-east/frame_002.png",
+              "Idle/animations/Running/south-east/frame_003.png"
+            ],
+            "south-west": [
+              "Idle/animations/Running/south-west/frame_000.png",
+              "Idle/animations/Running/south-west/frame_001.png",
+              "Idle/animations/Running/south-west/frame_002.png",
+              "Idle/animations/Running/south-west/frame_003.png"
+            ],
+            "east": [
+              "Idle/animations/Running/east/frame_000.png",
+              "Idle/animations/Running/east/frame_001.png",
+              "Idle/animations/Running/east/frame_002.png",
+              "Idle/animations/Running/east/frame_003.png"
+            ],
+            "south": [
+              "Idle/animations/Running/south/frame_000.png",
+              "Idle/animations/Running/south/frame_001.png",
+              "Idle/animations/Running/south/frame_002.png",
+              "Idle/animations/Running/south/frame_003.png"
+            ],
+            "west": [
+              "Idle/animations/Running/west/frame_000.png",
+              "Idle/animations/Running/west/frame_001.png",
+              "Idle/animations/Running/west/frame_002.png",
+              "Idle/animations/Running/west/frame_003.png"
+            ],
+            "north-east": [
+              "Idle/animations/Running/north-east/frame_000.png",
+              "Idle/animations/Running/north-east/frame_001.png",
+              "Idle/animations/Running/north-east/frame_002.png",
+              "Idle/animations/Running/north-east/frame_003.png"
+            ]
+          },
+          "Breathing_Idle": {
+            "east": [
+              "Idle/animations/Breathing_Idle/east/frame_000.png",
+              "Idle/animations/Breathing_Idle/east/frame_001.png",
+              "Idle/animations/Breathing_Idle/east/frame_002.png",
+              "Idle/animations/Breathing_Idle/east/frame_003.png"
+            ],
+            "north-east": [
+              "Idle/animations/Breathing_Idle/north-east/frame_000.png",
+              "Idle/animations/Breathing_Idle/north-east/frame_001.png",
+              "Idle/animations/Breathing_Idle/north-east/frame_002.png",
+              "Idle/animations/Breathing_Idle/north-east/frame_003.png"
+            ],
+            "south-west": [
+              "Idle/animations/Breathing_Idle/south-west/frame_000.png",
+              "Idle/animations/Breathing_Idle/south-west/frame_001.png",
+              "Idle/animations/Breathing_Idle/south-west/frame_002.png",
+              "Idle/animations/Breathing_Idle/south-west/frame_003.png"
+            ],
+            "north-west": [
+              "Idle/animations/Breathing_Idle/north-west/frame_000.png",
+              "Idle/animations/Breathing_Idle/north-west/frame_001.png",
+              "Idle/animations/Breathing_Idle/north-west/frame_002.png",
+              "Idle/animations/Breathing_Idle/north-west/frame_003.png"
+            ],
+            "south": [
+              "Idle/animations/Breathing_Idle/south/frame_000.png",
+              "Idle/animations/Breathing_Idle/south/frame_001.png",
+              "Idle/animations/Breathing_Idle/south/frame_002.png",
+              "Idle/animations/Breathing_Idle/south/frame_003.png"
+            ],
+            "south-east": [
+              "Idle/animations/Breathing_Idle/south-east/frame_000.png",
+              "Idle/animations/Breathing_Idle/south-east/frame_001.png",
+              "Idle/animations/Breathing_Idle/south-east/frame_002.png",
+              "Idle/animations/Breathing_Idle/south-east/frame_003.png"
+            ],
+            "north": [
+              "Idle/animations/Breathing_Idle/north/frame_000.png",
+              "Idle/animations/Breathing_Idle/north/frame_001.png",
+              "Idle/animations/Breathing_Idle/north/frame_002.png",
+              "Idle/animations/Breathing_Idle/north/frame_003.png"
+            ],
+            "west": [
+              "Idle/animations/Breathing_Idle/west/frame_000.png",
+              "Idle/animations/Breathing_Idle/west/frame_001.png",
+              "Idle/animations/Breathing_Idle/west/frame_002.png",
+              "Idle/animations/Breathing_Idle/west/frame_003.png"
+            ]
+          },
+          "Fight_Stance_Idle": {
+            "south": [
+              "Idle/animations/Fight_Stance_Idle/south/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/south/frame_007.png"
+            ],
+            "north-west": [
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/north-west/frame_007.png"
+            ],
+            "south-west": [
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/south-west/frame_007.png"
+            ],
+            "east": [
+              "Idle/animations/Fight_Stance_Idle/east/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/east/frame_007.png"
+            ],
+            "south-east": [
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/south-east/frame_007.png"
+            ],
+            "north": [
+              "Idle/animations/Fight_Stance_Idle/north/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/north/frame_007.png"
+            ],
+            "north-east": [
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/north-east/frame_007.png"
+            ],
+            "west": [
+              "Idle/animations/Fight_Stance_Idle/west/frame_000.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_001.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_002.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_003.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_004.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_005.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_006.png",
+              "Idle/animations/Fight_Stance_Idle/west/frame_007.png"
+            ]
+          },
+          "Throw_Object": {
+            "east": [
+              "Idle/animations/Throw_Object/east/frame_000.png",
+              "Idle/animations/Throw_Object/east/frame_001.png",
+              "Idle/animations/Throw_Object/east/frame_002.png",
+              "Idle/animations/Throw_Object/east/frame_003.png",
+              "Idle/animations/Throw_Object/east/frame_004.png",
+              "Idle/animations/Throw_Object/east/frame_005.png",
+              "Idle/animations/Throw_Object/east/frame_006.png"
+            ],
+            "north": [
+              "Idle/animations/Throw_Object/north/frame_000.png",
+              "Idle/animations/Throw_Object/north/frame_001.png",
+              "Idle/animations/Throw_Object/north/frame_002.png",
+              "Idle/animations/Throw_Object/north/frame_003.png",
+              "Idle/animations/Throw_Object/north/frame_004.png",
+              "Idle/animations/Throw_Object/north/frame_005.png",
+              "Idle/animations/Throw_Object/north/frame_006.png"
+            ],
+            "south-east": [
+              "Idle/animations/Throw_Object/south-east/frame_000.png",
+              "Idle/animations/Throw_Object/south-east/frame_001.png",
+              "Idle/animations/Throw_Object/south-east/frame_002.png",
+              "Idle/animations/Throw_Object/south-east/frame_003.png",
+              "Idle/animations/Throw_Object/south-east/frame_004.png",
+              "Idle/animations/Throw_Object/south-east/frame_005.png",
+              "Idle/animations/Throw_Object/south-east/frame_006.png"
+            ],
+            "south": [
+              "Idle/animations/Throw_Object/south/frame_000.png",
+              "Idle/animations/Throw_Object/south/frame_001.png",
+              "Idle/animations/Throw_Object/south/frame_002.png",
+              "Idle/animations/Throw_Object/south/frame_003.png",
+              "Idle/animations/Throw_Object/south/frame_004.png",
+              "Idle/animations/Throw_Object/south/frame_005.png",
+              "Idle/animations/Throw_Object/south/frame_006.png"
+            ],
+            "north-west": [
+              "Idle/animations/Throw_Object/north-west/frame_000.png",
+              "Idle/animations/Throw_Object/north-west/frame_001.png",
+              "Idle/animations/Throw_Object/north-west/frame_002.png",
+              "Idle/animations/Throw_Object/north-west/frame_003.png",
+              "Idle/animations/Throw_Object/north-west/frame_004.png",
+              "Idle/animations/Throw_Object/north-west/frame_005.png",
+              "Idle/animations/Throw_Object/north-west/frame_006.png"
+            ],
+            "south-west": [
+              "Idle/animations/Throw_Object/south-west/frame_000.png",
+              "Idle/animations/Throw_Object/south-west/frame_001.png",
+              "Idle/animations/Throw_Object/south-west/frame_002.png",
+              "Idle/animations/Throw_Object/south-west/frame_003.png",
+              "Idle/animations/Throw_Object/south-west/frame_004.png",
+              "Idle/animations/Throw_Object/south-west/frame_005.png",
+              "Idle/animations/Throw_Object/south-west/frame_006.png"
+            ],
+            "west": [
+              "Idle/animations/Throw_Object/west/frame_000.png",
+              "Idle/animations/Throw_Object/west/frame_001.png",
+              "Idle/animations/Throw_Object/west/frame_002.png",
+              "Idle/animations/Throw_Object/west/frame_003.png",
+              "Idle/animations/Throw_Object/west/frame_004.png",
+              "Idle/animations/Throw_Object/west/frame_005.png",
+              "Idle/animations/Throw_Object/west/frame_006.png"
+            ],
+            "north-east": [
+              "Idle/animations/Throw_Object/north-east/frame_000.png",
+              "Idle/animations/Throw_Object/north-east/frame_001.png",
+              "Idle/animations/Throw_Object/north-east/frame_002.png",
+              "Idle/animations/Throw_Object/north-east/frame_003.png",
+              "Idle/animations/Throw_Object/north-east/frame_004.png",
+              "Idle/animations/Throw_Object/north-east/frame_005.png",
+              "Idle/animations/Throw_Object/north-east/frame_006.png"
+            ]
+          },
+          "Taking_Punch": {
+            "north": [
+              "Idle/animations/Taking_Punch/north/frame_000.png",
+              "Idle/animations/Taking_Punch/north/frame_001.png",
+              "Idle/animations/Taking_Punch/north/frame_002.png",
+              "Idle/animations/Taking_Punch/north/frame_003.png",
+              "Idle/animations/Taking_Punch/north/frame_004.png",
+              "Idle/animations/Taking_Punch/north/frame_005.png"
+            ],
+            "south-east": [
+              "Idle/animations/Taking_Punch/south-east/frame_000.png",
+              "Idle/animations/Taking_Punch/south-east/frame_001.png",
+              "Idle/animations/Taking_Punch/south-east/frame_002.png",
+              "Idle/animations/Taking_Punch/south-east/frame_003.png",
+              "Idle/animations/Taking_Punch/south-east/frame_004.png",
+              "Idle/animations/Taking_Punch/south-east/frame_005.png"
+            ],
+            "west": [
+              "Idle/animations/Taking_Punch/west/frame_000.png",
+              "Idle/animations/Taking_Punch/west/frame_001.png",
+              "Idle/animations/Taking_Punch/west/frame_002.png",
+              "Idle/animations/Taking_Punch/west/frame_003.png",
+              "Idle/animations/Taking_Punch/west/frame_004.png",
+              "Idle/animations/Taking_Punch/west/frame_005.png"
+            ],
+            "north-west": [
+              "Idle/animations/Taking_Punch/north-west/frame_000.png",
+              "Idle/animations/Taking_Punch/north-west/frame_001.png",
+              "Idle/animations/Taking_Punch/north-west/frame_002.png",
+              "Idle/animations/Taking_Punch/north-west/frame_003.png",
+              "Idle/animations/Taking_Punch/north-west/frame_004.png",
+              "Idle/animations/Taking_Punch/north-west/frame_005.png"
+            ],
+            "south": [
+              "Idle/animations/Taking_Punch/south/frame_000.png",
+              "Idle/animations/Taking_Punch/south/frame_001.png",
+              "Idle/animations/Taking_Punch/south/frame_002.png",
+              "Idle/animations/Taking_Punch/south/frame_003.png",
+              "Idle/animations/Taking_Punch/south/frame_004.png",
+              "Idle/animations/Taking_Punch/south/frame_005.png"
+            ],
+            "east": [
+              "Idle/animations/Taking_Punch/east/frame_000.png",
+              "Idle/animations/Taking_Punch/east/frame_001.png",
+              "Idle/animations/Taking_Punch/east/frame_002.png",
+              "Idle/animations/Taking_Punch/east/frame_003.png",
+              "Idle/animations/Taking_Punch/east/frame_004.png",
+              "Idle/animations/Taking_Punch/east/frame_005.png"
+            ],
+            "north-east": [
+              "Idle/animations/Taking_Punch/north-east/frame_000.png",
+              "Idle/animations/Taking_Punch/north-east/frame_001.png",
+              "Idle/animations/Taking_Punch/north-east/frame_002.png",
+              "Idle/animations/Taking_Punch/north-east/frame_003.png",
+              "Idle/animations/Taking_Punch/north-east/frame_004.png",
+              "Idle/animations/Taking_Punch/north-east/frame_005.png"
+            ],
+            "south-west": [
+              "Idle/animations/Taking_Punch/south-west/frame_000.png",
+              "Idle/animations/Taking_Punch/south-west/frame_001.png",
+              "Idle/animations/Taking_Punch/south-west/frame_002.png",
+              "Idle/animations/Taking_Punch/south-west/frame_003.png",
+              "Idle/animations/Taking_Punch/south-west/frame_004.png",
+              "Idle/animations/Taking_Punch/south-west/frame_005.png"
+            ]
+          },
+          "Falling_Back_Death": {
+            "north-east": [
+              "Idle/animations/Falling_Back_Death/north-east/frame_000.png",
+              "Idle/animations/Falling_Back_Death/north-east/frame_001.png",
+              "Idle/animations/Falling_Back_Death/north-east/frame_002.png",
+              "Idle/animations/Falling_Back_Death/north-east/frame_003.png",
+              "Idle/animations/Falling_Back_Death/north-east/frame_004.png",
+              "Idle/animations/Falling_Back_Death/north-east/frame_005.png",
+              "Idle/animations/Falling_Back_Death/north-east/frame_006.png"
+            ],
+            "south": [
+              "Idle/animations/Falling_Back_Death/south/frame_000.png",
+              "Idle/animations/Falling_Back_Death/south/frame_001.png",
+              "Idle/animations/Falling_Back_Death/south/frame_002.png",
+              "Idle/animations/Falling_Back_Death/south/frame_003.png",
+              "Idle/animations/Falling_Back_Death/south/frame_004.png",
+              "Idle/animations/Falling_Back_Death/south/frame_005.png",
+              "Idle/animations/Falling_Back_Death/south/frame_006.png"
+            ],
+            "east": [
+              "Idle/animations/Falling_Back_Death/east/frame_000.png",
+              "Idle/animations/Falling_Back_Death/east/frame_001.png",
+              "Idle/animations/Falling_Back_Death/east/frame_002.png",
+              "Idle/animations/Falling_Back_Death/east/frame_003.png",
+              "Idle/animations/Falling_Back_Death/east/frame_004.png",
+              "Idle/animations/Falling_Back_Death/east/frame_005.png",
+              "Idle/animations/Falling_Back_Death/east/frame_006.png"
+            ],
+            "south-west": [
+              "Idle/animations/Falling_Back_Death/south-west/frame_000.png",
+              "Idle/animations/Falling_Back_Death/south-west/frame_001.png",
+              "Idle/animations/Falling_Back_Death/south-west/frame_002.png",
+              "Idle/animations/Falling_Back_Death/south-west/frame_003.png",
+              "Idle/animations/Falling_Back_Death/south-west/frame_004.png",
+              "Idle/animations/Falling_Back_Death/south-west/frame_005.png",
+              "Idle/animations/Falling_Back_Death/south-west/frame_006.png"
+            ],
+            "west": [
+              "Idle/animations/Falling_Back_Death/west/frame_000.png",
+              "Idle/animations/Falling_Back_Death/west/frame_001.png",
+              "Idle/animations/Falling_Back_Death/west/frame_002.png",
+              "Idle/animations/Falling_Back_Death/west/frame_003.png",
+              "Idle/animations/Falling_Back_Death/west/frame_004.png",
+              "Idle/animations/Falling_Back_Death/west/frame_005.png",
+              "Idle/animations/Falling_Back_Death/west/frame_006.png"
+            ],
+            "north-west": [
+              "Idle/animations/Falling_Back_Death/north-west/frame_000.png",
+              "Idle/animations/Falling_Back_Death/north-west/frame_001.png",
+              "Idle/animations/Falling_Back_Death/north-west/frame_002.png",
+              "Idle/animations/Falling_Back_Death/north-west/frame_003.png",
+              "Idle/animations/Falling_Back_Death/north-west/frame_004.png",
+              "Idle/animations/Falling_Back_Death/north-west/frame_005.png",
+              "Idle/animations/Falling_Back_Death/north-west/frame_006.png"
+            ],
+            "south-east": [
+              "Idle/animations/Falling_Back_Death/south-east/frame_000.png",
+              "Idle/animations/Falling_Back_Death/south-east/frame_001.png",
+              "Idle/animations/Falling_Back_Death/south-east/frame_002.png",
+              "Idle/animations/Falling_Back_Death/south-east/frame_003.png",
+              "Idle/animations/Falling_Back_Death/south-east/frame_004.png",
+              "Idle/animations/Falling_Back_Death/south-east/frame_005.png",
+              "Idle/animations/Falling_Back_Death/south-east/frame_006.png"
+            ],
+            "north": [
+              "Idle/animations/Falling_Back_Death/north/frame_000.png",
+              "Idle/animations/Falling_Back_Death/north/frame_001.png",
+              "Idle/animations/Falling_Back_Death/north/frame_002.png",
+              "Idle/animations/Falling_Back_Death/north/frame_003.png",
+              "Idle/animations/Falling_Back_Death/north/frame_004.png",
+              "Idle/animations/Falling_Back_Death/north/frame_005.png",
+              "Idle/animations/Falling_Back_Death/north/frame_006.png"
+            ]
+          },
+          "Walking": {
+            "south-east": [
+              "Idle/animations/Walking/south-east/frame_000.png",
+              "Idle/animations/Walking/south-east/frame_001.png",
+              "Idle/animations/Walking/south-east/frame_002.png",
+              "Idle/animations/Walking/south-east/frame_003.png"
+            ],
+            "south": [
+              "Idle/animations/Walking/south/frame_000.png",
+              "Idle/animations/Walking/south/frame_001.png",
+              "Idle/animations/Walking/south/frame_002.png",
+              "Idle/animations/Walking/south/frame_003.png"
+            ],
+            "east": [
+              "Idle/animations/Walking/east/frame_000.png",
+              "Idle/animations/Walking/east/frame_001.png",
+              "Idle/animations/Walking/east/frame_002.png",
+              "Idle/animations/Walking/east/frame_003.png"
+            ],
+            "north-east": [
+              "Idle/animations/Walking/north-east/frame_000.png",
+              "Idle/animations/Walking/north-east/frame_001.png",
+              "Idle/animations/Walking/north-east/frame_002.png",
+              "Idle/animations/Walking/north-east/frame_003.png"
+            ],
+            "west": [
+              "Idle/animations/Walking/west/frame_000.png",
+              "Idle/animations/Walking/west/frame_001.png",
+              "Idle/animations/Walking/west/frame_002.png",
+              "Idle/animations/Walking/west/frame_003.png"
+            ],
+            "north-west": [
+              "Idle/animations/Walking/north-west/frame_000.png",
+              "Idle/animations/Walking/north-west/frame_001.png",
+              "Idle/animations/Walking/north-west/frame_002.png",
+              "Idle/animations/Walking/north-west/frame_003.png"
+            ],
+            "north": [
+              "Idle/animations/Walking/north/frame_000.png",
+              "Idle/animations/Walking/north/frame_001.png",
+              "Idle/animations/Walking/north/frame_002.png",
+              "Idle/animations/Walking/north/frame_003.png"
+            ],
+            "south-west": [
+              "Idle/animations/Walking/south-west/frame_000.png",
+              "Idle/animations/Walking/south-west/frame_001.png",
+              "Idle/animations/Walking/south-west/frame_002.png",
+              "Idle/animations/Walking/south-west/frame_003.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "character": {
+        "id": "9216a39a-f7e9-4941-8bbf-4281d3cb7bf6",
+        "name": "Lying flat on his ba",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T18:19:58.858680+00:00"
+      },
+      "folder": "Lying_flat_on_his_ba",
+      "frames": {
+        "rotations": {
+          "south": "Lying_flat_on_his_ba/rotations/south.png",
+          "south-east": "Lying_flat_on_his_ba/rotations/south-east.png",
+          "east": "Lying_flat_on_his_ba/rotations/east.png",
+          "north-east": "Lying_flat_on_his_ba/rotations/north-east.png",
+          "north": "Lying_flat_on_his_ba/rotations/north.png",
+          "north-west": "Lying_flat_on_his_ba/rotations/north-west.png",
+          "west": "Lying_flat_on_his_ba/rotations/west.png",
+          "south-west": "Lying_flat_on_his_ba/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "bd7862bb-1a5a-4f9a-955d-b7f903e5e626",
+        "name": "Slide tackle pose, f",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T18:24:03.644033+00:00"
+      },
+      "folder": "Slide_tackle_pose_f",
+      "frames": {
+        "rotations": {
+          "south": "Slide_tackle_pose_f/rotations/south.png",
+          "south-east": "Slide_tackle_pose_f/rotations/south-east.png",
+          "east": "Slide_tackle_pose_f/rotations/east.png",
+          "north-east": "Slide_tackle_pose_f/rotations/north-east.png",
+          "north": "Slide_tackle_pose_f/rotations/north.png",
+          "north-west": "Slide_tackle_pose_f/rotations/north-west.png",
+          "west": "Slide_tackle_pose_f/rotations/west.png",
+          "south-west": "Slide_tackle_pose_f/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "2b18e545-a10a-416d-ab43-aff3fba8fcdb",
+        "name": "Flying kick pose, fr",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T18:37:37.485837+00:00"
+      },
+      "folder": "Flying_kick_pose_fr",
+      "frames": {
+        "rotations": {
+          "south": "Flying_kick_pose_fr/rotations/south.png",
+          "south-east": "Flying_kick_pose_fr/rotations/south-east.png",
+          "east": "Flying_kick_pose_fr/rotations/east.png",
+          "north-east": "Flying_kick_pose_fr/rotations/north-east.png",
+          "north": "Flying_kick_pose_fr/rotations/north.png",
+          "north-west": "Flying_kick_pose_fr/rotations/north-west.png",
+          "west": "Flying_kick_pose_fr/rotations/west.png",
+          "south-west": "Flying_kick_pose_fr/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "71e267b3-3019-49ce-98c5-0184f75bd20c",
+        "name": "High front kick pose",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T18:40:16.524357+00:00"
+      },
+      "folder": "High_front_kick_pose",
+      "frames": {
+        "rotations": {
+          "south": "High_front_kick_pose/rotations/south.png",
+          "south-east": "High_front_kick_pose/rotations/south-east.png",
+          "east": "High_front_kick_pose/rotations/east.png",
+          "north-east": "High_front_kick_pose/rotations/north-east.png",
+          "north": "High_front_kick_pose/rotations/north.png",
+          "north-west": "High_front_kick_pose/rotations/north-west.png",
+          "west": "High_front_kick_pose/rotations/west.png",
+          "south-west": "High_front_kick_pose/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "071c4a11-ae50-4899-8573-b60422dd4d25",
+        "name": "Straight punch pose,",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T19:01:06.555896+00:00"
+      },
+      "folder": "Straight_punch_pose",
+      "frames": {
+        "rotations": {
+          "south": "Straight_punch_pose/rotations/south.png",
+          "south-east": "Straight_punch_pose/rotations/south-east.png",
+          "east": "Straight_punch_pose/rotations/east.png",
+          "north-east": "Straight_punch_pose/rotations/north-east.png",
+          "north": "Straight_punch_pose/rotations/north.png",
+          "north-west": "Straight_punch_pose/rotations/north-west.png",
+          "west": "Straight_punch_pose/rotations/west.png",
+          "south-west": "Straight_punch_pose/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "f4709ba0-d79f-4f9a-8cf1-752cc9bcbb6a",
+        "name": "Rising knee strike p",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T19:01:44.776406+00:00"
+      },
+      "folder": "Rising_knee_strike_p",
+      "frames": {
+        "rotations": {
+          "south": "Rising_knee_strike_p/rotations/south.png",
+          "south-east": "Rising_knee_strike_p/rotations/south-east.png",
+          "east": "Rising_knee_strike_p/rotations/east.png",
+          "north-east": "Rising_knee_strike_p/rotations/north-east.png",
+          "north": "Rising_knee_strike_p/rotations/north.png",
+          "north-west": "Rising_knee_strike_p/rotations/north-west.png",
+          "west": "Rising_knee_strike_p/rotations/west.png",
+          "south-west": "Rising_knee_strike_p/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "bd122009-1b5d-47b2-80d6-bc501ac61ece",
+        "name": "Standing header pose",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T19:05:58.182600+00:00"
+      },
+      "folder": "Standing_header_pose",
+      "frames": {
+        "rotations": {
+          "south": "Standing_header_pose/rotations/south.png",
+          "south-east": "Standing_header_pose/rotations/south-east.png",
+          "east": "Standing_header_pose/rotations/east.png",
+          "north-east": "Standing_header_pose/rotations/north-east.png",
+          "north": "Standing_header_pose/rotations/north.png",
+          "north-west": "Standing_header_pose/rotations/north-west.png",
+          "west": "Standing_header_pose/rotations/west.png",
+          "south-west": "Standing_header_pose/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "ae84eb34-7bc3-4337-83c9-d8728d6ccb8c",
+        "name": "Diving header pose,",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T19:10:29.497920+00:00"
+      },
+      "folder": "Diving_header_pose",
+      "frames": {
+        "rotations": {
+          "south": "Diving_header_pose/rotations/south.png",
+          "south-east": "Diving_header_pose/rotations/south-east.png",
+          "east": "Diving_header_pose/rotations/east.png",
+          "north-east": "Diving_header_pose/rotations/north-east.png",
+          "north": "Diving_header_pose/rotations/north.png",
+          "north-west": "Diving_header_pose/rotations/north-west.png",
+          "west": "Diving_header_pose/rotations/west.png",
+          "south-west": "Diving_header_pose/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "5a6e4c17-5eff-41f2-bb8c-6d142a4409e8",
+        "name": "Throwing pose, froze",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T19:24:25.287316+00:00"
+      },
+      "folder": "Throwing_pose_froze",
+      "frames": {
+        "rotations": {
+          "south": "Throwing_pose_froze/rotations/south.png",
+          "south-east": "Throwing_pose_froze/rotations/south-east.png",
+          "east": "Throwing_pose_froze/rotations/east.png",
+          "north-east": "Throwing_pose_froze/rotations/north-east.png",
+          "north": "Throwing_pose_froze/rotations/north.png",
+          "north-west": "Throwing_pose_froze/rotations/north-west.png",
+          "west": "Throwing_pose_froze/rotations/west.png",
+          "south-west": "Throwing_pose_froze/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "59b3640f-c56a-4267-8875-a8a58cc9ca98",
+        "name": "Knocked back pose, f",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-10T20:08:25.118249+00:00"
+      },
+      "folder": "Knocked_back_pose_f",
+      "frames": {
+        "rotations": {
+          "south": "Knocked_back_pose_f/rotations/south.png",
+          "south-east": "Knocked_back_pose_f/rotations/south-east.png",
+          "east": "Knocked_back_pose_f/rotations/east.png",
+          "north-east": "Knocked_back_pose_f/rotations/north-east.png",
+          "north": "Knocked_back_pose_f/rotations/north.png",
+          "north-west": "Knocked_back_pose_f/rotations/north-west.png",
+          "west": "Knocked_back_pose_f/rotations/west.png",
+          "south-west": "Knocked_back_pose_f/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "2f54bccc-dc36-4b7b-91d2-dcc5f1b93b2d",
+        "name": "Goalkeeper diving sa",
+        "prompt": "Chibi cartoon soccer player, pixel art, big head about half of total height, large white angry eyes with thick frowning eyebrows, tiny mouth, big messy hair with spiky tufts, short stocky body, thick short arms with clenched fists, thin legs, short sleeves, clean 1px black outline, flat colors with one shadow tone per material, no gradients, no dithering, readable at 1x, style of Bad Football and Nintendo World Cup, high top-down view, transparent background. France national team kit: royal blue jersey, white shorts, red socks, red boots. Light skin, brown messy hair, clean shaven.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-11T02:20:19.488527+00:00"
+      },
+      "folder": "Goalkeeper_diving_sa",
+      "frames": {
+        "rotations": {
+          "south": "Goalkeeper_diving_sa/rotations/south.png",
+          "south-east": "Goalkeeper_diving_sa/rotations/south-east.png",
+          "east": "Goalkeeper_diving_sa/rotations/east.png",
+          "north-east": "Goalkeeper_diving_sa/rotations/north-east.png",
+          "north": "Goalkeeper_diving_sa/rotations/north.png",
+          "north-west": "Goalkeeper_diving_sa/rotations/north-west.png",
+          "west": "Goalkeeper_diving_sa/rotations/west.png",
+          "south-west": "Goalkeeper_diving_sa/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-11T02:22:45.199567"
+}
