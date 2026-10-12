@@ -263,6 +263,7 @@ const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null }
 let attackPressed = false
 let restartPressed = false
 const VARMOTION = 2.3 // durée du motion design VAR ACTIVÉE
+const BUSMOTION = 2.4 // durée du motion design ON PLANTE LE BUS (jeu figé)
 const GAMEOVER_MIN = 3 // le carton GAME OVER ne peut pas être passé avant 3 s
 const GAMEOVER = 5 // puis il laisse place au récap, de lui-même ou sur un appui
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
@@ -1243,7 +1244,7 @@ function callBus() {
   S.busUsed = true
   const gy = FIELD.y + FIELD.h / 2
   S.bus = { x: FIELD.x + FIELD.w - BUS.w / 2 - 6, y: FIELD.y - 200, state: 'in', t: 0, hit: new Set(), ty: gy } // collé à la ligne de but
-  callout('ON PLANTE LE BUS', PAL.cyan)
+  if (IMG['bus/bus']) { S.busMotion = 0; S.freeze = Math.max(S.freeze, BUSMOTION) } else callout('ON PLANTE LE BUS', PAL.cyan)
   S.shake = Math.max(S.shake, 8)
   beep('horn')
 }
@@ -1527,6 +1528,7 @@ function update(dt) {
   if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('click') } } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
+  if (S.busMotion !== undefined) { S.busMotion += dt; if (S.busMotion >= BUSMOTION) S.busMotion = undefined }
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
   S.t += dt
   if (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'card' || S.phase === 'goal') S.clock += dt
@@ -1821,6 +1823,7 @@ function render() {
   g.restore()
   drawHUD()
   if (S.phase === 'varintro' && IMG['var/text']) drawVarMotion(VARMOTION - S.varIntroT)
+  if (S.busMotion !== undefined) drawBusMotion(S.busMotion)
   if (S.callout) drawCallout(S.callout)
   if (S.phase === 'end') drawEnd()
 }
@@ -1868,6 +1871,47 @@ function drawVarMotion(t) {
     g.save(); g.globalAlpha = Math.min(1, tt * 3) * (1 - out); g.translate(W / 2 + jx, H / 2 + jy); g.scale(sc, sc); g.drawImage(T, 0, 0, 1280, 720, -W / 2, -H / 2, W, H); g.restore()
   }
   g.globalAlpha = 1
+}
+/** Motion design ON PLANTE LE BUS : emblème au centre, tout en échelle. Calques fournis, positions relatives au centre de l'emblème. */
+const BUS_LAYERS = { chevron: { cx: 0, cy: 102 }, text: { cx: 0, cy: 60 }, hornR: { cx: 92, cy: 14 }, hornL: { cx: -90, cy: 14 }, goal: { cx: 1, cy: -27 }, bus: { cx: 1, cy: -43 } }
+function drawBusMotion(t) {
+  const ox = W / 2, oy = H / 2 - 4
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3)
+  const back = (x) => { x = clamp(x, 0, 1); const c = 1.70158 + 1; return 1 + c * Math.pow(x - 1, 3) + (c - 0.3) * Math.pow(x - 1, 2) } // dépasse puis revient
+  const out = t > BUSMOTION - 0.35 ? Math.pow(clamp((t - (BUSMOTION - 0.35)) / 0.35, 0, 1), 2) : 0
+  const layer = (name, sc, { alpha = 1, rot = 0, sy = sc } = {}) => {
+    const img = IMG['bus/' + name], L = BUS_LAYERS[name]
+    if (!img || sc <= 0.001) return
+    g.save(); g.globalAlpha = alpha * (1 - out); g.translate(Math.round(ox + L.cx), Math.round(oy + L.cy)); g.rotate(rot); g.scale(sc * (1 + out * 0.35), sy * (1 + out * 0.35))
+    g.drawImage(img, -img.width / 4, -img.height / 4, img.width / 2, img.height / 2); g.restore()
+  }
+  // Voile + lignes de vitesse cyan qui convergent vers le centre.
+  g.fillStyle = `rgba(10,20,40,${0.55 * Math.min(1, t / 0.2) * (1 - out)})`; g.fillRect(0, 0, W, H)
+  if (out < 1) {
+    g.globalAlpha = 0.45 * (1 - out); g.fillStyle = PAL.cyan
+    for (let i = 0; i < 16; i++) { const y = (i * 41 + 7) % H; const len = 30 + (i * 53) % 90; const v = 400 + (i * 97) % 400; const left = i % 2 === 0; const x = left ? -len + ((i * 71 + t * v) % (W / 2 + len)) : W - ((i * 71 + t * v) % (W / 2 + len)); g.fillRect(Math.round(x), y, len, i % 3 === 0 ? 2 : 1) }
+    g.globalAlpha = 1
+  }
+  // 1. La cage se déplie (0 → 1 avec dépassement).
+  layer('goal', back((t - 0.05) / 0.35), { alpha: Math.min(1, t / 0.15) })
+  // 2. Le bus arrive de la caméra : 3 → 1, atterrissage sec à 0,55 s.
+  const tb = clamp((t - 0.2) / 0.35, 0, 1)
+  if (t > 0.2) layer('bus', 3 - 2 * easeOut(tb), { alpha: Math.min(1, tb * 3) })
+  if (t > 0.53 && t < 0.66) { g.globalAlpha = 0.7 * (1 - (t - 0.53) / 0.13); g.fillStyle = PAL.white; g.fillRect(0, 0, W, H); g.globalAlpha = 1 }
+  if (t > 0.55 && t < 0.57 && !S.busMotionHit) { S.busMotionHit = true; S.shake = Math.max(S.shake, 10); beep('land') }
+  if (t > 0.3 && t < 0.32 && !S.busMotionHorn) { S.busMotionHorn = true; beep('horn') }
+  // 3. Les badges klaxon sautent l'un après l'autre.
+  layer('hornL', back((t - 0.6) / 0.25), { rot: Math.sin(t * 20) * 0.08 * (1 - clamp((t - 0.6) / 0.5, 0, 1)) })
+  layer('hornR', back((t - 0.7) / 0.25), { rot: -Math.sin(t * 20) * 0.08 * (1 - clamp((t - 0.7) / 0.5, 0, 1)) })
+  // 4. Le chevron se déplie en hauteur.
+  layer('chevron', 1, { sy: back((t - 0.75) / 0.25) })
+  // 5. Le titre surgit : 2,4 → 1, tremble, puis respire.
+  if (t > 0.85) {
+    const tt = clamp((t - 0.85) / 0.25, 0, 1)
+    const jx = tt < 1 ? (Math.random() - 0.5) * 0.04 : 0
+    layer('text', (2.4 - 1.4 * easeOut(tt)) * (1 + Math.sin(t * 6) * 0.01), { alpha: Math.min(1, tt * 3), rot: jx })
+  }
+  if (out >= 1) { S.busMotionHit = false; S.busMotionHorn = false }
 }
 function drawCallout(c) {
   const IN = 0.28, OUT = 0.3
@@ -2202,7 +2246,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
