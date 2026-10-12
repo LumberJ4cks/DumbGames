@@ -254,7 +254,7 @@ function kickoff() {
     // Début de match : l'arbitre entre par la touche avec le ballon dans les mains.
     ref.x = ball.x - 20; ref.y = FIELD.y - 40
     ball.owner = ref; ball.x = ref.x; ball.y = ref.y
-    S.kickStage = 'carry'; S.phaseT = 99
+    S.kickStage = 'carry'; S.phaseT = 4.4 // le décompte tourne pendant que l'arbitre dépose le ballon : GO quand il s'est écarté
   } else { ref.x = ball.x; ref.y = ball.y - 110 }
 }
 
@@ -1554,9 +1554,12 @@ function update(dt) {
     const cx0 = FIELD.x + FIELD.w / 2, cy0 = FIELD.y + FIELD.h / 2
     const tgt = S.kickStage === 'carry' ? { x: cx0, y: cy0 - 4 } : { x: cx0 - 70, y: cy0 - 100 }
     const dx = tgt.x - ref.x, dy = tgt.y - ref.y, d = Math.hypot(dx, dy)
-    if (d > 4) { ref.x += (dx / d) * Math.min(d, 150 * dt); ref.y += (dy / d) * Math.min(d, 150 * dt); const nd = dirOf(dx, dy); if (nd) ref.dir = nd; if (ref.anim !== 'walk') { ref.anim = 'walk'; ref.ft = 0 }; ref.ft += dt; ref.frame = Math.floor(ref.ft * 8) }
+    S.phaseT -= dt
+    { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } } }
+    if (S.phaseT <= 0.9 && S.kickStage === 'carry') { ball.owner = null; ball.x = cx0; ball.y = cy0; ball.z = 0; ball.vz = 0; S.kickStage = 'leave' } // GO n'attend pas un arbitre lent
+    if (d > 4) { ref.x += (dx / d) * Math.min(d, 170 * dt); ref.y += (dy / d) * Math.min(d, 170 * dt); const nd = dirOf(dx, dy); if (nd) ref.dir = nd; if (ref.anim !== 'walk') { ref.anim = 'walk'; ref.ft = 0 }; ref.ft += dt; ref.frame = Math.floor(ref.ft * 8) }
     else if (S.kickStage === 'carry') { ball.owner = null; ball.x = cx0; ball.y = cy0; ball.z = 0; ball.vz = 0; S.kickStage = 'leave'; beep('bounce') }
-    else { S.kickStage = 'count'; S.phaseT = 3.9; ref.anim = 'idle'; ref.dir = 's' }
+    else { S.kickStage = 'count'; ref.anim = 'idle'; ref.dir = 's' }
     if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 14 }
     return
   }
@@ -2162,7 +2165,7 @@ function drawHUD() {
   if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
   if (S.phase === 'var' && S.var) drawVar()
   if (S.phase === 'sayan') drawSayan()
-  if (S.phase === 'kickoff' && !S.goals && S.kickStage === 'count') drawCountdown()
+  if (S.phase === 'kickoff' && !S.goals && S.phaseT <= 3.9) drawCountdown()
   // Bandeaux : texte cerné, sans bande, qui glisse depuis le haut.
   S.banners.forEach((b, i) => {
     const a = b.t < 0.15 ? b.t / 0.15 : b.t > 1.4 ? (1.8 - b.t) / 0.4 : 1
