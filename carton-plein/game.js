@@ -101,7 +101,7 @@ function startMusic() {
   } catch (e) { /* pas de musique */ }
 }
 /* ---------- échantillons : coups, tacles, sifflets, passes, foule (audio/sfx) ---------- */
-const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1, sayan: 1 }
+const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1, sayan: 1, click: 1 }
 const sfx = { bank: {}, loaded: false, loading: false, crowd: null, crowdGain: null, crowdBuf: null }
 function loadSfx() {
   if (sfx.loading || sfx.loaded) return
@@ -160,6 +160,7 @@ function beep(kind) {
   try {
     const c = ctx()
     const t = c.currentTime
+    if (kind === 'click') { if (!sample('click', { gain: 0.9, vary: 0.02 })) kind = 'tick' }
     if (kind === 'hit' && sample('punch', { gain: 0.9 })) return
     if (kind === 'hitBig' && sample(Math.random() < 0.5 ? 'impact' : 'tackle', { gain: 1, rate: 0.95 })) return
     if (kind === 'land' && sample('tackle', { gain: 0.45, rate: 0.85 })) return
@@ -280,7 +281,7 @@ canvas.addEventListener('mouseleave', () => { mouse.x = -1; mouse.y = -1 })
 const inStart = (x, y) => x >= START_BTN.x && x <= START_BTN.x + START_BTN.w && y >= START_BTN.y && y <= START_BTN.y + START_BTN.h
 addEventListener('mousedown', (e) => {
   if (music.wanted && !music.src) startMusic()
-  if (S.phase === 'title') { const { x, y } = canvasXY(e); if (inStart(x, y) && !startPress) { startPress = 0.16; beep('tick') } return }
+  if (S.phase === 'title') { const { x, y } = canvasXY(e); if (inStart(x, y) && !startPress) { startPress = 0.16; beep('click') } return }
   if (S.phase === 'end') { const { x, y } = canvasXY(e); if (inRestart(x, y)) restartPressed = true; return }
   if (e.button === 2) attackPressed = true
 })
@@ -289,7 +290,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse') return
   const { x, y } = canvasXY(e)
   if (S.phase === 'end') { if (inRestart(x, y)) restartPressed = true; return }
-  if (S.phase === 'title') { if (inStart(x, y) && !startPress) { startPress = 0.16; beep('tick') } return }
+  if (S.phase === 'title') { if (inStart(x, y) && !startPress) { startPress = 0.16; beep('click') } return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
   else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
 })
@@ -1488,9 +1489,9 @@ function update(dt) {
   if (S.phase === 'sayan') { S.sayanT += dt; S.t += dt; attackPressed = false; if (S.sayanT >= SAYAN.frames / SAYAN.fps + SAYAN.outro) endSayan(); return }
   if (S.fieldTf !== undefined) { S.fieldTf += dt; hero.vx = hero.vy = 0; attackPressed = false; if (S.fieldTf >= SAYAN.frames / 10) { S.fieldTf = undefined; endSayan() } }
   if (S.phase === 'var') { updateVar(dt); return }
-  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) startMatch() } return }
+  if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT > 2) { beep('click'); startMatch() } } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
-  if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('tick') } } return }
+  if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('click') } } return }
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
@@ -2059,6 +2060,7 @@ addEventListener('resize', fit)
 fit()
 Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
+  loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
   window.__carton = { S, hero, ref, ball, startMatch, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
