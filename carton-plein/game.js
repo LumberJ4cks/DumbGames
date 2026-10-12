@@ -535,11 +535,20 @@ function drawProp(p, cx, cy) {
   } else if (p.kind === 'goal') {
     const gx = p.x + cx, gy = p.y + cy
     if (p.broken) { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(gx - 6, gy + GOAL_H - 16, 40, 18); g.fillStyle = PAL.white; g.fillRect(gx - 8, gy + GOAL_H - 6, 44, 3); g.fillRect(gx + 10, gy + 20, 3, GOAL_H - 30); return }
-    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(gx, gy, 28, GOAL_H)
-    g.strokeStyle = PAL.grey1; g.lineWidth = 1
-    for (let i = 0; i <= 28; i += 6) { g.beginPath(); g.moveTo(gx + i, gy); g.lineTo(gx + i, gy + GOAL_H); g.stroke() }
-    for (let j = 0; j <= GOAL_H; j += 6) { g.beginPath(); g.moveTo(gx, gy + j); g.lineTo(gx + 28, gy + j); g.stroke() }
-    g.fillStyle = PAL.white; g.fillRect(p.side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
+    if (IMG.cage) {
+      // Sprite 56 × 126 : les poteaux occupent les 7 dernières colonnes, posés sur la ligne de but ; miroir pour la cage de droite.
+      const lineX = p.side ? gx : gx + 28, midY = gy + GOAL_H / 2
+      g.save()
+      if (p.side) { g.translate(Math.round(lineX + 53), Math.round(midY - 63)); g.scale(-1, 1); g.drawImage(IMG.cage, 0, 0) }
+      else g.drawImage(IMG.cage, Math.round(lineX - 53), Math.round(midY - 63))
+      g.restore()
+    } else {
+      g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(gx, gy, 28, GOAL_H)
+      g.strokeStyle = PAL.grey1; g.lineWidth = 1
+      for (let i = 0; i <= 28; i += 6) { g.beginPath(); g.moveTo(gx + i, gy); g.lineTo(gx + i, gy + GOAL_H); g.stroke() }
+      for (let j = 0; j <= GOAL_H; j += 6) { g.beginPath(); g.moveTo(gx, gy + j); g.lineTo(gx + 28, gy + j); g.stroke() }
+      g.fillStyle = PAL.white; g.fillRect(p.side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
+    }
     if (p.hp < 3) { g.fillStyle = PAL.ink; for (let k = 0; k < 3 - p.hp; k++) g.fillRect(gx + 6 + k * 8, gy + 30 + k * 25, 2, 14) }
   } else if (p.kind === 'bench') {
     g.fillStyle = PAL.ink; g.fillRect(p.x + cx - 1, p.y + cy - 1, p.w + 2, p.h + 2)
@@ -2097,7 +2106,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
