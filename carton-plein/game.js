@@ -264,6 +264,7 @@ let attackPressed = false
 let restartPressed = false
 const VARMOTION = 2.3 // durée du motion design VAR ACTIVÉE
 const BUSMOTION = 2.4 // durée du motion design ON PLANTE LE BUS (jeu figé)
+const SUPPMOTION = 2.6 // durée du motion design LES SUPPORTERS ENVAHISSENT LE TERRAIN (jeu figé)
 const GAMEOVER_MIN = 3 // le carton GAME OVER ne peut pas être passé avant 3 s
 const GAMEOVER = 5 // puis il laisse place au récap, de lui-même ou sur un appui
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
@@ -1347,7 +1348,7 @@ function updateWaves(dt) {
   S.waveT = crowd ? rr(1.2, 2.5) : Math.max(8, 15 - S.wave)
   const n = crowd ? w.n + 4 : w.n
   for (let k = 0; k < n; k++) { if (k % 2) spawnIntruder(w.role, k); else spawnAbsurd(ABSURD[(S.intruders + k) % ABSURD.length]) }
-  if (w.role === 'fan' && !S.invasionShown) { S.invasionShown = true; callout('LES SUPPORTERS ENVAHISSENT LE TERRAIN', PAL.pink, 2.8) }
+  if (w.role === 'fan' && !S.invasionShown) { S.invasionShown = true; if (IMG['supp/crowd']) { S.suppMotion = 0; S.freeze = Math.max(S.freeze, SUPPMOTION); crowdSwell(0.9, 2.6) } else callout('LES SUPPORTERS ENVAHISSENT LE TERRAIN', PAL.pink, 2.8) }
   if (crowd && S.wave % 3 === 0) banner('LA FOULE DESCEND SUR LA PELOUSE', PAL.pink)
   S.shake = Math.max(S.shake, 5)
 }
@@ -1529,6 +1530,7 @@ function update(dt) {
   if (S.paused) { attackPressed = false; return }
   S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
   if (S.busMotion !== undefined) { S.busMotion += dt; if (S.busMotion >= BUSMOTION) S.busMotion = undefined }
+  if (S.suppMotion !== undefined) { S.suppMotion += dt; if (S.suppMotion >= SUPPMOTION) S.suppMotion = undefined }
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
   S.t += dt
   if (S.phase === 'play' || S.phase === 'freekick' || S.phase === 'card' || S.phase === 'goal') S.clock += dt
@@ -1824,6 +1826,7 @@ function render() {
   drawHUD()
   if (S.phase === 'varintro' && IMG['var/text']) drawVarMotion(VARMOTION - S.varIntroT)
   if (S.busMotion !== undefined) drawBusMotion(S.busMotion)
+  if (S.suppMotion !== undefined) drawSuppMotion(S.suppMotion)
   if (S.callout) drawCallout(S.callout)
   if (S.phase === 'end') drawEnd()
 }
@@ -1912,6 +1915,41 @@ function drawBusMotion(t) {
     layer('text', (2.4 - 1.4 * easeOut(tt)) * (1 + Math.sin(t * 6) * 0.01), { alpha: Math.min(1, tt * 3), rot: jx })
   }
   if (out >= 1) { S.busMotionHit = false; S.busMotionHorn = false }
+}
+/** Motion design LES SUPPORTERS ENVAHISSENT LE TERRAIN : emblème au centre, tout en échelle, foule qui déboule vers la caméra. */
+const SUPP_LAYERS = { base: { cx: -1, cy: -3 }, frame: { cx: 6, cy: 10 }, confetti: { cx: 5, cy: 11 }, barrier: { cx: 4, cy: 101 }, crowd: { cx: 5, cy: -16 }, text: { cx: 6, cy: 62 } }
+function drawSuppMotion(t) {
+  const ox = W / 2, oy = H / 2 - 6
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3)
+  const back = (x) => { x = clamp(x, 0, 1); const c = 1.70158 + 1; return 1 + c * Math.pow(x - 1, 3) + (c - 0.3) * Math.pow(x - 1, 2) }
+  const out = t > SUPPMOTION - 0.35 ? Math.pow(clamp((t - (SUPPMOTION - 0.35)) / 0.35, 0, 1), 2) : 0
+  const layer = (name, sc, { alpha = 1, rot = 0, sy = sc, dy = 0 } = {}) => {
+    const img = IMG['supp/' + name], L = SUPP_LAYERS[name]
+    if (!img || sc <= 0.001 || sy <= 0.001) return
+    g.save(); g.globalAlpha = clamp(alpha, 0, 1) * (1 - out); g.translate(Math.round(ox + L.cx), Math.round(oy + L.cy + dy)); g.rotate(rot); g.scale(sc * (1 + out * 0.35), sy * (1 + out * 0.35))
+    g.drawImage(img, -img.width / 4, -img.height / 4, img.width / 2, img.height / 2); g.restore()
+  }
+  g.fillStyle = `rgba(10,20,40,${0.55 * Math.min(1, t / 0.2) * (1 - out)})`; g.fillRect(0, 0, W, H)
+  if (out < 1) { // lignes de vitesse roses qui convergent
+    g.globalAlpha = 0.4 * (1 - out); g.fillStyle = PAL.pink
+    for (let i = 0; i < 16; i++) { const y = (i * 41 + 7) % H; const len = 30 + (i * 53) % 90; const v = 400 + (i * 97) % 400; const left = i % 2 === 0; const x = left ? -len + ((i * 71 + t * v) % (W / 2 + len)) : W - ((i * 71 + t * v) % (W / 2 + len)); g.fillRect(Math.round(x), y, len, i % 3 === 0 ? 2 : 1) }
+    g.globalAlpha = 1
+  }
+  // 1. Le badge et son cadre rose se déplient.
+  layer('base', back(t / 0.3), { alpha: t / 0.1 })
+  layer('frame', back((t - 0.1) / 0.3) * (1 + Math.sin(t * 9) * 0.015), { alpha: (t - 0.1) / 0.1 })
+  // 2. Les confettis arrivent de loin et dérivent.
+  layer('confetti', 1.4 - 0.4 * easeOut((t - 0.15) / 0.5), { alpha: (t - 0.15) / 0.3, rot: Math.sin(t * 1.5) * 0.03 })
+  // 3. La foule déboule vers la caméra : 0,15 → 1, atterrissage à 0,7 s, puis elle saute sur place.
+  const tc = clamp((t - 0.3) / 0.4, 0, 1)
+  if (t > 0.3) { const hop = t > 0.7 ? Math.abs(Math.sin((t - 0.7) * 7)) * 0.04 : 0; layer('crowd', 0.15 + 0.85 * easeOut(tc), { alpha: tc * 3, sy: (0.15 + 0.85 * easeOut(tc)) * (1 + hop), dy: -hop * 40 }) }
+  if (t > 0.68 && t < 0.8) { g.globalAlpha = 0.6 * (1 - (t - 0.68) / 0.12); g.fillStyle = PAL.white; g.fillRect(0, 0, W, H); g.globalAlpha = 1 }
+  if (t > 0.7 && t < 0.72 && !S.suppMotionHit) { S.suppMotionHit = true; S.shake = Math.max(S.shake, 10); beep('land') }
+  // 4. La barrière tombe : elle se déplie en hauteur, un peu penchée.
+  layer('barrier', 1, { sy: back((t - 0.8) / 0.25), rot: -0.06 * easeOut((t - 0.8) / 0.25) })
+  // 5. Le titre surgit : 2,4 → 1, tremble, puis respire.
+  if (t > 0.95) { const tt = clamp((t - 0.95) / 0.25, 0, 1); layer('text', (2.4 - 1.4 * easeOut(tt)) * (1 + Math.sin(t * 6) * 0.01), { alpha: tt * 3, rot: tt < 1 ? (Math.random() - 0.5) * 0.04 : 0 }) }
+  if (out >= 1) S.suppMotionHit = false
 }
 function drawCallout(c) {
   const IN = 0.28, OUT = 0.3
@@ -2246,7 +2284,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
