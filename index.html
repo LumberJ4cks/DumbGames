@@ -91,6 +91,10 @@
   .card .l { display: inline-block; background: #000; font-weight: 700; font-size: 13px; padding: 2px 8px; margin-top: 6px; }
   .card.art::after { display: none; }
   .card.art .t { display: none; }
+  .card.soon { cursor: default; }
+  .card.soon:hover img { transform: none; }
+  .card.soon img { filter: saturate(.85); }
+  .card .go.soon { width: auto; padding: 0 12px; font-family: var(--mono); font-weight: 700; font-size: 12px; letter-spacing: .12em; }
   .card .go { position: absolute; right: 14px; bottom: 14px; z-index: 1; width: 34px; height: 34px; background: var(--yellow); display: grid; place-items: center; color: #111; font-size: 14px; box-shadow: 2px 2px 0 #000; }
   .card:hover .go { background: #fff; }
   .champ { border: 2px solid var(--line); box-shadow: 4px 4px 0 #000; background: var(--panel); padding: 12px 14px; font-family: var(--mono); display: flex; flex-direction: column; }
@@ -177,6 +181,16 @@
 
 <section class="games" id="jeux">
   <div class="hd"><h2 class="big">Des jeux. Voilà.</h2><p>Petites parties. Grandes pertes de temps.</p></div>
+
+  <div class="row">
+    <div class="card art soon" aria-label="FC MMA, bientôt">
+      <img src="assets/fc-mma.webp" alt="FC MMA. La France joue au foot, le Paraguay joue au MMA." width="2000" height="562" loading="lazy">
+      <span class="go soon">BIENTÔT</span>
+    </div>
+    <div class="champ none">
+      <span class="k">LE CHAMPION</span><span class="who">Personne</span><span class="hs">HIGH SCORE<br><span class="val">En attente du coup d’envoi.</span></span>
+    </div>
+  </div>
 
   <div class="row">
     <a class="card art" href="siuuuu-simulator/">
@@ -291,7 +305,7 @@
   ).join('')
 
   // Carte "Le champion" à côté de chaque jeu.
-  document.querySelectorAll('.champ').forEach(el => {
+  document.querySelectorAll('.champ[data-game]').forEach(el => {
     const g = games[el.dataset.game]
     const s = g ? g.read() : 0
     el.classList.toggle('none', !s)
