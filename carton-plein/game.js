@@ -1078,6 +1078,7 @@ const ABSURD = [
 ]
 const MARIEE = { atlas: 'mariee', name: 'FAUTE SUR LA MARIEE', behave: 'couple', speed: 90 }
 function spawnAbsurd(kind, near) {
+  invasionAnnounce()
   const f = makeFrench(11 + S.intruders, nextLook++)
   S.intruders++
   const role = ['bird', 'stretcher', 'ballboy'].includes(kind.behave) ? kind.behave : 'player'
@@ -1320,7 +1321,14 @@ const WAVES = [
   { role: 'press', n: 2, text: 'LA PRESSE ETRANGERE' },
   { role: 'fan', n: 4, text: 'TOUT LE STADE DESCEND' },
 ]
+/** Première entrée d'un non-joueur sur la pelouse (staff, presse, absurde ou supporter) : l'annonce part à ce moment-là, pas après. */
+function invasionAnnounce() {
+  if (S.invasionShown) return
+  S.invasionShown = true
+  if (IMG['supp/crowd']) { S.suppMotion = 0; S.freeze = Math.max(S.freeze, SUPPMOTION); crowdSwell(0.9, 2.6) } else callout('LES SUPPORTERS ENVAHISSENT LE TERRAIN', PAL.pink, 2.8)
+}
 function spawnIntruder(role, k) {
+  invasionAnnounce()
   const f = makeFrench(11 + S.intruders, nextLook++)
   S.intruders++
   f.intruder = true
@@ -1348,7 +1356,6 @@ function updateWaves(dt) {
   S.waveT = crowd ? rr(1.2, 2.5) : Math.max(8, 15 - S.wave)
   const n = crowd ? w.n + 4 : w.n
   for (let k = 0; k < n; k++) { if (k % 2) spawnIntruder(w.role, k); else spawnAbsurd(ABSURD[(S.intruders + k) % ABSURD.length]) }
-  if (w.role === 'fan' && !S.invasionShown) { S.invasionShown = true; if (IMG['supp/crowd']) { S.suppMotion = 0; S.freeze = Math.max(S.freeze, SUPPMOTION); crowdSwell(0.9, 2.6) } else callout('LES SUPPORTERS ENVAHISSENT LE TERRAIN', PAL.pink, 2.8) }
   if (crowd && S.wave % 3 === 0) banner('LA FOULE DESCEND SUR LA PELOUSE', PAL.pink)
   S.shake = Math.max(S.shake, 5)
 }
