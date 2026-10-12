@@ -2008,18 +2008,34 @@ function drawCountdown() {
   const frac = n >= 1 ? (S.phaseT - 0.9) - (n - 1) : S.phaseT / 0.9 // 1 → 0 au fil de chaque temps
   const age = 1 - frac
   const go = n <= 0
-  const k = age < 0.15 ? 1 + (0.15 - age) * 6 : 1 // s'écrase en 0,15 s
-  const txt = go ? 'GO !!!' : String(n)
-  const size = Math.round((go ? 64 : 80) * k)
-  const col = go ? PAL.yellow : [PAL.white, PAL.cyan, PAL.amber][(n - 1) % 3]
-  g.save(); g.translate(W / 2, H / 2 - 20)
-  if (go) g.rotate(Math.sin(S.t * 40) * 0.04)
-  g.globalAlpha = go ? 1 : clamp(1.4 - age, 0, 1)
-  g.font = `bold ${size}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle'
-  g.fillStyle = PAL.ink; for (const [dx, dy] of [[-4, 0], [4, 0], [0, -4], [0, 4], [-3, -3], [3, 3], [3, -3], [-3, 3], [0, 6], [6, 6]]) g.fillText(txt, dx, dy)
-  g.fillStyle = col; g.fillText(txt, 0, 0)
-  g.restore()
-  if (!go) text('PREPARE-TOI', W / 2, H / 2 + 36, { size: 9, color: PAL.grey1, align: 'center' })
+  const img = IMG['count/' + (go ? 'go' : n)]
+  if (img) {
+    // Façon Street Fighter : le chiffre arrive de la caméra (300 % → 100 %) et claque, GO!! un peu plus gros et qui vibre.
+    const ease = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3)
+    const tin = ease(age / 0.18)
+    const over = age > 0.18 && age < 0.3 ? Math.sin((age - 0.18) / 0.12 * Math.PI) * 0.06 : 0
+    const base = go ? 0.62 : 0.5 // échelle de repos (sprites stockés au double)
+    const sc = base * ((3 - 2 * tin) + over) * (go ? 1 + Math.sin(S.t * 30) * 0.015 : 1)
+    g.save(); g.translate(W / 2, H / 2 - 20)
+    if (go) g.rotate(Math.sin(S.t * 40) * 0.03)
+    g.globalAlpha = go ? 1 : clamp(Math.min(tin * 3, 1.6 - age * 1.2), 0, 1)
+    g.scale(sc, sc); g.drawImage(img, -img.width / 2, -img.height / 2)
+    g.restore()
+    if (age < 0.2 && go) { g.globalAlpha = 0.5 * (1 - age / 0.2); g.fillStyle = PAL.white; g.fillRect(0, 0, W, H); g.globalAlpha = 1 }
+  } else {
+    const k = age < 0.15 ? 1 + (0.15 - age) * 6 : 1
+    const txt = go ? 'GO !!!' : String(n)
+    const size = Math.round((go ? 64 : 80) * k)
+    const col = go ? PAL.yellow : [PAL.white, PAL.cyan, PAL.amber][(n - 1) % 3]
+    g.save(); g.translate(W / 2, H / 2 - 20)
+    if (go) g.rotate(Math.sin(S.t * 40) * 0.04)
+    g.globalAlpha = go ? 1 : clamp(1.4 - age, 0, 1)
+    g.font = `bold ${size}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle'
+    g.fillStyle = PAL.ink; for (const [dx, dy] of [[-4, 0], [4, 0], [0, -4], [0, 4], [-3, -3], [3, 3], [3, -3], [-3, 3], [0, 6], [6, 6]]) g.fillText(txt, dx, dy)
+    g.fillStyle = col; g.fillText(txt, 0, 0)
+    g.restore()
+  }
+  if (!go) text('PREPARE-TOI', W / 2, H / 2 + 44, { size: 9, color: PAL.grey1, align: 'center' })
 }
 function drawGoalFx(t) {
   const bh = Math.round(H * 0.25), by = Math.round(H / 2 - bh / 2)
@@ -2303,7 +2319,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), loadImage('count/3'), loadImage('count/2'), loadImage('count/1'), loadImage('count/go'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
