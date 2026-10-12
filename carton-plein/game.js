@@ -322,7 +322,13 @@ function inputVector() {
 }
 
 /* ---------- fautes, combo, feu ---------- */
-function popup(x, y, text, color = PAL.white, big = false) { S.popups.push({ x, y, text, color, t: 0, big }) }
+const ONO_ROW = { BIM: 0, BAM: 1, BOOM: 2 }
+function popup(x, y, text, color = PAL.white, big = false) {
+  // BIM / BAM / BOOM : vignette dessinée (planche onomatopees.png, 5 variantes), les autres mots restent en texte.
+  const row = ONO_ROW[text]
+  const img = row !== undefined ? { row, col: big ? (rnd() < 0.5 ? 2 : 4) : [0, 1, 3][Math.floor(rnd() * 3)], tilt: rr(-0.12, 0.12) } : null
+  S.popups.push({ x, y, text, color, t: 0, big, img })
+}
 function banner(text, color = PAL.yellow) { S.banners.push({ text, color, t: 0 }) }
 /** Annonce façon Street Fighter : deux panneaux obliques qui claquent depuis les côtés, lignes de vitesse, gros titre. */
 function callout(text, color = PAL.yellow, dur = 2.3) {
@@ -1786,7 +1792,18 @@ function render() {
     else { g.fillStyle = PAL.white; g.beginPath(); g.arc(ball.x + cx, ball.y + cy - 3 - z, d / 2 - 1, 0, Math.PI * 2); g.fill() } }
   // Particules et popups.
   for (const p of S.particles) { g.fillStyle = p.c; g.fillRect(Math.round(p.x + cx), Math.round(p.y + cy), 2, 2) }
-  for (const p of S.popups) { const k = p.t < 0.1 ? 1 + (0.1 - p.t) * 8 : 1; text(p.text, Math.round(p.x + cx), Math.round(p.y + cy - p.t * 16), { size: Math.round((p.big ? 16 : 11) * k), color: p.color, align: 'center' }) }
+  for (const p of S.popups) {
+    const k = p.t < 0.1 ? 1 + (0.1 - p.t) * 8 : 1
+    if (p.img && IMG.onomatopees) {
+      const sc = (p.big ? 0.95 : 0.68) * (p.t < 0.12 ? 0.6 + (p.t / 0.12) * 0.4 * k : 1)
+      g.save(); g.globalAlpha = p.t > 0.5 ? clamp((0.7 - p.t) / 0.2, 0, 1) : 1
+      g.translate(Math.round(p.x + cx), Math.round(p.y + cy - 10 - p.t * 14)); g.rotate(p.tilt); g.scale(sc, sc)
+      g.drawImage(IMG.onomatopees, p.img.col * 104, p.img.row * 76, 104, 76, -52, -38, 104, 76)
+      g.restore()
+      continue
+    }
+    text(p.text, Math.round(p.x + cx), Math.round(p.y + cy - p.t * 16), { size: Math.round((p.big ? 16 : 11) * k), color: p.color, align: 'center' })
+  }
   if (DEBUG) {
     g.strokeStyle = PAL.cyan
     for (const e of ents) { g.beginPath(); g.arc(e.x + cx, e.y + cy, 40, 0, Math.PI * 2); if (e === hero) g.stroke() }
@@ -2183,7 +2200,7 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage'), loadImage('onomatopees'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
