@@ -2089,7 +2089,7 @@ function drawEnd() {
     const k = Math.max(0, 1 - (T - tK) * 5)
     const stamp = S.final < 15000 ? 'FAIR-PLAY' : S.final < 40000 ? 'RUGUEUX' : S.final < 80000 ? 'BOUCHER' : S.final < 150000 ? 'CARTON PLEIN' : 'LEGENDE DU GUARANI'
     if (k > 0 && S.stampShake === undefined) { S.stampShake = 1; S.shake = Math.max(S.shake, 8); beep('hit') }
-    g.save(); g.translate(W / 2, yC + 76); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
+    g.save(); g.translate(W / 2, yC + 86); g.rotate(-0.12); g.scale(1 + k * 1.5, 1 + k * 1.5); g.globalAlpha = fade * (1 - k * 0.5)
     g.strokeStyle = PAL.red; g.lineWidth = 3; g.strokeRect(-72, -11, 144, 22)
     text(stamp, 0, -6, { size: 11, color: PAL.red, align: 'center', shadow: false })
     g.restore(); g.globalAlpha = fade
