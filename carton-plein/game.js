@@ -481,8 +481,8 @@ function makeProps() {
   }
   // Drapeaux de corner, cages, banc, glacière, caméra.
   for (const [cx, cy] of [[FIELD.x, FIELD.y], [FIELD.x + FIELD.w, FIELD.y], [FIELD.x, FIELD.y + FIELD.h], [FIELD.x + FIELD.w, FIELD.y + FIELD.h]]) props.push({ kind: 'flag', x: cx - 3, y: cy - 24, w: 6, h: 24, hp: 1 })
-  props.push({ kind: 'goal', x: FIELD.x - 28, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 3, side: 0 })
-  props.push({ kind: 'goal', x: FIELD.x + FIELD.w, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 3, side: 1 })
+  props.push({ kind: 'goal', x: FIELD.x - 28, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 4, side: 0 }) // 4 coups : secousse, abîmée, secousse, cassée
+  props.push({ kind: 'goal', x: FIELD.x + FIELD.w, y: FIELD.y + FIELD.h / 2 - GOAL_H / 2, w: 28, h: GOAL_H, hp: 4, side: 1 })
   props.push({ kind: 'bench', x: FIELD.x + FIELD.w / 2 - 270, y: FIELD.y + FIELD.h + 34, w: 250, h: 16, hp: 1 })
   props.push({ kind: 'cooler', x: FIELD.x + FIELD.w / 2 - 20, y: FIELD.y + FIELD.h + 36, w: 12, h: 14, hp: 1 })
   props.push({ kind: 'camera', x: FIELD.x + FIELD.w / 2 + 60, y: FIELD.y - 44, w: 14, h: 22, hp: 1 })
@@ -497,6 +497,7 @@ function nearestProp(from, maxD) { let best = null, bd = maxD; for (const p of p
 function hitProps(how) { for (const p of props) if (p.hp > 0 && propDist(hero, p) < 10) { breakProp(p, how); hero.propHit = true } }
 function breakProp(p, how) {
   p.hp -= how === 'tackle' ? 1 : 1
+  p.shakeT = 0 // secousse rapide et légère, quelques images
   const c = propCenter(p)
   for (let i = 0; i < 10; i++) S.debris.push({ x: c.x + rr(-p.w / 2, p.w / 2), y: c.y, vx: rr(-120, 120), vy: rr(-160, -40), z: 0, color: p.kind === 'goal' ? PAL.white : p.kind === 'board' ? p.color : p.kind === 'flag' ? PAL.yellow : PAL.clay, t: 0 })
   S.shake = Math.max(S.shake, 6)
@@ -548,9 +549,10 @@ function drawProp(p, cx, cy) {
     const gx = p.x + cx, gy = p.y + cy
     if (IMG['cage-states']) {
       // Planche 152 × 152 : 0 intacte, 1 abîmée, 2 détruite, 3..9 filet qui gonfle. Poteaux sur la ligne de but, miroir à droite.
-      const cell = p.broken ? 2 : p.netT !== undefined && p.netT < 0.7 ? 3 + Math.min(6, Math.floor(p.netT * 10)) : p.hp < 3 ? 1 : 0
+      const cell = p.broken ? 2 : p.netT !== undefined && p.netT < 0.7 ? 3 + Math.min(6, Math.floor(p.netT * 10)) : p.hp <= 2 ? 1 : 0
       const lineX = p.side ? gx : gx + 28, midY = gy + GOAL_H / 2
       g.save()
+      if (p.shakeT !== undefined && p.shakeT < 0.3) { const a = 1 - p.shakeT / 0.3; g.translate(Math.round(Math.sin(p.shakeT * 70) * 3 * a), Math.round(Math.cos(p.shakeT * 55) * 2 * a)) }
       if (p.side) { g.translate(Math.round(lineX + 104), Math.round(midY - 76)); g.scale(-1, 1) } else g.translate(Math.round(lineX - 104), Math.round(midY - 76))
       g.drawImage(IMG['cage-states'], cell * 152, 0, 152, 152, 0, 0, 152, 152)
       g.restore()
@@ -562,7 +564,7 @@ function drawProp(p, cx, cy) {
     for (let i = 0; i <= 28; i += 6) { g.beginPath(); g.moveTo(gx + i, gy); g.lineTo(gx + i, gy + GOAL_H); g.stroke() }
     for (let j = 0; j <= GOAL_H; j += 6) { g.beginPath(); g.moveTo(gx, gy + j); g.lineTo(gx + 28, gy + j); g.stroke() }
     g.fillStyle = PAL.white; g.fillRect(p.side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
-    if (p.hp < 3) { g.fillStyle = PAL.ink; for (let k = 0; k < 3 - p.hp; k++) g.fillRect(gx + 6 + k * 8, gy + 30 + k * 25, 2, 14) }
+    if (p.hp <= 2) { g.fillStyle = PAL.ink; for (let k = 0; k < 3 - p.hp; k++) g.fillRect(gx + 6 + k * 8, gy + 30 + k * 25, 2, 14) }
   } else if (p.kind === 'bench') {
     g.fillStyle = PAL.ink; g.fillRect(p.x + cx - 1, p.y + cy - 1, p.w + 2, p.h + 2)
     g.fillStyle = p.broken ? PAL.slate : PAL.clay; g.fillRect(p.x + cx, p.y + cy + (p.broken ? 8 : 0), p.w, p.broken ? 6 : p.h)
@@ -1586,7 +1588,7 @@ function update(dt) {
   else S.fuego = Math.max(0, S.fuego - 2 * dt)
   // Effets.
   for (const p of S.popups) p.t += dt
-  for (const p of props) if (p.netT !== undefined) p.netT += dt
+  for (const p of props) { if (p.netT !== undefined) p.netT += dt; if (p.shakeT !== undefined) p.shakeT += dt }
   S.popups = S.popups.filter((p) => p.t < 0.7)
   if (S.popups.length > 14) S.popups.splice(0, S.popups.length - 14)
   for (const b of S.banners) b.t += dt
@@ -1793,7 +1795,18 @@ function render() {
   drawHeroRing(hero.x + cx, hero.y + cy + 1)
   for (const e of ents) if (!e.isProp && !e.isBus && e.state !== 'ko' && e.state !== 'fade' && !(e === ref && ref.landed && ref.down > 0)) drawShadow(e.x + cx, e.y + cy + 1, Math.max(6, (e.state === 'fall' ? 14 : 12) - (e.z || 0) * 0.15))
   drawShadow(ball.x + cx, ball.y + cy + 2, Math.max(2, 4 - (ball.z || 0) / 40))
-  if (S.fire > 0) drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t, S.fury > 0)
+  if (S.fire > 0) {
+    const fl = IMG['sayan-flamme']
+    if (S.fury > 0 && fl) {
+      // Furie : la vraie flamme dorée (9 images), qui respire et ondule légèrement, derrière le joueur.
+      const ff = Math.floor(S.t * SAYAN.flameFps) % SAYAN.flameFrames
+      const k = 1.25 + Math.sin(S.t * 7) * 0.06
+      const fw = 64 * k, fh = 64 * k
+      const fx = hero.x + cx + Math.sin(S.t * 11) * 1.5, fy = hero.y + cy - (hero.z || 0) + 6
+      g.save(); g.globalAlpha = 0.35; g.globalCompositeOperation = 'lighter'; g.drawImage(fl, ff * 64, 0, 64, 64, fx - fw * 0.6, fy - fh * 1.2, fw * 1.2, fh * 1.2); g.restore() // halo additif
+      g.drawImage(fl, ff * 64, 0, 64, 64, Math.round(fx - fw / 2), Math.round(fy - fh), fw, fh)
+    } else drawFlame(hero.x + cx, hero.y + cy - (hero.z || 0), S.t, false)
+  }
   for (const e of ents) {
     if (e.isProp) { drawProp(e.p, cx, cy); continue }
     if (e.isBus) { drawBus(e.b, cx, cy); continue }
@@ -2327,6 +2340,6 @@ Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), l
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, endMatch, startVar, sayanVideo, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, endMatch, startVar, sayanVideo, breakProp, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
