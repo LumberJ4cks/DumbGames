@@ -260,7 +260,7 @@ function kickoff() {
 
 /* ---------- entrées ---------- */
 const keys = {}
-const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null }
+const touch = { joy: null, jx: 0, jy: 0, btn: false, btnId: null, on: matchMedia('(pointer: coarse)').matches, btnT: 9 }
 let attackPressed = false
 let restartPressed = false
 const VARMOTION = 2.3 // durée du motion design VAR ACTIVÉE
@@ -270,7 +270,9 @@ const GAMEOVER_MIN = 3 // le carton GAME OVER ne peut pas être passé avant 3 s
 const GAMEOVER = 5 // puis il laisse place au récap, de lui-même ou sur un appui
 const RESTART_BTN = { x: W / 2 - 80, y: H - 54, w: 160, h: 24 }
 const inRestart = (x, y) => x >= RESTART_BTN.x && x <= RESTART_BTN.x + RESTART_BTN.w && y >= RESTART_BTN.y && y <= RESTART_BTN.y + RESTART_BTN.h
-const canvasXY = (e) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H } }
+let ROT = false // téléphone en portrait : le canvas est tourné de 90° pour jouer en paysage plein écran
+const toGame = (cx, cy) => { const r = canvas.getBoundingClientRect(); if (ROT) return { x: ((cy - r.top) / r.height) * W, y: (1 - (cx - r.left) / r.width) * H }; return { x: ((cx - r.left) / r.width) * W, y: ((cy - r.top) / r.height) * H } }
+const canvasXY = (e) => toGame(e.clientX, e.clientY)
 addEventListener('keydown', (e) => {
   if (e.repeat) return
   if (music.wanted && !music.src) startMusic()
@@ -291,20 +293,23 @@ addEventListener('mousedown', (e) => {
   if (S.phase === 'end') { const { x, y } = canvasXY(e); if ((S.endT || 0) < GAMEOVER || inRestart(x, y)) restartPressed = true; return }
   if (e.button === 2) attackPressed = true
 })
+function goFullscreen() {
+  try { const el = document.documentElement; const req = el.requestFullscreen || el.webkitRequestFullscreen; if (req && !document.fullscreenElement) req.call(el, { navigationUI: 'hide' }).catch(() => {}) } catch (e) { /* iOS : pas de plein écran, la rotation CSS suffit */ }
+  try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}) } catch (e) { /* pas de verrouillage */ }
+}
 canvas.addEventListener('pointerdown', (e) => {
   if (music.wanted && !music.src) startMusic()
   if (e.pointerType === 'mouse') return
+  touch.on = true
   const { x, y } = canvasXY(e)
+  if (S.phase === 'title') { const { x, y } = canvasXY(e); if (inStart(x, y) && !startPress) { startPress = 0.16; beep('click'); goFullscreen() } return }
   if (S.phase === 'end') { if ((S.endT || 0) < GAMEOVER || inRestart(x, y)) restartPressed = true; return }
-  if (S.phase === 'title') { if (inStart(x, y) && !startPress) { startPress = 0.16; beep('click') } return }
   if (x < W / 2) touch.joy = { id: e.pointerId, x, y }
-  else { touch.btn = true; touch.btnId = e.pointerId; attackPressed = true }
+  else { touch.btn = true; touch.btnId = e.pointerId; touch.btnT = 0; attackPressed = true }
 })
 canvas.addEventListener('pointermove', (e) => {
   if (!touch.joy || e.pointerId !== touch.joy.id) return
-  const r = canvas.getBoundingClientRect()
-  const x = ((e.clientX - r.left) / r.width) * W
-  const y = ((e.clientY - r.top) / r.height) * H
+  const { x, y } = toGame(e.clientX, e.clientY)
   const dx = x - touch.joy.x, dy = y - touch.joy.y
   const d = Math.hypot(dx, dy)
   const k = d > 24 ? 24 / d : 1
@@ -1542,7 +1547,7 @@ function update(dt) {
   if (sayanVideo && !sayanVideo.paused && S.phase !== 'sayan') sayanVideo.pause()
   if (S.phase === 'title') { restartPressed = false; S.t += dt; if (startPress > 0) { startPress -= dt; if (startPress <= 0) { startPress = 0; attackPressed = false; startMatch(); return } } if (attackPressed) { attackPressed = false; if (!startPress) { startPress = 0.16; beep('click') } } return }
   if (S.paused) { attackPressed = false; return }
-  S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt
+  S.hitStopCd -= dt; S.shakeCd -= dt; S.lastPtsT += dt; touch.btnT += dt
   if (S.busMotion !== undefined) { S.busMotion += dt; if (S.busMotion >= BUSMOTION) S.busMotion = undefined }
   if (S.suppMotion !== undefined) { S.suppMotion += dt; if (S.suppMotion >= SUPPMOTION) S.suppMotion = undefined }
   if (S.freeze > 0) { S.freeze -= dt; attackPressed = false; settleAir(dt * 0.5); return }
@@ -2019,6 +2024,26 @@ function drawCallout(c) {
   }
   g.restore()
 }
+/** Commandes tactiles : disques blancs à 25 % d'opacité, joystick à gauche (suit le pouce), bouton de frappe à droite (point + flash). */
+function drawTouchControls() {
+  const jx = touch.joy ? touch.joy.x : 70, jy = touch.joy ? touch.joy.y : H - 70
+  g.save()
+  // Joystick : base + point.
+  g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(jx, jy, 30, 0, Math.PI * 2); g.fill()
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5; g.beginPath(); g.arc(jx, jy, 30, 0, Math.PI * 2); g.stroke()
+  g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(jx + touch.jx * 22, jy + touch.jy * 22, 9, 0, Math.PI * 2); g.fill()
+  // Bouton de frappe : disque, flash en rayons derrière un point ; le flash grossit à l'appui.
+  const bx = W - 70, by = H - 70
+  const press = touch.btn ? 1 : Math.max(0, 1 - touch.btnT * 4)
+  g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(bx, by, 34, 0, Math.PI * 2); g.fill()
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.arc(bx, by, 34, 0, Math.PI * 2); g.stroke()
+  g.translate(bx, by); g.rotate(S.t * 0.8)
+  g.fillStyle = `rgba(255,255,255,${0.55 + press * 0.4})`
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, r1 = 11 + press * 4, r2 = (i % 2 ? 19 : 25) + press * 6; g.beginPath(); g.moveTo(Math.cos(a - 0.18) * r1, Math.sin(a - 0.18) * r1); g.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); g.lineTo(Math.cos(a + 0.18) * r1, Math.sin(a + 0.18) * r1); g.closePath(); g.fill() }
+  g.rotate(-S.t * 0.8)
+  g.fillStyle = PAL.white; g.beginPath(); g.arc(0, 0, 8 + press * 2, 0, Math.PI * 2); g.fill()
+  g.restore()
+}
 function drawCountdown() {
   const n = Math.ceil(S.phaseT - 0.9) // 3, 2, 1 puis 0 = GO
   const frac = n >= 1 ? (S.phaseT - 0.9) - (n - 1) : S.phaseT / 0.9 // 1 → 0 au fil de chaque temps
@@ -2187,7 +2212,7 @@ function drawHUD() {
     g.globalAlpha = 1
   })
   // Tactile : joystick et bouton.
-  if (touch.joy) { g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 2; g.beginPath(); g.arc(touch.joy.x, touch.joy.y, 24, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(touch.joy.x + touch.jx * 24, touch.joy.y + touch.jy * 24, 8, 0, Math.PI * 2); g.fill() }
+  if (touch.on && ['play', 'freekick', 'kickoff', 'goal', 'card'].includes(S.phase)) drawTouchControls()
   // Flèche vers le ballon quand il est hors champ (triangle blanc au bord de l'écran).
   if (['play', 'freekick', 'goal', 'kickoff'].includes(S.phase)) {
     const bx = ball.x - S.cam.x, by = ball.y - S.cam.y - (ball.z || 0)
@@ -2330,14 +2355,23 @@ function frame(now) {
 }
 let SCALE = 1 // résolution interne : le jeu dessine en 640×360 logiques sur un canvas k fois plus fin (net sur ordi, illustrations lisibles)
 function fit() {
-  const k = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)))
+  const iw = innerWidth, ih = innerHeight
+  ROT = touch.on && ih > iw * 1.2 // portrait au doigt : on tourne le jeu, il prend tout l'écran en paysage
+  const aw = ROT ? ih : iw, ah = ROT ? iw : ih
+  const m = Math.min(aw / W, ah / H)
+  const k = m >= 1 ? Math.floor(m) : m // entier quand on agrandit, fractionnaire quand il faut réduire
   canvas.style.width = W * k + 'px'
   canvas.style.height = H * k + 'px'
-  const want = clamp(Math.round(k * (window.devicePixelRatio || 1)), 1, 3)
+  canvas.style.transform = ROT ? 'rotate(90deg)' : ''
+  canvas.style.transformOrigin = 'center center'
+  canvas.style.position = ROT ? 'absolute' : ''
+  canvas.style.left = ROT ? (iw - W * k) / 2 + 'px' : ''
+  canvas.style.top = ROT ? (ih - H * k) / 2 + 'px' : ''
+  const want = clamp(Math.round(Math.max(1, k) * (window.devicePixelRatio || 1)), 1, 3)
   if (want !== SCALE || canvas.width !== W * want) { SCALE = want; canvas.width = W * SCALE; canvas.height = H * SCALE }
   g.setTransform(SCALE, 0, 0, SCALE, 0, 0); g.imageSmoothingEnabled = false
 }
-addEventListener('resize', fit)
+addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 60)); document.addEventListener('fullscreenchange', () => setTimeout(fit, 60))
 fit()
 Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), loadImage('count/3'), loadImage('count/2'), loadImage('count/1'), loadImage('count/go'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
