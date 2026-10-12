@@ -381,7 +381,7 @@ function foul(name, victim, extra = {}) {
   if (S.hitStopCd <= 0 && S.fury <= 0) { S.freeze = Math.max(S.freeze, def.big ? 0.07 : 0.035); S.hitStopCd = 0.3 }
   if (S.shakeCd <= 0) { S.shake = Math.max(S.shake, def.big ? 6 : 3); S.shakeCd = 0.12 }
   S.lastPts = pts; S.lastPtsT = 0
-  if (!S.varDone && !S.varDue && def.big && victim && victim.team === 'fra' && !victim.intruder && !victim.gk && S.fouls >= 18 && S.phase === 'play' && S.kickedOff) { S.varDone = true; S.varDue = 0.55; S.varVictim = victim }
+  if (!S.varDone && !S.varDue && def.big && victim && victim.team === 'fra' && !victim.intruder && !victim.gk && S.fouls >= 12 && S.phase === 'play' && S.kickedOff) { S.varDone = true; S.varDue = 0.55; S.varVictim = victim }
   if (!S.busUsed && !S.busDue) { S.chains = Math.min(BUS.need, S.chains + 1); if (S.chains >= BUS.need) { S.busDue = 1.6; banner('TUT TUUUT ! LE BUS DES SUPPORTERS ARRIVE', PAL.cyan); beep('horn') } }
   if (def.noWhistle) return
   if (def.big && S.t - (S.lastWhistle || -9) > 1.5) { S.lastWhistle = S.t; beep('whistle') }
@@ -805,7 +805,7 @@ function updateHero(dt) {
       hero.act = 'ballthrow'; hero.actT = 0.62; hero.hitDone = false; ball.owner = hero; ball.out = false
     }
   }
-  if (ball.owner === hero) { ball.x = hero.x; ball.y = hero.y - 4; ball.z = 38; ball.vx = ball.vy = 0 } // à deux mains, au-dessus de la tête
+  if (ball.owner === hero) { ball.x = hero.x; ball.y = hero.y - 2; ball.z = 16; ball.vx = ball.vy = 0 } // à deux mains, à hauteur de ventre
   hero.chainT -= dt
   if (hero.chainT <= 0) hero.chain = 0
   hero.x = clamp(hero.x, 8, FIELD.w + 2 * FIELD.x - 8)
