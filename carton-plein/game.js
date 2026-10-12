@@ -2174,9 +2174,16 @@ function drawTitle() {
   // Fond : nuit de stade, projecteurs, et l'illustration par-dessus.
   g.fillStyle = PAL.ink; g.fillRect(0, 0, W, H)
   for (let i = 0; i < 3; i++) { const gx = W / 2 + Math.sin(S.t * 0.3 + i * 2.1) * 220; const gr = g.createRadialGradient(gx, -40, 0, gx, -40, 420); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H) }
-  // Pelouse de nuit sur les côtés, l'illustration carrée au centre.
-  for (let x = 0; x < W; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? 'rgba(99,199,77,0.10)' : 'rgba(99,199,77,0.16)'; g.fillRect(x, H * 0.55, 40, H) }
-  g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(0, H * 0.55, W, 2)
+  // La vraie pelouse derrière, en dérive lente, légèrement assombrie pour que l'illustration ressorte.
+  if (IMG.gazon) {
+    const k = W / IMG.gazon.width, gh = IMG.gazon.height * k
+    const drift = Math.sin(S.t * 0.15) * 4
+    g.drawImage(IMG.gazon, 0, Math.round((H - gh) / 2 + drift), W, gh)
+    g.fillStyle = 'rgba(24,20,37,0.42)'; g.fillRect(0, 0, W, H)
+  } else {
+    for (let x = 0; x < W; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? 'rgba(99,199,77,0.10)' : 'rgba(99,199,77,0.16)'; g.fillRect(x, H * 0.55, 40, H) }
+    g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(0, H * 0.55, W, 2)
+  }
   if (IMG.title) g.drawImage(IMG.title, (W - H) / 2, 0, H, H)
   else text('FC MMA', W / 2, 60, { size: 40, color: PAL.yellow, align: 'center' })
   // Le bouton START : survol = un peu plus grand et lumineux ; clic = écrasé, puis départ.
