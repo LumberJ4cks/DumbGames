@@ -1981,20 +1981,14 @@ function drawHUD() {
     if (alive) { g.fillStyle = PAL.ink; g.fillRect(bx - 2, by - 2, 4, 4); g.fillRect(bx - 6, by - 1, 2, 3); g.fillRect(bx + 4, by - 1, 2, 3); g.fillRect(bx - 1, by - 7, 3, 2); g.fillRect(bx - 4, by + 4, 2, 2); g.fillRect(bx + 2, by + 4, 2, 2); g.fillStyle = PAL.grey1; g.fillRect(bx - 5, by + 3, 10, 1) }
     else if (!justLost) { g.fillStyle = PAL.slateD; g.fillRect(bx - 4, by - 1, 8, 2) }
   }
-  // ----- Dégâts, fautes, France : en haut à droite -----
-  plate(W - 200, 6, 194, 30, PAL.yellow)
-  text('DEGATS', W - 190, 15, { size: 9, color: PAL.white })
-  inset(W - 132, 11, 120, 20)
-  sevenSeg(String(S.score).padStart(7, '0'), W - 17, 15, { dw: 11, dh: 12, t: 2, gap: 4, align: 'right' })
-  if (S.lastPtsT < 0.8 && S.lastPts) outlined((S.lastPts > 0 ? '+' : '') + S.lastPts, W - 20, 38, { size: 8, color: S.lastPts > 0 ? PAL.white : PAL.red, align: 'right' })
-  plate(W - 200, 39, 194, 14, PAL.yellow, { cut: 3, alpha: 0.85 })
-  text('FAUTES', W - 192, 42, { size: 7, color: PAL.white }); g.fillStyle = PAL.slate; g.fillRect(W - 152, 42, 1, 8); text(String(S.fouls), W - 147, 42, { size: 7, color: PAL.orange })
-  plate(W - 200, 56, 194, 14, PAL.yellow, { cut: 3, alpha: 0.85 })
+  // ----- Dégâts et banc, en haut à droite : chiffres seuls, sans plaque -----
+  sevenSeg(String(S.score).padStart(7, '0'), W - 9, 11, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', on: PAL.ink, off: 'rgba(0,0,0,0)' }) // ombre portée 1 px, pas de contour
+  sevenSeg(String(S.score).padStart(7, '0'), W - 10, 10, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', off: 'rgba(24,20,37,0.25)' })
+  if (S.lastPtsT < 0.8 && S.lastPts) outlined((S.lastPts > 0 ? '+' : '') + S.lastPts, W - 12, 30, { size: 8, color: S.lastPts > 0 ? PAL.white : PAL.red, align: 'right' })
   const bench = npcs.filter((n) => n.role === 'sub').length
-  text('FRANCE', W - 192, 59, { size: 7, color: PAL.white })
-  crans(W - 148, 60, 78, 5, 11, (11 - Math.min(11, french.filter((f) => f.state === 'play' && f.team === 'fra' && !f.intruder).length)) / 11, PAL.cyan)
-  g.fillStyle = PAL.slate; g.fillRect(W - 66, 59, 1, 8)
-  text(S.teamDoneAt ? 'KO ' + S.teamDoneAt.toFixed(0) + 'S' : 'BANC', W - 61, 59, { size: 7, color: PAL.white }); if (!S.teamDoneAt) text(String(bench), W - 12, 59, { size: 7, color: PAL.yellow, align: 'right' })
+  const onField = french.filter((f) => f.state === 'play' && f.team === 'fra' && !f.intruder).length
+  crans(W - 104, 44, 56, 5, 11, (11 - Math.min(11, onField)) / 11, PAL.cyan, { off: 'rgba(24,20,37,0.45)' })
+  outlined(S.teamDoneAt ? 'KO ' + S.teamDoneAt.toFixed(0) + 'S' : 'BANC ' + bench, W - 10, 41, { size: 8, color: S.teamDoneAt ? PAL.orange : PAL.white, align: 'right' })
   // ----- Combo : médaillon au centre -----
   if (S.combo > 0) {
     const m = comboMult()
@@ -2024,29 +2018,7 @@ function drawHUD() {
     text(label, cx, 67, { size: 8, color: col === PAL.white ? PAL.white : PAL.white, align: 'center' })
     crans(cx - 40, 82, 80, 5, 10, f2, col)
   }
-  // ----- FUEGO / FURIE, en bas à gauche -----
-  const furyOn = S.fury > 0, fireOn = S.fire > 0
-  const fCol = furyOn ? PAL.yellow : fireOn ? PAL.yellow : PAL.orange
-  if (furyOn) { g.save(); g.shadowColor = PAL.yellow; g.shadowBlur = 10; plate(6, H - 34, 184, 28, fCol); g.restore() } else plate(6, H - 34, 184, 28, fCol)
-  icon('flame', 14, H - 30, 1)
-  text(furyOn ? 'FURIE' : fireOn ? 'FURIE ?' : 'FUEGO', 30, H - 30, { size: 9, color: furyOn ? (Math.floor(S.t * 10) % 2 ? PAL.white : PAL.yellow) : fireOn ? PAL.yellow : PAL.white })
-  crans(30, H - 18, 150, 7, 12, furyOn ? S.fury / 12 : fireOn ? S.furyCharge / 100 : S.fuego / 100, furyOn ? PAL.yellow : fireOn ? PAL.yellow : PAL.orange)
-  if (fireOn && !furyOn) outlined('EN FEU ' + Math.ceil(S.fire) + 'S', 190, H - 44, { size: 7, color: PAL.orange, align: 'right' })
-  // ----- Bus, en bas au centre -----
-  if (!S.busUsed || S.bus) {
-    plate(W / 2 - 64, H - 28, 128, 22, PAL.cyan, { cut: 4 })
-    icon('bus', W / 2 - 57, H - 23)
-    const due = S.busDue > 0
-    text(S.bus ? 'BUS ' + (S.bus.state === 'park' ? Math.ceil(BUS.park - S.bus.t) + 'S' : '') : due ? (Math.floor(S.t * 6) % 2 ? 'TUT TUUUT' : 'LE BUS !') : 'BUS', W / 2 - 40, H - 23, { size: 8, color: due ? PAL.cyan : PAL.white })
-    crans(W / 2 - 2, H - 15, 60, 5, 10, S.bus ? (S.bus.state === 'park' ? 1 - S.bus.t / BUS.park : 1) : S.chains / BUS.need, PAL.cyan)
-  }
-  // ----- Arbitre, en bas à droite -----
-  const cracking = ref.patience <= 0
-  plate(W - 190, H - 34, 184, 28, cracking ? PAL.red : PAL.grey1)
-  icon('whistle', W - 182, H - 27)
-  text('ARBITRE', W - 166, H - 30, { size: 9, color: cracking ? PAL.red : PAL.white })
-  crans(W - 166, H - 18, 150, 7, 12, ref.patience / 100, PAL.green, { grad: [PAL.green, PAL.green, PAL.greenL, PAL.yellow, PAL.yellow, PAL.amber, PAL.orange, PAL.red] })
-  if (cracking && Math.floor(S.t * 4) % 2) outlined('IL CRAQUE', W - 98, H - 44, { size: 8, color: PAL.white })
+  // (plus de jauges en bas : la pastille sous le joueur dit déjà feu / furie, le bus et l'arbitre s'annoncent d'eux-mêmes)
   if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
   if (S.phase === 'var' && S.var) drawVar()
   if (S.phase === 'sayan') drawSayan()
