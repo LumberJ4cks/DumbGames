@@ -80,7 +80,7 @@ function drawSprite(g, name, anim, dir, frame, x, y, flip = false) {
 }
 
 /* ---------- son (synthétisé) ---------- */
-const audio = { ctx: null, muted: localStorage.getItem('carton.muted') === '1' }
+const audio = { ctx: null, muted: localStorage.getItem('fcMma:muted') === '1' }
 const beepLast = {}
 /* ---------- musique : démarre à la première mise en jeu, en boucle, coupée par M ---------- */
 const music = { buf: null, src: null, gain: null, loading: false, wanted: false }
@@ -277,7 +277,7 @@ addEventListener('keydown', (e) => {
   keys[e.code] = true
   if (e.code === 'Space' || e.code === 'Enter') { attackPressed = true; restartPressed = true; e.preventDefault() }
   if (e.code === 'KeyP') S.paused = !S.paused
-  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('carton.muted', audio.muted ? '1' : '0'); if (music.gain) music.gain.gain.value = audio.muted ? 0 : 0.55; if (sfx.crowdGain) sfx.crowdGain.gain.value = audio.muted ? 0 : 0.14 }
+  if (e.code === 'KeyM') { audio.muted = !audio.muted; localStorage.setItem('fcMma:muted', audio.muted ? '1' : '0'); if (music.gain) music.gain.gain.value = audio.muted ? 0 : 0.55; if (sfx.crowdGain) sfx.crowdGain.gain.value = audio.muted ? 0 : 0.14 }
 })
 addEventListener('keyup', (e) => { keys[e.code] = false })
 addEventListener('contextmenu', (e) => e.preventDefault())
@@ -1610,12 +1610,12 @@ function update(dt) {
 function endMatch() {
   S.phase = 'end'
   S.final = S.score
-  const best = Number(localStorage.getItem('carton.record') || 0)
+  const best = Number(localStorage.getItem('fcMma:best') || 0)
   S.newRecord = S.final > best
   S.record = Math.max(best, S.final)
   S.endT = 0; S.stampShake = undefined; S.goShown = false; for (let i = 0; i < 16; i++) delete S['endTick' + i]; S.shake = Math.max(S.shake, 10)
   if (endVideo) { try { endVideo.currentTime = 0; endVideo.play().catch(() => {}) } catch (e) { /* pas de vidéo */ } }
-  localStorage.setItem('carton.record', String(S.record))
+  localStorage.setItem('fcMma:best', String(S.record))
   beep('whistle'); setTimeout(() => beep('whistle'), 350); setTimeout(() => beep('horn'), 700) // coup de sifflet final
 }
 
@@ -2235,7 +2235,7 @@ function drawTitle() {
   g.restore()
   if (hover && !startPress) canvas.style.cursor = 'pointer'; else canvas.style.cursor = ''
   text('ESPACE OU START', W / 2, H - 9, { size: 6, color: PAL.grey2, align: 'center' })
-  text('RECORD ' + (localStorage.getItem('carton.record') || 0), W - 8, H - 9, { size: 6, color: PAL.grey2, align: 'right' })
+  text('RECORD ' + (localStorage.getItem('fcMma:best') || 0), W - 8, H - 9, { size: 6, color: PAL.grey2, align: 'right' })
 }
 function drawGameOver(T) {
   // Scène figée qui s'assombrit, GAME OVER qui tombe du ciel et rebondit, puis petit tremblement.

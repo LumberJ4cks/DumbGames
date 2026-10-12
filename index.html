@@ -183,13 +183,11 @@
   <div class="hd"><h2 class="big">Des jeux. Voilà.</h2><p>Petites parties. Grandes pertes de temps.</p></div>
 
   <div class="row">
-    <div class="card art soon" aria-label="FC MMA, bientôt">
+    <a class="card art" href="fc-mma/">
       <img src="assets/fc-mma.webp" alt="FC MMA. La France joue au foot, le Paraguay joue au MMA." width="2000" height="562" loading="lazy">
-      <span class="go soon">BIENTÔT</span>
-    </div>
-    <div class="champ none">
-      <span class="k">LE CHAMPION</span><span class="who">Personne</span><span class="hs">HIGH SCORE<br><span class="val">En attente du coup d’envoi.</span></span>
-    </div>
+      <span class="go">▶</span>
+    </a>
+    <div class="champ" data-game="fc-mma"></div>
   </div>
 
   <div class="row">
@@ -285,6 +283,7 @@
   // Où chaque jeu range son record dans localStorage.
   const games = {
     'barricasse':            { name: 'BARRICASSE',             unit: '',  read: () => num(json(get('barricasse.record'))?.score) },
+    'fc-mma':                { name: 'FC MMA',                 unit: '',  read: () => num(get('fcMma:best')) },
     'siuuuu-simulator':      { name: 'SIUUUU SIMULATOR',       unit: '',  read: () => num(json(get('siuuuuSimulator:best'))) },
     'cons-de-mime':          { name: 'CONS DE MIME',           unit: '',  read: () => num(get('consDeMime:best')) },
     'francis-hero':          { name: 'FRANCIS HERO',           unit: '',  read: () => num(get('francisHero:best')) },
