@@ -2221,7 +2221,7 @@ function drawTitle() {
     for (let x = 0; x < W; x += 40) { g.fillStyle = Math.floor(x / 40) % 2 ? 'rgba(99,199,77,0.10)' : 'rgba(99,199,77,0.16)'; g.fillRect(x, H * 0.55, 40, H) }
     g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(0, H * 0.55, W, 2)
   }
-  if (IMG.title) g.drawImage(IMG.title, (W - H) / 2, 0, H, H)
+  if (IMG.title) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(IMG.title, (W - H) / 2, 0, H, H); g.imageSmoothingEnabled = false }
   else text('FC MMA', W / 2, 60, { size: 40, color: PAL.yellow, align: 'center' })
   // Le bouton START : survol = un peu plus grand et lumineux ; clic = écrasé, puis départ.
   const b = START_BTN
@@ -2230,7 +2230,7 @@ function drawTitle() {
   const cxb = b.x + b.w / 2, cyb = b.y + b.h / 2
   if (hover || startPress > 0) { g.fillStyle = startPress > 0 ? 'rgba(255,255,255,0.35)' : 'rgba(254,231,97,0.22)'; g.beginPath(); g.ellipse(cxb, cyb, b.w * 0.62 * k, b.h * 0.9 * k, 0, 0, Math.PI * 2); g.fill() }
   g.save(); g.translate(cxb, cyb + (startPress > 0 ? 3 : 0)); g.scale(k, k)
-  if (IMG.start) g.drawImage(IMG.start, -b.w / 2, -b.h / 2, b.w, b.h)
+  if (IMG.start) { g.imageSmoothingEnabled = true; g.drawImage(IMG.start, -b.w / 2, -b.h / 2, b.w, b.h); g.imageSmoothingEnabled = false }
   if (hover && !startPress) { g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(-b.w / 2 + 6, -b.h / 2 + 6, b.w - 12, b.h - 12); g.globalCompositeOperation = 'source-over' }
   g.restore()
   if (hover && !startPress) canvas.style.cursor = 'pointer'; else canvas.style.cursor = ''
@@ -2328,10 +2328,14 @@ function frame(now) {
   try { update(dt); render() } catch (e) { console.error(e) }
   requestAnimationFrame(frame)
 }
+let SCALE = 1 // résolution interne : le jeu dessine en 640×360 logiques sur un canvas k fois plus fin (net sur ordi, illustrations lisibles)
 function fit() {
   const k = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)))
   canvas.style.width = W * k + 'px'
   canvas.style.height = H * k + 'px'
+  const want = clamp(Math.round(k * (window.devicePixelRatio || 1)), 1, 3)
+  if (want !== SCALE || canvas.width !== W * want) { SCALE = want; canvas.width = W * SCALE; canvas.height = H * SCALE }
+  g.setTransform(SCALE, 0, 0, SCALE, 0, 0); g.imageSmoothingEnabled = false
 }
 addEventListener('resize', fit)
 fit()
