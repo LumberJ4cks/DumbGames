@@ -541,21 +541,22 @@ function drawProp(p, cx, cy) {
     g.fillStyle = PAL.yellow; g.beginPath(); g.moveTo(p.x + cx + 4, p.y + cy); g.lineTo(p.x + cx + 14, p.y + cy + 4); g.lineTo(p.x + cx + 4, p.y + cy + 8); g.fill()
   } else if (p.kind === 'goal') {
     const gx = p.x + cx, gy = p.y + cy
-    if (p.broken) { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(gx - 6, gy + GOAL_H - 16, 40, 18); g.fillStyle = PAL.white; g.fillRect(gx - 8, gy + GOAL_H - 6, 44, 3); g.fillRect(gx + 10, gy + 20, 3, GOAL_H - 30); return }
-    if (IMG.cage) {
-      // Sprite 56 × 126 : les poteaux occupent les 7 dernières colonnes, posés sur la ligne de but ; miroir pour la cage de droite.
+    if (IMG['cage-states']) {
+      // Planche 152 × 152 : 0 intacte, 1 abîmée, 2 détruite, 3..9 filet qui gonfle. Poteaux sur la ligne de but, miroir à droite.
+      const cell = p.broken ? 2 : p.netT !== undefined && p.netT < 0.7 ? 3 + Math.min(6, Math.floor(p.netT * 10)) : p.hp < 3 ? 1 : 0
       const lineX = p.side ? gx : gx + 28, midY = gy + GOAL_H / 2
       g.save()
-      if (p.side) { g.translate(Math.round(lineX + 53), Math.round(midY - 63)); g.scale(-1, 1); g.drawImage(IMG.cage, 0, 0) }
-      else g.drawImage(IMG.cage, Math.round(lineX - 53), Math.round(midY - 63))
+      if (p.side) { g.translate(Math.round(lineX + 104), Math.round(midY - 76)); g.scale(-1, 1) } else g.translate(Math.round(lineX - 104), Math.round(midY - 76))
+      g.drawImage(IMG['cage-states'], cell * 152, 0, 152, 152, 0, 0, 152, 152)
       g.restore()
-    } else {
-      g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(gx, gy, 28, GOAL_H)
-      g.strokeStyle = PAL.grey1; g.lineWidth = 1
-      for (let i = 0; i <= 28; i += 6) { g.beginPath(); g.moveTo(gx + i, gy); g.lineTo(gx + i, gy + GOAL_H); g.stroke() }
-      for (let j = 0; j <= GOAL_H; j += 6) { g.beginPath(); g.moveTo(gx, gy + j); g.lineTo(gx + 28, gy + j); g.stroke() }
-      g.fillStyle = PAL.white; g.fillRect(p.side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
+      return
     }
+    if (p.broken) { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(gx - 6, gy + GOAL_H - 16, 40, 18); g.fillStyle = PAL.white; g.fillRect(gx - 8, gy + GOAL_H - 6, 44, 3); g.fillRect(gx + 10, gy + 20, 3, GOAL_H - 30); return }
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(gx, gy, 28, GOAL_H)
+    g.strokeStyle = PAL.grey1; g.lineWidth = 1
+    for (let i = 0; i <= 28; i += 6) { g.beginPath(); g.moveTo(gx + i, gy); g.lineTo(gx + i, gy + GOAL_H); g.stroke() }
+    for (let j = 0; j <= GOAL_H; j += 6) { g.beginPath(); g.moveTo(gx, gy + j); g.lineTo(gx + 28, gy + j); g.stroke() }
+    g.fillStyle = PAL.white; g.fillRect(p.side ? gx - 2 : gx + 26, gy - 2, 4, GOAL_H + 4)
     if (p.hp < 3) { g.fillStyle = PAL.ink; for (let k = 0; k < 3 - p.hp; k++) g.fillRect(gx + 6 + k * 8, gy + 30 + k * 25, 2, 14) }
   } else if (p.kind === 'bench') {
     g.fillStyle = PAL.ink; g.fillRect(p.x + cx - 1, p.y + cy - 1, p.w + 2, p.h + 2)
@@ -1096,13 +1097,13 @@ function spawnAbsurd(kind, near) {
 function startVar(victim) {
   if (!victim || !french.includes(victim)) { return }
   S.prevPhase = S.phase
-  S.phase = 'var'
+  S.phase = 'varintro'; S.varIntroT = 1.5 // le panneau VAR ACTIVÉE d'abord, le mini-jeu ensuite
   S.var = { t: 0, victim, cursor: 0, dir: 1, zone: rr(0.3, 0.6), zoneW: 0.16, done: null, doneT: 0, speed: 1.1 }
   S.freeze = 0; attackPressed = false
   S.banners = []
-  callout('VAR ACTIVÉE', PAL.cyan)
+  callout('VAR ACTIVÉE', PAL.cyan, 1.5)
   beep('whistle')
-  setTimeout(() => { if (S.phase === 'var' && !audio.muted) sample('var-voice', { gain: 1.1, vary: 0 }) }, 350) // « Je l'ai pas touché ! »
+  setTimeout(() => { if ((S.phase === 'var' || S.phase === 'varintro') && !audio.muted) sample('var-voice', { gain: 1.1, vary: 0 }) }, 1500) // « Je l'ai pas touché ! » quand le moniteur s'allume
 }
 function updateVar(dt) {
   const v = S.var
@@ -1191,45 +1192,49 @@ function drawSayan() {
 function drawVar() {
   const v = S.var
   const f = v.victim
-  g.fillStyle = 'rgba(24,20,37,0.72)'; g.fillRect(0, 0, W, H)
-  // Le moniteur.
-  const mx = W / 2 - 150, my = 22, mw = 300, mh = 200
-  g.fillStyle = PAL.ink; g.fillRect(mx - 3, my - 3, mw + 6, mh + 6)
-  g.fillStyle = PAL.slateD; g.fillRect(mx, my, mw, mh)
-  g.fillStyle = Math.floor(S.t * 3) % 2 ? PAL.red : PAL.redD; g.fillRect(mx, my, 44, 14)
-  text('VAR', mx + 22, my + 3, { size: 9, color: PAL.white, align: 'center', shadow: false })
-  text('VERIFICATION EN COURS', mx + mw - 6, my + 4, { size: 7, color: PAL.grey1, align: 'right' })
-  // Le ralenti : la victime qui vole en boucle, sur une pelouse, avec des lignes de balayage.
-  const rx = mx + 12, ry = my + 20, rw = mw - 24, rh = 96
+  g.fillStyle = 'rgba(24,20,37,0.78)'; g.fillRect(0, 0, W, H)
+  // Le moniteur, grand et centré.
+  const mw = 440, mh = 304, mx = W / 2 - mw / 2, my = H / 2 - mh / 2
+  plate(mx, my, mw, mh, PAL.red, { cut: 8, alpha: 0.96 })
+  g.fillStyle = Math.floor(S.t * 3) % 2 ? PAL.red : PAL.redD; g.fillRect(mx + 10, my + 8, 54, 16)
+  text('VAR', mx + 37, my + 11, { size: 10, color: PAL.white, align: 'center', shadow: false })
+  text('VERIFICATION EN COURS', mx + mw - 12, my + 12, { size: 8, color: PAL.grey1, align: 'right' })
+  // Le ralenti : la victime projetée en arrière, en boucle, avec lignes de balayage.
+  const rx = mx + 14, ry = my + 30, rw = mw - 28, rh = 150
+  inset(rx - 2, ry - 2, rw + 4, rh + 4)
   g.save(); g.beginPath(); g.rect(rx, ry, rw, rh); g.clip()
-  for (let x = 0; x < rw; x += 24) { g.fillStyle = Math.floor(x / 24) % 2 ? PAL.green : PAL.greenL; g.fillRect(rx + x, ry, 24, rh) }
-  const loop = (v.t * 0.45) % 1 // ralenti : une boucle lente
-  const hx = rx + rw / 2 - 40 + loop * 90, hy = ry + rh - 18 - Math.sin(loop * Math.PI) * 40
-  drawShadow(hx, ry + rh - 16, 12)
-  drawSprite(g, 'paraguay', 'kick', 'e', 0, rx + rw / 2 - 52, ry + rh - 16)
-  g.save(); g.translate(hx, hy); g.rotate(loop * 5); drawSprite(g, f.atlas || 'france-0', 'knocked', 'w', 0, 0, 0); g.restore()
-  g.fillStyle = 'rgba(255,255,255,0.08)'; for (let y = 0; y < rh; y += 3) g.fillRect(rx, ry + y, rw, 1)
-  if (Math.floor(S.t * 2) % 2) { g.fillStyle = PAL.red; g.fillRect(rx + 6, ry + 6, 6, 6) } text('REPLAY', rx + 16, ry + 5, { size: 7, color: PAL.white })
-  text('x0.25', rx + rw - 6, ry + 5, { size: 7, color: PAL.grey1, align: 'right' })
+  for (let x = 0; x < rw; x += 32) { g.fillStyle = Math.floor(x / 32) % 2 ? PAL.green : PAL.greenL; g.fillRect(rx + x, ry, 32, rh) }
+  const loop = (v.t * 0.4) % 1 // ralenti : une boucle lente
+  const sc = 1.6
+  g.translate(rx + rw / 2, ry + rh - 24); g.scale(sc, sc)
+  const hx = -12 + loop * 100, hy = -Math.sin(loop * Math.PI) * 34
+  drawShadow(hx, 0, 12 - Math.sin(loop * Math.PI) * 4)
+  drawSprite(g, 'paraguay', 'kick', 'e', 0, -52, 0)
+  g.save(); g.translate(hx, hy); g.rotate(Math.min(1, loop * 2.5) * 0.85); drawSprite(g, f.atlas || 'france-0', 'knocked', 'w', 0, 0, 0); g.restore()
+  g.restore()
+  g.save(); g.beginPath(); g.rect(rx, ry, rw, rh); g.clip()
+  g.fillStyle = 'rgba(255,255,255,0.07)'; for (let y = 0; y < rh; y += 3) g.fillRect(rx, ry + y, rw, 1)
+  if (Math.floor(S.t * 2) % 2) { g.fillStyle = PAL.red; g.fillRect(rx + 8, ry + 8, 7, 7) } text('REPLAY', rx + 19, ry + 7, { size: 8, color: PAL.white })
+  text('x0.25', rx + rw - 8, ry + 7, { size: 8, color: PAL.grey1, align: 'right' })
   g.restore()
   // La barre de timing.
-  const bx = mx + 20, by = my + 134, bw = mw - 40, bh = 16
+  const bx = mx + 30, by = my + 198, bw = mw - 60, bh = 22
   const started = v.t >= 1.6
   g.fillStyle = PAL.ink; g.fillRect(bx - 2, by - 2, bw + 4, bh + 4)
   g.fillStyle = PAL.redD; g.fillRect(bx, by, bw, bh)
   g.fillStyle = PAL.green; g.fillRect(bx + Math.round(bw * v.zone), by, Math.round(bw * v.zoneW), bh)
-  text('FAUTE', bx + 4, by + 4, { size: 7, color: PAL.white }); text('FAUTE', bx + bw - 4, by + 4, { size: 7, color: PAL.white, align: 'right' })
-  text('INNOCENT', bx + bw * (v.zone + v.zoneW / 2), by + 4, { size: 7, color: PAL.ink, align: 'center', shadow: false })
-  if (started) { const cxp = bx + Math.round(bw * v.cursor); g.fillStyle = PAL.ink; g.fillRect(cxp - 3, by - 6, 6, bh + 12); g.fillStyle = v.done === 'ok' ? PAL.yellow : PAL.white; g.fillRect(cxp - 2, by - 5, 4, bh + 10) }
-  if (!v.done) outlined(started ? 'APPUIE QUAND LE CURSEUR EST DANS LE VERT' : 'L\'ARBITRE REGARDE LE RALENTI...', W / 2, my + mh - 32, { size: 9, color: started ? PAL.yellow : PAL.grey1 })
+  text('FAUTE', bx + 6, by + 7, { size: 8, color: PAL.white }); text('FAUTE', bx + bw - 6, by + 7, { size: 8, color: PAL.white, align: 'right' })
+  text('INNOCENT', bx + bw * (v.zone + v.zoneW / 2), by + 7, { size: 8, color: PAL.ink, align: 'center', shadow: false })
+  if (started) { const cxp = bx + Math.round(bw * v.cursor); g.fillStyle = PAL.ink; g.fillRect(cxp - 3, by - 7, 6, bh + 14); g.fillStyle = v.done === 'ok' ? PAL.yellow : PAL.white; g.fillRect(cxp - 2, by - 6, 4, bh + 12) }
+  if (!v.done) outlined(started ? 'APPUIE QUAND LE CURSEUR EST DANS LE VERT' : 'L\'ARBITRE REGARDE LE RALENTI...', W / 2, my + mh - 52, { size: 10, color: started ? PAL.yellow : PAL.grey1 })
   else {
     const k = Math.max(0, 1 - v.doneT * 4)
-    g.save(); g.translate(W / 2, my + mh - 28); g.scale(1 + k * 2, 1 + k * 2)
-    outlined(v.done === 'ok' ? 'RIEN A SIGNALER' : 'FAUTE CONTRE TOI', 0, -6, { size: 14, color: v.done === 'ok' ? PAL.green : PAL.red })
+    g.save(); g.translate(W / 2, my + mh - 46); g.scale(1 + k * 2, 1 + k * 2)
+    outlined(v.done === 'ok' ? 'RIEN A SIGNALER' : 'FAUTE CONTRE TOI', 0, -7, { size: 16, color: v.done === 'ok' ? PAL.green : PAL.red })
     g.restore()
-    if (v.doneT > 0.4) outlined(v.done === 'ok' ? 'CARTON ROUGE POUR LE N°' + f.number : '-1500, COMBO PERDU, COUP FRANC POUR LA FRANCE', W / 2, my + mh - 10, { size: 8, color: PAL.white })
+    if (v.doneT > 0.4) outlined(v.done === 'ok' ? 'CARTON ROUGE POUR LE N°' + f.number : '-1500, COMBO PERDU, COUP FRANC POUR LA FRANCE', W / 2, my + mh - 24, { size: 8, color: PAL.white })
   }
-  text('UNE SEULE VERIFICATION PAR MATCH', W / 2, H - 14, { size: 7, color: PAL.grey2, align: 'center' })
+  text('UNE SEULE VERIFICATION PAR MATCH', W / 2, my + mh - 12, { size: 6, color: PAL.grey2, align: 'center' })
 }
 
 /* ---------- le bus des supporters : pouvoir unique, se gare devant notre but 10 s ---------- */
@@ -1402,6 +1407,7 @@ function updateBall(dt) {
 }
 function goalScored() {
   S.goals++
+  for (const p of props) if (p.kind === 'goal' && p.side === 1) p.netT = 0
   ball.vx = ball.vy = 0
   ball.x = FIELD.x + FIELD.w + 14
   ball.out = false; ball.inStands = null
@@ -1513,6 +1519,7 @@ function startMatch() {
 function update(dt) {
   if (S.phase === 'sayan') { S.sayanT += dt; S.t += dt; attackPressed = false; if (S.sayanT >= SAYAN.frames / SAYAN.fps + SAYAN.outro) endSayan(); return }
   if (S.fieldTf !== undefined) { S.fieldTf += dt; hero.vx = hero.vy = 0; attackPressed = false; if (S.fieldTf >= SAYAN.frames / 10) { S.fieldTf = undefined; endSayan() } }
+  if (S.phase === 'varintro') { S.t += dt; S.varIntroT -= dt; attackPressed = false; if (S.callout) { S.callout.t += dt; if (S.callout.t >= S.callout.dur) S.callout = null } if (S.varIntroT <= 0) { S.phase = 'var'; S.callout = null } return }
   if (S.phase === 'var') { updateVar(dt); return }
   if (S.phase === 'end') { S.endT = (S.endT || 0) + dt; S.t += dt; S.shake *= Math.pow(0.02, dt); attackPressed = false; if (restartPressed) { restartPressed = false; if (S.endT >= GAMEOVER_MIN && S.endT < GAMEOVER) { S.endT = GAMEOVER; beep('click') } else if (S.endT > GAMEOVER + 2) { beep('click'); startMatch() } } return }
   if (endVideo && !endVideo.paused && S.phase !== 'end') endVideo.pause()
@@ -1559,6 +1566,7 @@ function update(dt) {
   else S.fuego = Math.max(0, S.fuego - 2 * dt)
   // Effets.
   for (const p of S.popups) p.t += dt
+  for (const p of props) if (p.netT !== undefined) p.netT += dt
   S.popups = S.popups.filter((p) => p.t < 0.7)
   if (S.popups.length > 14) S.popups.splice(0, S.popups.length - 14)
   for (const b of S.banners) b.t += dt
@@ -1771,7 +1779,7 @@ function render() {
     if (e.isBus) { drawBus(e.b, cx, cy); continue }
     if (e.state === 'ko') { drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); drawStars(e.x + cx, e.y + cy - 30, S.t); continue }
     if (e.state === 'fade') { g.globalAlpha = clamp((Math.floor(e.ft * 24) % 2 ? 0.15 : 0.9) * Math.min(1, e.fadeT / 0.5 + 0.2), 0, 1); drawSprite(g, e.atlas, 'ko', e.koDir || e.dir, 0, e.x + cx, e.y + cy - koOff(e.atlas)); g.globalAlpha = 1; continue }
-    if (e.state === 'fall') { const z = e.z || 0; if (z > 2) { g.save(); g.translate(e.x + cx, e.y + cy - z); g.rotate(Math.sin(e.ft * 9) * 0.5); drawSprite(g, e.atlas, 'knocked', e.dir, e.frame, 0, 0); g.restore() } else drawSprite(g, e.atlas, z > 0 ? 'knocked' : 'fall', e.dir, e.frame, e.x + cx, e.y + cy - z); continue }
+    if (e.state === 'fall') { const z = e.z || 0; if (z > 2) { const lean = (e.vx >= 0 ? 1 : -1) * Math.min(1, e.ft * 2.5) * 0.85; g.save(); g.translate(e.x + cx, e.y + cy - z); g.rotate(lean); drawSprite(g, e.atlas, 'knocked', e.dir, 0, 0, 0); g.restore() } else drawSprite(g, e.atlas, z > 0 ? 'knocked' : 'fall', e.dir, e.frame, e.x + cx, e.y + cy - z); continue }
     if (e === ref && ref.down > 0) { if (!ref.landed) { g.save(); g.translate(e.x + cx, e.y + cy - ref.z - 22); g.rotate(Math.sin(e.ft * 6) * 0.12); drawSprite(g, 'arbitre', 'ko', e.dir, 0, 0, 0); g.restore() } else { drawSprite(g, 'arbitre', 'ko', e.dir, 0, e.x + cx, e.y + cy - 22); drawStars(e.x + cx, e.y + cy - 30, S.t) } continue }
     let anim = e.anim
     if (e === hero && hero.act && hero.act !== 'tackle') anim = hero.act === 'ballthrow' ? 'throw' : hero.act
@@ -1949,7 +1957,7 @@ function crans(x, y, w, h, n, frac, on, { off = PAL.slateD, grad = null } = {}) 
     g.fillStyle = PAL.ink; g.fillRect(px - 1, y - 1, sw + 2, h + 2)
     g.fillStyle = i < lit ? (grad ? grad[Math.min(grad.length - 1, Math.floor((i / n) * grad.length))] : on) : off
     g.fillRect(px, y, sw, h)
-    if (i < lit) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(px, y, sw, 1) }
+    if (i < lit) { g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(px, y, sw, 1); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px, y + h - 1, sw, 1) }
   }
 }
 /** Petites icônes en pixels : lettres = couleurs, point = transparent. */
@@ -1966,16 +1974,16 @@ function icon(name, x, y, scale = 1) {
 function drawHUD() {
   const mm = Math.floor(S.clock / 60), ss = Math.floor(S.clock % 60)
   // ----- Chrono + vies, en haut à gauche -----
-  const TY = H - 40 // tout le HUD en bas
-  plate(6, TY, 184, 34, S.goals >= 2 ? PAL.red : PAL.yellow)
-  inset(12, TY + 5, 60, 24)
-  sevenSeg(`${mm}:${String(ss).padStart(2, '0')}`, 16, TY + 10, { dw: 9, dh: 14, t: 2, gap: 3 })
-  flag(80, TY + 7, [PAL.blue, PAL.white, PAL.red])
-  text('FRA', 94, TY + 5, { size: 9, color: PAL.white }); text(String(S.goals), 118, TY + 5, { size: 9, color: PAL.yellow })
+  const TY = H - 40 // tout le HUD en bas, police seule
+  const clock = `${mm}:${String(ss).padStart(2, '0')}`
+  sevenSeg(clock, 11, TY + 7, { dw: 12, dh: 16, t: 3, gap: 4, on: PAL.ink, off: 'rgba(0,0,0,0)' })
+  g.save(); g.shadowColor = 'rgba(254,231,97,0.55)'; g.shadowBlur = 6; sevenSeg(clock, 10, TY + 6, { dw: 12, dh: 16, t: 3, gap: 4, on: S.goals >= 2 ? PAL.red : PAL.yellow, off: 'rgba(24,20,37,0.25)' }); g.restore()
+  flag(84, TY + 8, [PAL.blue, PAL.white, PAL.red])
+  outlined('FRA ' + S.goals, 98, TY + 6, { size: 9, color: PAL.white, align: 'left' })
   for (let i = 0; i < LIVES; i++) {
     const alive = i < LIVES - S.goals
     const justLost = !alive && i === LIVES - S.goals && S.lifeLostT < 0.6
-    const bx = 142 + i * 18, by = TY + 18
+    const bx = 150 + i * 18, by = TY + 15
     const r = justLost ? 7 + Math.round((0.6 - S.lifeLostT) * 8) : 7
     g.fillStyle = PAL.ink; g.beginPath(); g.arc(bx, by, r + 1, 0, Math.PI * 2); g.fill()
     g.fillStyle = alive ? PAL.white : justLost && Math.floor(S.t * 12) % 2 ? PAL.red : PAL.slate; g.beginPath(); g.arc(bx, by, r, 0, Math.PI * 2); g.fill()
@@ -1984,40 +1992,26 @@ function drawHUD() {
   }
   // ----- Dégâts et banc, en haut à droite : chiffres seuls, sans plaque -----
   sevenSeg(String(S.score).padStart(7, '0'), W - 9, H - 33, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', on: PAL.ink, off: 'rgba(0,0,0,0)' }) // ombre portée 1 px, pas de contour
-  sevenSeg(String(S.score).padStart(7, '0'), W - 10, H - 34, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', off: 'rgba(24,20,37,0.25)' })
+  g.save(); g.shadowColor = S.lastPtsT < 0.3 ? 'rgba(255,255,255,0.9)' : 'rgba(254,231,97,0.55)'; g.shadowBlur = S.lastPtsT < 0.3 ? 12 : 6; sevenSeg(String(S.score).padStart(7, '0'), W - 10, H - 34, { dw: 12, dh: 16, t: 3, gap: 4, align: 'right', off: 'rgba(24,20,37,0.25)' }); g.restore()
   if (S.lastPtsT < 0.8 && S.lastPts) outlined((S.lastPts > 0 ? '+' : '') + S.lastPts, W - 12, H - 48, { size: 8, color: S.lastPts > 0 ? PAL.white : PAL.red, align: 'right' })
   const bench = npcs.filter((n) => n.role === 'sub').length
   const onField = french.filter((f) => f.state === 'play' && f.team === 'fra' && !f.intruder).length
   crans(W - 104, H - 12, 56, 5, 11, (11 - Math.min(11, onField)) / 11, PAL.cyan, { off: 'rgba(24,20,37,0.45)' })
   outlined(S.teamDoneAt ? 'KO ' + S.teamDoneAt.toFixed(0) + 'S' : 'BANC ' + bench, W - 10, H - 15, { size: 8, color: S.teamDoneAt ? PAL.orange : PAL.white, align: 'right' })
-  // ----- Combo : médaillon au centre -----
+  // ----- Combo : barre de briques en haut au centre, basse pour laisser voir le jeu -----
   if (S.combo > 0) {
     const m = comboMult()
     const pop = Math.max(0, 1 - S.comboAt * 5)
     const col = m >= 5 ? PAL.orange : m >= 4 ? PAL.red : m >= 3 ? PAL.amber : m >= 2 ? PAL.yellow : PAL.white
-    const cx = W / 2, cy = 34
+    const cx = W / 2
     const frac = S.fire > 0 ? 1 : clamp(S.comboT / (3.2 - m * 0.35), 0, 1)
-    // Anneau à crans rouge → orange → jaune, qui se vide avec le temps.
-    g.fillStyle = PAL.ink; g.beginPath(); g.arc(cx, cy, 30, 0, Math.PI * 2); g.fill()
-    const N = 24
-    for (let i = 0; i < N; i++) {
-      const a0 = -Math.PI / 2 + (i / N) * Math.PI * 2, a1 = a0 + (Math.PI * 2) / N - 0.06
-      const lit = i < Math.round(frac * N)
-      g.strokeStyle = lit ? [PAL.red, PAL.orange, PAL.amber, PAL.yellow][Math.floor((i / N) * 4)] : PAL.slateD
-      g.lineWidth = 5; g.beginPath(); g.arc(cx, cy, 26, a0, a1); g.stroke()
-    }
-    g.fillStyle = PAL.ink; g.beginPath(); g.arc(cx, cy, 22, 0, Math.PI * 2); g.fill()
-    g.fillStyle = 'rgba(38,43,68,0.95)'; g.beginPath(); g.arc(cx, cy, 21, 0, Math.PI * 2); g.fill()
-    if (pop > 0) { g.fillStyle = col; g.globalAlpha = pop * 0.5; g.beginPath(); g.arc(cx, cy, 21 + pop * 10, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1 }
-    outlined(`×${m}`, cx, cy - 11 - Math.round(pop * 3), { size: Math.round(21 + pop * 8), color: pop > 0.6 ? PAL.white : PAL.yellow })
-    // Plaque de palier, biseautée, puis crans vers le suivant.
+    outlined(`×${m}`, cx - 70, 4 - Math.round(pop * 2), { size: Math.round(16 + pop * 6), color: pop > 0.6 ? PAL.white : PAL.yellow, align: 'right' })
+    crans(cx - 62, 8, 130, 6, 20, frac, col, { grad: [PAL.red, PAL.red, PAL.orange, PAL.orange, PAL.amber, PAL.yellow, PAL.yellow], off: 'rgba(24,20,37,0.45)' })
     const next = COMBO_STEPS[Math.min(m, COMBO_STEPS.length - 1)], prev = COMBO_STEPS[m - 1]
     const f2 = m >= 5 ? 1 : (S.combo - prev) / Math.max(1, next - prev)
     const label = m >= 5 ? 'CARTON PLEIN' : TIERS[m - 1] || 'COMBO'
-    const lw = label.length * 7 + 16
-    plate(cx - lw / 2, 64, lw, 14, col, { cut: 4, alpha: 0.75 })
-    text(label, cx, 67, { size: 8, color: col === PAL.white ? PAL.white : PAL.white, align: 'center' })
-    crans(cx - 40, 82, 80, 5, 10, f2, col)
+    outlined(label, cx - 62, 17, { size: 7, color: col, align: 'left' })
+    crans(cx + 18, 19, 50, 3, 10, f2, col, { off: 'rgba(24,20,37,0.45)' })
   }
   // (plus de jauges en bas : la pastille sous le joueur dit déjà feu / furie, le bus et l'arbitre s'annoncent d'eux-mêmes)
   if (S.goalFx !== undefined) drawGoalFx(S.goalFx)
@@ -2173,11 +2167,11 @@ function fit() {
 }
 addEventListener('resize', fit)
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage'), loadImage('onomatopees'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
   { const a = ATLAS.paraguay; const c = document.createElement('canvas'); c.width = a.img.width; c.height = a.img.height; const k = c.getContext('2d'); k.drawImage(a.img, 0, 0); k.globalCompositeOperation = 'source-atop'; k.fillStyle = 'rgba(254,231,97,0.55)'; k.fillRect(0, 0, c.width, c.height); ATLAS['paraguay-furie'] = { ...a, img: c } }
-  window.__carton = { S, hero, ref, ball, startMatch, endMatch, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
+  window.__carton = { S, hero, ref, ball, startMatch, endMatch, startVar, foul, beep, audio, music, sfx, callout, endVideo, get french() { return french }, get props() { return props }, get npcs() { return npcs } }
   requestAnimationFrame(frame)
 }).catch((e) => { document.body.innerHTML = '<pre style="color:#fff">Sprites introuvables : ' + e + '</pre>' })
