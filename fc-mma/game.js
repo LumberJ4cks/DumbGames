@@ -2355,23 +2355,24 @@ function frame(now) {
 }
 let SCALE = 1 // résolution interne : le jeu dessine en 640×360 logiques sur un canvas k fois plus fin (net sur ordi, illustrations lisibles)
 function fit() {
-  const iw = innerWidth, ih = innerHeight
+  const vv = window.visualViewport
+  const iw = vv ? vv.width : innerWidth, ih = vv ? vv.height : innerHeight // zone réellement visible (Safari mobile compte parfois ses barres dans innerHeight)
   ROT = touch.on && ih > iw * 1.2 // portrait au doigt : on tourne le jeu, il prend tout l'écran en paysage
   const aw = ROT ? ih : iw, ah = ROT ? iw : ih
   const m = Math.min(aw / W, ah / H)
-  const k = m >= 1 ? Math.floor(m) : m // entier quand on agrandit, fractionnaire quand il faut réduire
+  const k = touch.on ? m : m >= 1 ? Math.floor(m) : m // au doigt : on remplit l'écran ; au clavier : agrandissement entier
   canvas.style.width = W * k + 'px'
   canvas.style.height = H * k + 'px'
   canvas.style.transform = ROT ? 'rotate(90deg)' : ''
   canvas.style.transformOrigin = 'center center'
-  canvas.style.position = ROT ? 'absolute' : ''
-  canvas.style.left = ROT ? (iw - W * k) / 2 + 'px' : ''
-  canvas.style.top = ROT ? (ih - H * k) / 2 + 'px' : ''
+  canvas.style.position = touch.on ? 'absolute' : ''
+  canvas.style.left = touch.on ? (iw - W * k) / 2 + 'px' : ''
+  canvas.style.top = touch.on ? (ih - H * k) / 2 + 'px' : ''
   const want = clamp(Math.round(Math.max(1, k) * (window.devicePixelRatio || 1)), 1, 3)
   if (want !== SCALE || canvas.width !== W * want) { SCALE = want; canvas.width = W * SCALE; canvas.height = H * SCALE }
   g.setTransform(SCALE, 0, 0, SCALE, 0, 0); g.imageSmoothingEnabled = false
 }
-addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 60)); document.addEventListener('fullscreenchange', () => setTimeout(fit, 60))
+addEventListener('resize', fit); addEventListener('orientationchange', () => { setTimeout(fit, 60); setTimeout(fit, 400) }); if (window.visualViewport) visualViewport.addEventListener('resize', fit); document.addEventListener('fullscreenchange', () => setTimeout(fit, 60))
 fit()
 Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), loadImage('count/3'), loadImage('count/2'), loadImage('count/1'), loadImage('count/go'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
