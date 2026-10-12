@@ -1187,7 +1187,7 @@ function drawSayan() {
   // Le titre qui claque, puis qui vibre.
   if (t > 0.3) {
     const a = t - 0.3, k = a < 0.15 ? 1 + (0.15 - a) * 10 : 1
-    g.save(); g.translate(W / 2, 34); g.scale(k, k); g.rotate(Math.sin(t * 30) * 0.015)
+    g.save(); g.translate(W / 2, H - 34); g.scale(k, k); g.rotate(Math.sin(t * 30) * 0.015)
     g.font = 'bold 30px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'
     g.fillStyle = PAL.ink; for (const [dx, dy] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [2, -2], [-2, 2], [0, 5], [4, 4]]) g.fillText('SUPA FOOT SAYAN', dx, dy)
     g.fillStyle = Math.floor(t * 12) % 2 ? PAL.yellow : PAL.white; g.fillText('SUPA FOOT SAYAN', 0, 0)
