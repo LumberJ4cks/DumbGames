@@ -101,7 +101,7 @@ function startMusic() {
   } catch (e) { /* pas de musique */ }
 }
 /* ---------- échantillons : coups, tacles, sifflets, passes, foule (audio/sfx) ---------- */
-const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1 }
+const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1, sayan: 1 }
 const sfx = { bank: {}, loaded: false, loading: false, crowd: null, crowdGain: null, crowdBuf: null }
 function loadSfx() {
   if (sfx.loading || sfx.loaded) return
@@ -423,9 +423,10 @@ function startFury() {
     S.sayanT = 0
     S.banners = []
     S.freeze = 0; S.stopAll = 0
-    beep('fire')
+    beep('fire'); if (!audio.muted) sample('sayan', { gain: 1, vary: 0 })
   } else {
     S.fieldTf = 0
+    if (!audio.muted) sample('sayan', { gain: 0.9, vary: 0 })
     S.stopAll = SAYAN.frames / 10 + 0.1
     S.shake = 10
     beep('fire')
