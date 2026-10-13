@@ -2173,6 +2173,15 @@ function drawHUD() {
     const justLost = !alive && i === LIVES - S.goals && S.lifeLostT < 0.6
     const bx = 150 + i * 18, by = TY + 15
     const r = justLost ? 7 + Math.round((0.6 - S.lifeLostT) * 8) : 7
+    if (IMG.ballon) {
+      // Vie = le sprite ballon du jeu ; perdue = ballon éteint (gris, transparent), clignote en rouge juste après le but.
+      const d = r * 2 + 2
+      g.save(); g.imageSmoothingEnabled = true
+      if (!alive) { g.globalAlpha = justLost && Math.floor(S.t * 12) % 2 ? 0.9 : 0.28; g.filter = justLost && Math.floor(S.t * 12) % 2 ? 'sepia(1) saturate(6) hue-rotate(-30deg)' : 'grayscale(1) brightness(0.6)' }
+      g.drawImage(IMG.ballon, 2, 2, 44, 44, bx - d / 2, by - d / 2, d, d)
+      g.restore(); g.imageSmoothingEnabled = false
+      continue
+    }
     g.fillStyle = PAL.ink; g.beginPath(); g.arc(bx, by, r + 1, 0, Math.PI * 2); g.fill()
     g.fillStyle = alive ? PAL.white : justLost && Math.floor(S.t * 12) % 2 ? PAL.red : PAL.slate; g.beginPath(); g.arc(bx, by, r, 0, Math.PI * 2); g.fill()
     if (alive) { g.fillStyle = PAL.ink; g.fillRect(bx - 2, by - 2, 4, 4); g.fillRect(bx - 6, by - 1, 2, 3); g.fillRect(bx + 4, by - 1, 2, 3); g.fillRect(bx - 1, by - 7, 3, 2); g.fillRect(bx - 4, by + 4, 2, 2); g.fillRect(bx + 2, by + 4, 2, 2); g.fillStyle = PAL.grey1; g.fillRect(bx - 5, by + 3, 10, 1) }
