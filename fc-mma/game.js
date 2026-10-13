@@ -102,7 +102,9 @@ function startMusic() {
   } catch (e) { /* pas de musique */ }
 }
 /* ---------- échantillons : coups, tacles, sifflets, passes, foule (audio/sfx) ---------- */
-const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1, sayan: 1, click: 1 }
+const SFX_LIST = { punch: 8, impact: 1, tackle: 2, whistle: 5, pass: 6, 'var-voice': 1, sayan: 1, click: 1, 'count-3': 1, 'count-2': 1, 'count-1': 1, 'count-fight': 1 }
+/** Voix d'annonceur du décompte (3, 2, 1, FIGHT!), avec le bip et le sifflet en secours. */
+function countVoice(n) { if (audio.muted) return; if (!sample('count-' + n, { gain: 1.2, vary: 0 })) beep(n === 'fight' ? 'whistle' : 'tick') }
 const sfx = { bank: {}, loaded: false, loading: false, crowd: null, crowdGain: null, crowdBuf: null }
 function loadSfx() {
   if (sfx.loading || sfx.loaded) return
@@ -1562,7 +1564,7 @@ function update(dt) {
     const tgt = S.kickStage === 'carry' ? { x: cx0, y: cy0 - 4 } : { x: cx0 - 70, y: cy0 - 100 }
     const dx = tgt.x - ref.x, dy = tgt.y - ref.y, d = Math.hypot(dx, dy)
     S.phaseT -= dt
-    { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } } }
+    { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { countVoice(n); S.shake = Math.max(S.shake, 3) } } }
     if (S.phaseT <= 0.9 && S.kickStage === 'carry') { ball.owner = null; ball.x = cx0; ball.y = cy0; ball.z = 0; ball.vz = 0; S.kickStage = 'leave' } // GO n'attend pas un arbitre lent
     if (d > 4) { ref.x += (dx / d) * Math.min(d, 170 * dt); ref.y += (dy / d) * Math.min(d, 170 * dt); const nd = dirOf(dx, dy); if (nd) ref.dir = nd; if (ref.anim !== 'walk') { ref.anim = 'walk'; ref.ft = 0 }; ref.ft += dt; ref.frame = Math.floor(ref.ft * 8) }
     else if (S.kickStage === 'carry') { ball.owner = null; ball.x = cx0; ball.y = cy0; ball.z = 0; ball.vz = 0; S.kickStage = 'leave'; beep('bounce') }
@@ -1570,7 +1572,7 @@ function update(dt) {
     if (ball.owner === ref) { ball.x = ref.x; ball.y = ref.y - 2; ball.z = 14 }
     return
   }
-  if (S.phase === 'kickoff' && !S.goals) { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { beep('tick'); S.shake = Math.max(S.shake, 3) } else if (n <= 0) { beep('whistle'); S.shake = Math.max(S.shake, 8) } } }
+  if (S.phase === 'kickoff' && !S.goals) { const n = Math.ceil(S.phaseT - 0.9); if (n !== S.countTick) { S.countTick = n; if (n >= 1 && n <= 3) { countVoice(n); S.shake = Math.max(S.shake, 3) } else if (n <= 0) { countVoice('fight'); S.shake = Math.max(S.shake, 8) } } }
   if (S.phase === 'kickoff' || S.phase === 'goal') { S.phaseT -= dt; if (S.phaseT <= 0) { if (S.phase === 'goal') { /* pas de téléportation : le ballon reste où il est tant que personne ne le ramène au centre */ } else { S.phase = 'play'; ball.owner = french[9] } } }
   if (S.phase === 'kickoff' && S.goals) { S.phase = 'play'; ball.owner = nearestFrench(ball, 120, (f) => !f.gk) }
   if (S.phase === 'card') { S.phaseT -= dt; if (S.phaseT <= 0 && !ref.cardTarget) S.phase = resumePhase() }
@@ -2045,17 +2047,17 @@ function drawTouchControls() {
   g.restore()
 }
 function drawCountdown() {
-  const n = Math.ceil(S.phaseT - 0.9) // 3, 2, 1 puis 0 = GO
+  const n = Math.ceil(S.phaseT - 0.9) // 3, 2, 1 puis 0 = FIGHT
   const frac = n >= 1 ? (S.phaseT - 0.9) - (n - 1) : S.phaseT / 0.9 // 1 → 0 au fil de chaque temps
   const age = 1 - frac
   const go = n <= 0
-  const img = IMG['count/' + (go ? 'go' : n)]
+  const img = IMG['count/' + (go ? 'fight' : n)]
   if (img) {
     // Façon Street Fighter : le chiffre arrive de la caméra (300 % → 100 %) et claque, GO!! un peu plus gros et qui vibre.
     const ease = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3)
     const tin = ease(age / 0.18)
     const over = age > 0.18 && age < 0.3 ? Math.sin((age - 0.18) / 0.12 * Math.PI) * 0.06 : 0
-    const base = go ? 0.62 : 0.5 // échelle de repos (sprites stockés au double)
+    const base = go ? 0.61 : 0.41 // échelle de repos (sprites stockés en plus grand pour rester nets)
     const sc = base * ((3 - 2 * tin) + over) * (go ? 1 + Math.sin(S.t * 30) * 0.015 : 1)
     g.save(); g.translate(W / 2, H / 2 - 20)
     if (go) g.rotate(Math.sin(S.t * 40) * 0.03)
@@ -2065,7 +2067,7 @@ function drawCountdown() {
     if (age < 0.2 && go) { g.globalAlpha = 0.5 * (1 - age / 0.2); g.fillStyle = PAL.white; g.fillRect(0, 0, W, H); g.globalAlpha = 1 }
   } else {
     const k = age < 0.15 ? 1 + (0.15 - age) * 6 : 1
-    const txt = go ? 'GO !!!' : String(n)
+    const txt = go ? 'FIGHT !' : String(n)
     const size = Math.round((go ? 64 : 80) * k)
     const col = go ? PAL.yellow : [PAL.white, PAL.cyan, PAL.amber][(n - 1) % 3]
     g.save(); g.translate(W / 2, H / 2 - 20)
@@ -2374,7 +2376,7 @@ function fit() {
 }
 addEventListener('resize', fit); addEventListener('orientationchange', () => { setTimeout(fit, 60); setTimeout(fit, 400) }); if (window.visualViewport) visualViewport.addEventListener('resize', fit); document.addEventListener('fullscreenchange', () => setTimeout(fit, 60))
 fit()
-Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), loadImage('count/3'), loadImage('count/2'), loadImage('count/1'), loadImage('count/go'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
+Promise.all([loadImage('title'), loadImage('start'), loadImage('sayan-perso'), loadImage('sayan-flamme'), loadImage('ballon'), loadImage('gazon'), loadImage('cage-states'), loadImage('onomatopees'), loadImage('var/left'), loadImage('var/right'), loadImage('var/text'), loadImage('bus/chevron'), loadImage('bus/text'), loadImage('bus/hornR'), loadImage('bus/hornL'), loadImage('bus/goal'), loadImage('bus/bus'), loadImage('supp/base'), loadImage('supp/frame'), loadImage('supp/confetti'), loadImage('supp/barrier'), loadImage('supp/crowd'), loadImage('supp/text'), loadImage('count/3'), loadImage('count/2'), loadImage('count/1'), loadImage('count/fight'), ...['paraguay', 'arbitre', 'gardien', 'france-0', 'france-1', 'france-2', 'france-3', 'france-4', 'france-5', 'banane', 'echarpe', 'supporter', 'poule', 'mascotte', 'crs', 'streaker', 'mamie', 'hotdog', 'marie', 'mariee', 'commentateur', 'pigeon', 'cheval', 'civiere', 'ramasseur', 'president', 'musicien', 'dino'].map(loadAtlas)]).then(() => {
   fontReady = true
   loadSfx() // préchargé dès l'écran titre pour que le clic START ait son son (le contexte reste suspendu jusqu'au premier geste)
   // Le n°4 en furie : même atlas, teinté or.
