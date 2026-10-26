@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Coast to Coast · intro (animatique)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@500;600&family=Courier+Prime:wght@400;700&family=Special+Elite&display=block" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --paper: #E9E4DA;
+    --ink: #1C1C1C;
+    --red: #D7261E;
+    --f-title: 'Anton', Impact, 'Arial Narrow', sans-serif;
+    --f-type: 'Special Elite', 'Courier Prime', 'Courier New', monospace;
+    --f-mono: 'Courier Prime', 'Courier New', monospace;
+    --f-hand: 'Caveat', 'Segoe Print', cursive;
+    /* grain du papier : bruit SVG, posé en multiply */
+    --noise-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .30  0 0 0 0 .27  0 0 0 0 .23  2.6 0 0 0 -1.12'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+    /* encre imprimée : masque de bruit qui ronge légèrement les lettres */
+    --noise-ink: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='i'><feTurbulence type='fractalNoise' baseFrequency='.62' numOctaves='3' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -5.2 0 0 0 4.05'/></filter><rect width='100%25' height='100%25' filter='url(%23i)'/></svg>");
+  }
+  html, body { margin: 0; background: #111; }
+
+  /* ---------- structure : root > caméra > bande horizontale (world) ---------- */
+  #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+  #camera { position: absolute; inset: 0; }
+  #world {
+    position: absolute; left: 0; top: 0; width: 24400px; height: 1080px;
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(ellipse 1100px 700px at 18% 28%, rgba(255,255,255,.30), transparent 70%),
+      radial-gradient(ellipse 1300px 800px at 64% 82%, rgba(120,98,70,.08), transparent 72%),
+      radial-gradient(ellipse 900px 600px at 88% 18%, rgba(120,98,70,.06), transparent 70%),
+      radial-gradient(ellipse 800px 500px at 42% 55%, rgba(255,255,255,.18), transparent 70%);
+    background-size: 3170px 1080px;
+    background-repeat: repeat-x;
+  }
+  #grain {
+    position: absolute; inset: 0; z-index: 50; pointer-events: none;
+    background-image: var(--noise-grain); background-size: 240px 240px;
+    mix-blend-mode: multiply; opacity: .55;
+  }
+  #LIGNE { position: absolute; left: 0; top: 0; z-index: 2; overflow: visible; }
+  #LIGNE path { fill: none; stroke: var(--red); stroke-width: 6; stroke-linecap: butt; }
+
+  .scene { position: absolute; top: 0; width: 1920px; height: 1080px; }   /* jamais de transform/opacity : pas de contexte d'empilement */
+  .layer { position: absolute; z-index: 3; }
+  .in { position: absolute; inset: 0; }
+  .in.txt { position: relative; inset: auto; }
+  .center > .in.txt { display: flex; justify-content: center; }   /* le titre centré garde la largeur de son texte */
+
+  /* ---------- typo ---------- */
+  .title { font-family: var(--f-title); font-weight: 400; color: var(--ink); line-height: 1; white-space: nowrap; text-transform: uppercase; }
+  .title .row { display: flex; gap: .13em; align-items: flex-end; }
+  .title .word, .title .row { text-box: trim-both cap alphabetic; }
+  /* boîte agrandie (padding / marge négative) : le masque ne rogne ni accents ni jambages */
+  .title.ink, .glyph.ink { padding: 140px; margin: -140px; }
+  .ink { -webkit-mask-image: var(--noise-ink); mask-image: var(--noise-ink); -webkit-mask-size: 260px 260px; mask-size: 260px 260px; mask-clip: no-clip; }
+  .type { font-family: var(--f-type); color: var(--ink); white-space: nowrap; }
+  .mono { font-family: var(--f-mono); color: var(--ink); white-space: nowrap; }
+  .hand { position: absolute; font-family: var(--f-hand); font-weight: 500; color: var(--ink); white-space: nowrap; line-height: 1.05; }
+  .ch { display: inline-block; white-space: pre; }
+  .center { width: 1920px; left: 0; text-align: center; }
+  .annot svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .annot path { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---------- photos ---------- */
+  .photo {
+    position: absolute; inset: 0; box-sizing: border-box; padding: 14px;
+    background: #F7F4EE; transform: rotate(var(--r, 0deg));
+    box-shadow: 0 12px 26px rgba(48,36,22,.22), 0 2px 5px rgba(48,36,22,.20);
+  }
+  .photo > img.media { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .popout { position: absolute; display: block; pointer-events: none; }
+  .placeholder > .media { width: 100%; height: 100%; background: #B8B2A7; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; font-family: var(--f-mono); color: #4a463f; font-size: 22px; letter-spacing: .04em; }
+  .tape { position: absolute; background: rgba(196,165,114,.55); box-shadow: 0 1px 2px rgba(0,0,0,.10); mix-blend-mode: multiply; }
+  .torn { position: absolute; inset: 0; background: #F7F4EE; }
+  .torn > img { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: cover; }
+
+  /* ---------- objets ---------- */
+  .ticket { position: absolute; inset: 0; background: #EFE8D8; box-shadow: 0 6px 14px rgba(48,36,22,.18); transform: rotate(var(--r)); }
+  .ticket .perf { position: absolute; top: 14px; bottom: 14px; border-left: 3px dashed #2a2a2a; }
+  .letter { position: relative; }
+  .letter .glyph, .letter .fill { display: block; text-box: trim-both cap alphabetic; }
+  .letter .fill {
+    position: absolute; inset: 0; color: transparent;
+    -webkit-background-clip: text; background-clip: text;
+    background-size: auto 104%; background-position: center; background-repeat: no-repeat;
+  }
+  .period { width: 112px; height: 112px; border-radius: 50%; background: var(--ink); align-self: flex-end; margin-left: 14px; }
+  .dot-red { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--red); z-index: 2; }
+  .odo { display: inline-block; height: 1.15em; line-height: 1.15em; overflow: hidden; vertical-align: bottom; }
+  .odo .col { display: inline-block; vertical-align: top; }
+  .odo .col span { display: block; height: 1.15em; }
+  .badge { position: absolute; inset: 0; background: #EFE9DC; box-shadow: 0 6px 14px rgba(48,36,22,.18); transform: rotate(var(--r)); padding: 26px 0 0 26px; box-sizing: border-box; font-size: 21px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<!--
+  COAST TO COAST — intro motion design (animatique, sans audio)
+  1920x1080 · 30 fps · ~118 s
+  Toutes les scènes sont posées côte à côte sur une bande horizontale (#world) ; la caméra fait des travellings latéraux.
+  Médias provisoires dans assets/ : chaque fichier porte le nom du calque qui l'utilise (remplacer en gardant le nom, ou changer le src).
+  Les timecodes se règlent dans le bloc TC / CUE en haut du <script>.
+-->
+<div id="root" data-composition-id="coast-to-coast-intro" data-start="0" data-duration="118" data-width="1920" data-height="1080">
+  <div id="camera" class="clip" data-start="0" data-duration="118" data-track-index="0">
+    <div id="world">
+
+      <!-- LA LIGNE ROUGE : une seule ligne, y = 540, dessinée de gauche à droite (dashoffset). Se dédouble derrière la photo de Rafa. -->
+      <svg id="LIGNE" width="24400" height="1080">
+        <defs>
+          <mask id="LIGNE_masque" maskUnits="userSpaceOnUse" x="-200" y="0" width="24600" height="1080">
+            <rect x="-200" y="0" width="24600" height="1080" fill="#fff"/>
+            <rect id="LIGNE_masque_SANS" y="0" height="1080" fill="#000"/>
+          </mask>
+        </defs>
+        <path id="LIGNE_principale" mask="url(#LIGNE_masque)"/>
+        <path id="LIGNE_double_haut"/>
+        <path id="LIGNE_double_bas"/>
+      </svg>
+
+      <!-- ============ 00–03 CARTE « un an plus tôt » ============ -->
+      <section class="scene" id="CARTE_UN_AN" style="left:0px">
+        <div class="layer type center" id="CARTE_UN_AN_texte" style="top:452px;font-size:48px">un an plus tôt</div>
+      </section>
+
+      <!-- ============ 03–15 SCENE_01 NEW YORK ============ -->
+      <section class="scene" id="SCENE_01" style="left:2200px">
+        <div class="layer" id="SCENE_01_titre" style="left:52px;top:34px">
+          <div class="title ink"><div class="row" style="font-size:547px">
+            <span class="word" id="SCENE_01_titre_NEW">New</span><span class="word" id="SCENE_01_titre_YORK">York</span>
+          </div></div>
+        </div>
+        <div class="layer" id="SCENE_01_photo_escaliers" style="left:714px;top:446px;width:308px;height:535px;z-index:4">
+          <div class="in"><div class="photo" style="--r:-7.5deg"><img class="media" src="assets/SCENE_01_photo_escaliers.jpg" alt=""></div></div>
+        </div>
+        <div class="layer" id="SCENE_01_photo_couple" style="left:885px;top:481px;width:919px;height:475px;z-index:5">
+          <div class="in"><div class="photo" style="--r:7.3deg">
+            <img class="media" src="assets/SCENE_01_photo_couple.jpg" alt="">
+            <img class="popout" id="POPOUT_SCENE_01_tetes" src="assets/POPOUT_SCENE_01_tetes.png" alt="" style="left:63px;top:-270px;width:500px">
+            <div class="tape" id="SCENE_01_scotch" style="left:640px;top:-16px;width:58px;height:122px;transform:rotate(4deg)"></div>
+          </div></div>
+        </div>
+        <div class="layer" id="SCENE_01_photo_nous" style="left:110px;top:460px;width:360px;height:230px;z-index:5">
+          <div class="in"><div class="photo placeholder" style="--r:-4deg"><div class="media"><span>SCENE_01_photo_nous</span><span style="font-size:16px">photo à venir</span></div></div></div>
+        </div>
+        <div class="layer" id="SCENE_01_ticket" style="left:62px;top:785px;width:595px;height:140px;z-index:6">
+          <div class="in"><div class="ticket" style="--r:9.4deg">
+            <div class="perf" style="left:96px"></div>
+            <div class="mono" style="position:absolute;left:128px;top:44px;font-size:28px;font-weight:700;letter-spacing:.04em">MONTRÉAL &gt; NEW YORK</div>
+            <svg class="barcode" style="position:absolute;left:468px;top:26px" width="56" height="88"></svg>
+            <div class="perf" style="left:548px;border-left-width:2px"></div>
+          </div></div>
+        </div>
+        <div class="layer annot" id="SCENE_01_annotations" style="left:0;top:0;width:1920px;height:1080px;z-index:7">
+          <div class="hand" id="SCENE_01_annot_julie" style="left:922px;top:266px;font-size:44px;transform:rotate(-8deg)">Julie</div>
+          <div class="hand" id="SCENE_01_annot_freddy" style="left:1642px;top:444px;font-size:48px;transform:rotate(-6deg)">Freddy</div>
+          <svg width="1920" height="1080">
+            <path id="SCENE_01_fleche_julie" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" d="M 966 330 C 962 352, 980 368, 1004 376"/>
+            <path id="SCENE_01_fleche_julie_pointe" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" d="M 990 364 L 1004 376 L 986 380"/>
+            <path id="SCENE_01_fleche_freddy" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" d="M 1634 492 C 1590 506, 1528 494, 1482 458"/>
+            <path id="SCENE_01_fleche_freddy_pointe" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" d="M 1488 478 L 1482 458 L 1502 458"/>
+          </svg>
+        </div>
+        <div class="layer mono" id="SCENE_01_legende" style="left:52px;top:988px;font-size:27px;z-index:6">New York | été 2025</div>
+      </section>
+
+      <!-- ============ 15–27 SCENE_02 MONT ROYAL ============ -->
+      <section class="scene" id="SCENE_02" style="left:4600px">
+        <div class="layer mono" id="SCENE_02_legende" style="left:118px;top:268px;font-size:26px">Montréal | été 2025</div>
+        <div class="layer" id="SCENE_02_titre" style="left:116px;top:327px">
+          <div class="in txt"><div class="title ink"><div class="row" style="font-size:273px"><span class="word">Mont</span><span class="word">Royal</span></div></div></div>
+        </div>
+        <div class="layer" id="SCENE_02_photo_gauche" style="left:33px;top:572px;width:367px;height:712px;z-index:4">
+          <div class="in"><div class="photo" style="--r:-0.8deg"><img class="media" src="assets/SCENE_02_photo_gauche.jpg" alt="" style="object-position:top"></div></div>
+        </div>
+        <div class="layer" id="SCENE_02_photo_centre" style="left:405px;top:574px;width:568px;height:712px;z-index:4">
+          <div class="in"><div class="photo" style="--r:0.4deg">
+            <img class="media" src="assets/SCENE_02_photo_centre.jpg" alt="" style="object-position:top">
+            <img class="popout" id="POPOUT_SCENE_02_tete_homme" src="assets/POPOUT_SCENE_02_tete_homme.png" alt="" style="left:184px;top:-103px;width:165px">
+          </div></div>
+        </div>
+        <div class="layer" id="SCENE_02_photo_droite" style="left:979px;top:581px;width:315px;height:712px;z-index:4">
+          <div class="in"><div class="photo" style="--r:-0.6deg"><img class="media" src="assets/SCENE_02_photo_droite.jpg" alt="" style="object-position:top"></div></div>
+        </div>
+        <div class="layer annot" id="SCENE_02_annotation" style="left:0;top:0;width:1920px;height:1080px;z-index:6">
+          <div class="hand" id="SCENE_02_annot_l1" style="left:1408px;top:404px;font-size:48px;transform:rotate(-7deg)">et là, je leur</div>
+          <div class="hand" id="SCENE_02_annot_l2" style="left:1452px;top:458px;font-size:48px;transform:rotate(-7deg)">parle du rêve...</div>
+        </div>
+        <div class="layer" id="SCENE_02_photo_lande" style="left:1373px;top:590px;width:494px;height:511px;z-index:4">
+          <div class="in" style="filter:drop-shadow(0 10px 14px rgba(48,36,22,.25))"><div class="torn" style="transform:rotate(5.75deg)"><img src="assets/SCENE_02_photo_lande.jpg" alt=""></div></div>
+        </div>
+      </section>
+
+      <!-- ============ 27–45 SCENE_03 D'UNE MER À L'AUTRE ============ -->
+      <section class="scene" id="SCENE_03" style="left:7000px">
+        <div class="layer" id="SCENE_03_titre" style="left:595px;top:166px">
+          <div class="in txt"><div class="title ink">
+            <div class="row" id="SCENE_03_titre_ligne1" style="font-size:188px"><span class="word">D’une mer</span></div>
+            <div class="row" id="SCENE_03_titre_ligne2" style="font-size:188px;margin:38px 0 0 66px"><span class="word">À l’autre</span></div>
+          </div></div>
+        </div>
+        <div class="layer" id="SCENE_03_photo_gauche" style="left:80px;top:86px;width:446px;height:620px;z-index:4">
+          <div class="in"><div class="photo" style="--r:2.6deg">
+            <img class="media" src="assets/SCENE_03_photo_gauche.jpg" alt="">
+            <img class="popout" id="POPOUT_SCENE_03_main_galet" src="assets/POPOUT_SCENE_03_main_galet.png" alt="" style="left:150px;top:160px;width:345px;transform-origin:28px 38px">
+          </div></div>
+        </div>
+        <div class="layer mono" id="SCENE_03_km" style="left:760px;top:494px;width:180px;text-align:center;font-size:30px">300 km</div>
+        <div class="layer" id="SCENE_03_photo_droite" style="left:1170px;top:200px;width:476px;height:680px;z-index:4">
+          <div class="in"><div class="photo" style="--r:2.9deg"><img class="media" src="assets/SCENE_03_photo_droite.jpg" alt=""></div></div>
+        </div>
+        <div class="layer mono" id="SCENE_03_legende_gauche" style="left:84px;top:736px;font-size:24px">St Bees | mer d’Irlande</div>
+        <div class="layer mono" id="SCENE_03_legende_droite" style="left:1246px;top:906px;width:400px;text-align:right;font-size:24px">Robin Hood’s Bay | mer du Nord</div>
+      </section>
+
+      <!-- ============ 45–63 CARTE « la prise de conscience » ============ -->
+      <section class="scene" id="CARTE_PRISE" style="left:9400px">
+        <div class="layer" id="SCENE_04_interview" style="left:640px;top:104px;width:640px;height:360px;z-index:4">
+          <div class="in"><div class="photo placeholder" style="--r:-1.2deg"><div class="media"><span style="font-size:44px">▶</span><span>SCENE_04_interview</span><span style="font-size:16px">extrait vidéo 16:9</span></div></div></div>
+        </div>
+        <div class="layer type center" id="CARTE_PRISE_phrase" style="top:596px;font-size:40px">
+          <span class="w">Entre</span> <span class="w">le</span> <span class="w">rêve</span> <span class="w">et</span> <span class="w">l’accomplissement,</span> <span class="w">il</span> <span class="w">y</span> <span class="w">a</span> <span class="w">une</span> <span class="w keep">date</span><span class="w">.</span>
+        </div>
+      </section>
+
+      <!-- ============ 63–79 SCENE_04 SANS ============ -->
+      <section class="scene" id="SCENE_04" style="left:11800px">
+        <div class="dot-red" id="SCENE_04_point_rouge" style="left:294px;top:540px"></div>
+        <div class="layer type" id="SCENE_04_40ans" style="left:334px;top:178px;font-size:50px">40 ans</div>
+        <div class="layer" id="SCENE_04_titre" style="left:318px;top:243px">
+          <div class="in txt"><div class="title"><div class="row" style="font-size:770px;gap:.012em">
+            <div class="letter" id="SCENE_04_lettre_S1"><span class="glyph ink">S</span><span class="fill" style="background-image:url(assets/SCENE_04_lettre_S1.jpg)">S</span></div>
+            <div class="letter" id="SCENE_04_lettre_A"><span class="glyph ink">A</span><span class="fill" style="background-image:url(assets/SCENE_04_lettre_A.jpg)">A</span></div>
+            <div class="letter" id="SCENE_04_lettre_N"><span class="glyph ink">N</span><span class="fill" style="background-image:url(assets/SCENE_04_lettre_N.jpg)">N</span></div>
+            <div class="letter" id="SCENE_04_lettre_S2"><span class="glyph ink">S</span><span class="fill" style="background-image:url(assets/SCENE_04_lettre_S2.jpg)">S</span></div>
+            <div class="period ink" id="SCENE_04_point_noir"></div>
+          </div></div></div>
+        </div>
+        <div class="layer annot" id="SCENE_04_rature" style="left:0;top:0;width:1920px;height:1080px;z-index:5">
+          <div class="hand" id="SCENE_04_pas_trop_jeune" style="left:556px;top:842px;font-size:64px">pas de mourir trop jeune.</div>
+          <svg width="1920" height="1080"><path id="SCENE_04_trait" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" style="stroke-width:3.4" d="M 540 892 C 760 884, 1010 896, 1240 886 S 1370 884, 1392 882"/></svg>
+        </div>
+      </section>
+
+      <!-- ============ 79–84 CARTE « C'EST DÉCIDÉ » ============ -->
+      <section class="scene" id="CARTE_DECIDE" style="left:14200px">
+        <div class="layer center" id="CARTE_DECIDE_titre" style="top:300px">
+          <div class="in txt"><div class="title ink"><div class="row" style="font-size:231px;justify-content:center"><span class="word">C’est décidé.</span></div></div></div>
+        </div>
+        <div class="layer type center" id="CARTE_DECIDE_texte" style="top:600px;font-size:44px">l’année prochaine, je pars.</div>
+      </section>
+
+      <!-- ============ 84–96 SCENE_05 MAIS PAS SEUL ============ -->
+      <section class="scene" id="SCENE_05" style="left:16600px">
+        <div class="layer" id="SCENE_05_titre" style="left:140px;top:107px">
+          <div class="title ink">
+            <div class="row" id="SCENE_05_titre_ligne1" style="font-size:273px"><span class="word">Mais pas</span></div>
+            <div class="row" id="SCENE_05_titre_ligne2" style="font-size:273px;margin-top:11px"><span class="word">Seul.</span></div>
+          </div>
+        </div>
+        <div class="layer" id="SCENE_05_photo_rafa" style="left:842px;top:150px;width:560px;height:775px;z-index:4">
+          <div class="in"><div class="photo" style="--r:3.1deg">
+            <img class="media" src="assets/SCENE_05_photo_rafa.jpg" alt="">
+            <img class="popout" id="POPOUT_SCENE_05_bras_ballon" src="assets/POPOUT_SCENE_05_bras_ballon.png" alt="" style="left:-116px;top:-148px;width:232px">
+          </div></div>
+        </div>
+        <div class="layer" id="SCENE_05_badge" style="left:1281px;top:788px;width:333px;height:120px;z-index:6">
+          <div class="in"><div class="badge mono" style="--r:-5.5deg">
+            <div class="tape" style="left:64px;top:-24px;width:112px;height:42px;transform:rotate(-4deg)"></div>
+            <div id="SCENE_05_badge_texte">RAFA | 15 ANS<br>HANDBALL | MONTRÉAL + QUÉBEC</div>
+          </div></div>
+        </div>
+        <div class="layer annot" id="SCENE_05_annotation" style="left:0;top:0;width:1920px;height:1080px;z-index:7">
+          <div class="hand" id="SCENE_05_annot_fils" style="left:1500px;top:60px;font-size:54px;transform:rotate(-10deg)">mon fils</div>
+          <svg width="1920" height="1080">
+            <path id="SCENE_05_fleche" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" d="M 1566 142 C 1560 226, 1430 296, 1254 322"/>
+            <path id="SCENE_05_fleche_pointe" pathLength="1" stroke-dasharray="1 1.2" stroke-dashoffset="1.05" d="M 1276 306 L 1254 322 L 1278 334"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ============ 96–108 CARTE « 20 jours / moins de 10 » ============ -->
+      <section class="scene" id="CARTE_20_JOURS" style="left:19000px">
+        <div class="layer center" id="CARTE_20_JOURS_titre" style="top:170px">
+          <div class="in txt"><div class="title ink"><div class="row" style="font-size:190px;justify-content:center"><span class="word">Une aventure. À deux.</span></div></div></div>
+        </div>
+        <div class="layer type center" id="CARTE_20_JOURS_tout_le_monde" style="top:416px;font-size:52px">
+          <span id="CARTE_20_JOURS_txt1">tout le monde : </span><span class="odo" id="CARTE_20_JOURS_compteur"><span class="col" id="CARTE_20_JOURS_dizaines"></span><span class="col" id="CARTE_20_JOURS_unites"></span></span><span id="CARTE_20_JOURS_txt2"> jours</span>
+        </div>
+        <div class="layer type center" id="CARTE_20_JOURS_nous" style="top:612px;font-size:52px">
+          <span id="CARTE_20_JOURS_txt3">nous : moins de </span><span class="title" id="CARTE_20_JOURS_10" style="display:inline-block;font-size:132px;vertical-align:-.12em;margin-left:.1em"><span class="ink">10</span></span>
+        </div>
+      </section>
+
+      <!-- ============ 108–118 TITRE FINAL ============ -->
+      <section class="scene" id="TITRE_FINAL" style="left:21400px">
+        <div class="layer center" id="TITRE_FINAL_titre" style="top:240px">
+          <div class="in txt"><div class="title ink"><div class="row" style="font-size:340px;justify-content:center"><span class="word">Coast to Coast</span></div></div></div>
+        </div>
+        <div class="layer center" id="TITRE_FINAL_sous_titre" style="top:600px">
+          <div class="in txt"><div class="title ink"><div class="row" style="font-size:122px;justify-content:center"><span class="word">300 km à deux.</span></div></div></div>
+        </div>
+      </section>
+
+      <div id="grain"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   TIMECODES — à recaler sur la voix off (secondes)
+   Chaque scène commence par son travelling (durée TRAVEL).
+   ===================================================================== */
+const TC = {
+  UN_AN:        0,    // carte « un an plus tôt »
+  NEW_YORK:     3,    // SCENE_01
+  MONT_ROYAL:  15,    // SCENE_02
+  DEUX_MERS:   27,    // SCENE_03
+  PRISE:       45,    // carte « la prise de conscience »
+  SANS:        63,    // SCENE_04
+  DECIDE:      79,    // carte « c'est décidé »
+  SEUL:        84,    // SCENE_05
+  VINGT_JOURS: 96,    // carte « 20 jours / moins de 10 »
+  FINAL:      108,    // titre final
+  FIN:        118,    // fin de la composition (penser à data-duration sur #root)
+};
+/* Repères internes : décalage en secondes depuis le début de leur scène */
+const CUE = {
+  NY_PRENOMS:       5.0,   // 08 s  « Eux, c'est Julie et Freddy »
+  NY_NOUS:          9.0,   // 12 s  « Et ça, c'est nous »
+  MR_REVE:          8.0,   // 23 s  « je leur raconte ce rêve »
+  MERS_RHB:        11.0,   // 38 s  la photo de Robin Hood's Bay se pose
+  PRISE_INTERVIEW:  6.0,   // 51 s  placeholder interview
+  PRISE_PHRASE:    11.0,   // 56 s  « Entre le rêve et l'accomplissement… »
+  SANS_STOP:        3.0,   // 66 s  la ligne s'arrête (point rouge)
+  SANS_MOT:         8.0,   // 71 s  « SANS. » tombe
+  SEUL_FILS:        3.0,   // 87 s  « Lui, c'est mon fils »
+  VINGT_COMPTEURS:  4.5,   // 100.5 s compteurs
+};
+const TRAVEL = 1.8;   // durée d'un travelling (s)
+const DRIFT  = 30;    // dérive lente de la caméra pendant chaque scène (px)
+
+/* ===================================================================== */
+const $ = (id) => document.getElementById(id);
+const IN = (id) => $(id).querySelector('.in');
+const rng = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
+const rand = rng(20251026);
+const tl = gsap.timeline({ paused: true });
+const NO = { immediateRender: false };
+
+const SCENES = [
+  ['CARTE_UN_AN', 'UN_AN'], ['SCENE_01', 'NEW_YORK'], ['SCENE_02', 'MONT_ROYAL'], ['SCENE_03', 'DEUX_MERS'],
+  ['CARTE_PRISE', 'PRISE'], ['SCENE_04', 'SANS'], ['CARTE_DECIDE', 'DECIDE'], ['SCENE_05', 'SEUL'],
+  ['CARTE_20_JOURS', 'VINGT_JOURS'], ['TITRE_FINAL', 'FINAL'],
+];
+const X = {};
+SCENES.forEach(([id]) => (X[id] = $(id).offsetLeft));
+$('root').dataset.duration = TC.FIN;
+$('camera').dataset.duration = TC.FIN;
+
+/* ---------- helpers d'animation ---------- */
+const SH0 = 'drop-shadow(0px 2px 3px rgba(0,0,0,0.18))';
+const SH1 = 'drop-shadow(0px 14px 12px rgba(0,0,0,0.30))';
+
+function stamp(el, t, s = 1.08) {            // tampon : léger écrasement 1.08 -> 1 en 120 ms
+  gsap.set(el, { opacity: 0, scale: s });
+  tl.fromTo(el, { opacity: 0, scale: s }, { opacity: 1, scale: 1, duration: 0.12, ease: 'power2.in', ...NO }, t);
+}
+function land(el, t, { y = -70, x = 0, rot = -3, s = 1.05, dur = 0.75 } = {}) {   // photo qui se pose, petit rebond
+  gsap.set(el, { opacity: 0, x, y, rotation: rot, scale: s });
+  tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: 'power1.out', ...NO }, t);
+  tl.fromTo(el, { x, y, rotation: rot, scale: s }, { x: 0, y: 0, rotation: 0, scale: 1, duration: dur, ease: 'back.out(1.4)', ...NO }, t);
+}
+function lift(el, t, dy = -12) {              // POPOUT qui se soulève, ombre qui s'élargit
+  gsap.set(el, { y: 0, filter: SH0 });
+  tl.fromTo(el, { y: 0, filter: SH0 }, { y: dy, filter: SH1, duration: 0.9, ease: 'power2.out', ...NO }, t);
+}
+function write(el, t, dur) {                  // écriture manuscrite : balayage gauche -> droite
+  const a = 'inset(-40% 100% -40% -6%)', b = 'inset(-40% -6% -40% -6%)';
+  gsap.set(el, { clipPath: a });
+  tl.fromTo(el, { clipPath: a }, { clipPath: b, duration: dur, ease: 'power1.inOut', ...NO }, t);
+}
+function draw(el, t, dur, ease = 'power1.inOut') {   // trait dessiné (pathLength = 1)
+  gsap.set(el, { attr: { 'stroke-dashoffset': 1.05 } });
+  tl.fromTo(el, { attr: { 'stroke-dashoffset': 1.05 } }, { attr: { 'stroke-dashoffset': 0 }, duration: dur, ease, ...NO }, t);
+}
+function fadeUp(el, t, dur = 0.9, y = 36) {
+  gsap.set(el, { opacity: 0, y });
+  tl.fromTo(el, { opacity: 0, y }, { opacity: 1, y: 0, duration: dur, ease: 'power2.out', ...NO }, t);
+}
+function show(el, t) { gsap.set(el, { opacity: 0 }); tl.set(el, { opacity: 1 }, t); }
+/* machine à écrire : découpe le texte en caractères (légère irrégularité de frappe) et les révèle un par un */
+function type(el, t, cps = 14) {
+  el = typeof el === 'string' ? $(el) : el;
+  const chars = [];
+  (function walk(node) {
+    [...node.childNodes].forEach((n) => {
+      if (n.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        for (const c of n.textContent) {
+          if (/\s/.test(c) && /^\s+$/.test(n.textContent) && n.textContent.includes('\n')) continue;
+          const s = document.createElement('span');
+          s.className = 'ch'; s.textContent = c;
+          s.style.transform = `translateY(${((rand() - 0.5) * 2).toFixed(2)}px) rotate(${((rand() - 0.5) * 2.4).toFixed(2)}deg)`;
+          frag.appendChild(s); chars.push(s);
+        }
+        n.replaceWith(frag);
+      } else if (n.nodeType === 1 && n.tagName === 'BR') {
+        // retour à la ligne : petite pause
+        chars.push(null);
+      } else if (n.nodeType === 1) walk(n);
+    });
+  })(el);
+  chars.forEach((c) => {
+    if (!c) { t += 0.25; return; }
+    show(c, t);
+    t += (c.textContent === ' ' ? 1.5 : 1) * (0.7 + 0.6 * rand()) / cps;
+  });
+  return t;
+}
+
+/* ---------- décor généré (déterministe) ---------- */
+const deco = rng(77);
+function tornClip(w, h, amp, step) {         // bord de papier déchiré
+  const p = [];
+  for (let x = 0; x < w; x += step) p.push([x, deco() * amp]);
+  for (let y = 0; y < h; y += step) p.push([w - deco() * amp, y]);
+  for (let x = w; x > 0; x -= step) p.push([x, h - deco() * amp]);
+  for (let y = h; y > 0; y -= step) p.push([deco() * amp, y]);
+  return 'polygon(' + p.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(',') + ')';
+}
+(function decor() {
+  const lande = $('SCENE_02_photo_lande');
+  lande.querySelector('.torn').style.clipPath = tornClip(494, 511, 9, 9);
+  lande.querySelector('.torn img').style.clipPath = tornClip(470, 487, 5, 11);
+  const tk = $('SCENE_01_ticket').querySelector('.ticket');          // ticket : bords dentelés
+  const pts = [[0, 0], [595, 0]];
+  for (let y = 0; y <= 140; y += 10) pts.push([595 - (y / 10 % 2 ? 7 : 0), y]);
+  pts.push([0, 140]);
+  for (let y = 140; y >= 0; y -= 10) pts.push([(y / 10 % 2 ? 7 : 0), y]);
+  tk.style.clipPath = 'polygon(' + pts.map(([x, y]) => `${x}px ${y}px`).join(',') + ')';
+  const bc = tk.querySelector('.barcode'); let bx = 0, svg = '';   // code-barres
+  while (bx < 54) { const w = 1 + Math.floor(deco() * 3.4); svg += `<rect x="${bx}" y="0" width="${w}" height="88" fill="#1c1c1c"/>`; bx += w + 1 + Math.floor(deco() * 3); }
+  bc.innerHTML = svg;
+  document.querySelectorAll('.tape').forEach((tp) => {                // scotch : extrémités déchirées
+    const j = () => (deco() * 6).toFixed(1);
+    tp.style.clipPath = `polygon(${j()}px 0, calc(100% - ${j()}px) 0, 100% 30%, calc(100% - ${j()}px) 60%, 100% 100%, ${j()}px 100%, 0 70%, ${j()}px 40%, 0 0)`;
+  });
+  const d = $('CARTE_20_JOURS_dizaines'), u = $('CARTE_20_JOURS_unites');   // compteur 0 -> 20 (rouleaux)
+  for (let n = 0; n <= 20; n++) {
+    d.insertAdjacentHTML('beforeend', `<span>${n < 10 ? '&nbsp;' : Math.floor(n / 10)}</span>`);
+    u.insertAdjacentHTML('beforeend', `<span>${n % 10}</span>`);
+  }
+})();
+
+/* =====================================================================
+   CAMÉRA : travellings latéraux (power2.inOut) + dérive lente
+   ===================================================================== */
+const world = $('world');
+gsap.set(world, { x: 0 });
+SCENES.forEach(([id, key], i) => {
+  const t = TC[key], st = X[id];
+  const next = i < SCENES.length - 1 ? TC[SCENES[i + 1][1]] : TC.FIN;
+  const arrive = i === 0 ? t : t + TRAVEL;
+  if (i > 0) tl.fromTo(world, { x: -(X[SCENES[i - 1][0]] + DRIFT) }, { x: -st, duration: TRAVEL, ease: 'power2.inOut', ...NO }, t);
+  tl.fromTo(world, { x: -st }, { x: -(st + DRIFT), duration: Math.max(0.01, next - arrive), ease: 'none', ...NO }, arrive);
+});
+
+/* =====================================================================
+   LA LIGNE ROUGE
+   La pointe (TIP) est décrite par des images-clés [temps, x monde, ease] ;
+   le tracé est animé par stroke-dashoffset. y = 540 partout, sauf la
+   petite hésitation de la carte PRISE ; dédoublement (520 / 560) derrière la photo de Rafa.
+   ===================================================================== */
+const Y = 540;
+const SPLIT = X.SCENE_05 + 1300;              // point de dédoublement (caché derrière SCENE_05_photo_rafa)
+const XEND = X.TITRE_FINAL + 2500;            // les deux lignes sortent du cadre
+const W0 = X.CARTE_PRISE - 150, W1 = X.CARTE_PRISE + 1250;
+function wobble(x) {                          // ondulation irrégulière, faible amplitude
+  if (x <= W0 || x >= W1) return 0;
+  const u = (x - W0) / (W1 - W0), env = Math.pow(Math.sin(Math.PI * u), 1.5);
+  return env * (3.0 * Math.sin(x * 0.045) + 2.0 * Math.sin(x * 0.113 + 1.3) + 1.3 * Math.sin(x * 0.021 + 0.4));
+}
+const pts = [[-80, Y]];
+for (let x = W0; x <= W1; x += 6) pts.push([x, Y + wobble(x)]);
+pts.push([SPLIT, Y]);
+const cum = [0];
+for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+const MAIN_LEN = cum[cum.length - 1], DBL_LEN = XEND - SPLIT;
+function lenAt(x) {
+  if (x <= pts[0][0]) return 0;
+  for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]) return cum[i - 1] + (cum[i] - cum[i - 1]) * (x - pts[i - 1][0]) / (pts[i][0] - pts[i - 1][0]);
+  return MAIN_LEN;
+}
+const main = $('LIGNE_principale'), dbl = [$('LIGNE_double_haut'), $('LIGNE_double_bas')];
+main.setAttribute('d', 'M ' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(2)}`).join(' L '));
+dbl[0].setAttribute('d', `M ${SPLIT} 520 L ${XEND} 520`);
+dbl[1].setAttribute('d', `M ${SPLIT} 560 L ${XEND} 560`);
+main.setAttribute('stroke-dasharray', `${MAIN_LEN.toFixed(1)} ${(MAIN_LEN + 10).toFixed(1)}`);
+dbl.forEach((p) => p.setAttribute('stroke-dasharray', `${DBL_LEN} ${DBL_LEN + 10}`));
+$('LIGNE_masque_SANS').setAttribute('x', X.SCENE_04 + 302);   // la ligne passe derrière « SANS. »
+$('LIGNE_masque_SANS').setAttribute('width', 1490);
+
+const TIP = [];
+const K = (t, x, ease = 'sine.inOut') => TIP.push([t, x, ease]);
+const mainOff = (x) => +(MAIN_LEN - lenAt(Math.min(x, SPLIT))).toFixed(2);
+const dblOff = (x) => +(DBL_LEN - Math.max(0, Math.min(DBL_LEN, x - SPLIT))).toFixed(2);
+
+/* =====================================================================
+   SCÈNES
+   ===================================================================== */
+
+/* ---- 00–03 CARTE « un an plus tôt » ---- */
+{
+  const t = TC.UN_AN, s = X.CARTE_UN_AN;
+  type('CARTE_UN_AN_texte', t + 0.35, 11);
+  K(t, s - 80, 'none');
+  K(t + 2.95, s + 1400, 'power1.inOut');
+}
+
+/* ---- 03–15 SCENE_01 NEW YORK ---- */
+{
+  const t = TC.NEW_YORK, s = X.SCENE_01;
+  K(t + TRAVEL, s + 600, 'power2.inOut');
+  K(t + 4.2, s + 640);
+  K(t + 11.9, s + 1880);
+  const tk = IN('SCENE_01_ticket');                                  // le ticket glisse et se pose
+  gsap.set(tk, { opacity: 0, x: -560, rotation: -8 });
+  tl.fromTo(tk, { opacity: 0 }, { opacity: 1, duration: 0.3, ...NO }, t + 1.0);
+  tl.fromTo(tk, { x: -560, rotation: -8 }, { x: 0, rotation: 0, duration: 1.0, ease: 'power3.out', ...NO }, t + 1.0);
+  stamp($('SCENE_01_titre_NEW'), t + 2.2);
+  stamp($('SCENE_01_titre_YORK'), t + 2.8);
+  land(IN('SCENE_01_photo_escaliers'), t + 3.4, { rot: -4 });
+  land(IN('SCENE_01_photo_couple'), t + 3.9, { rot: 3 });
+  lift($('POPOUT_SCENE_01_tetes'), t + 4.6);
+  write($('SCENE_01_annot_julie'), t + CUE.NY_PRENOMS, 0.55);
+  draw($('SCENE_01_fleche_julie'), t + CUE.NY_PRENOMS + 0.5, 0.35);
+  draw($('SCENE_01_fleche_julie_pointe'), t + CUE.NY_PRENOMS + 0.85, 0.15);
+  write($('SCENE_01_annot_freddy'), t + CUE.NY_PRENOMS + 1.1, 0.7);
+  draw($('SCENE_01_fleche_freddy'), t + CUE.NY_PRENOMS + 1.8, 0.45);
+  draw($('SCENE_01_fleche_freddy_pointe'), t + CUE.NY_PRENOMS + 2.25, 0.15);
+  land(IN('SCENE_01_photo_nous'), t + CUE.NY_NOUS, { rot: -5 });
+  type('SCENE_01_legende', t + CUE.NY_NOUS + 0.7, 15);
+}
+
+/* ---- 15–27 SCENE_02 MONT ROYAL ---- */
+{
+  const t = TC.MONT_ROYAL, s = X.SCENE_02;
+  K(t + TRAVEL, s + 70, 'power2.inOut');
+  K(t + CUE.MR_REVE - 0.4, s + 600);                 // la pointe file dans la gouttière titre / photos…
+  K(t + CUE.MR_REVE + 0.05, s + 770, 'none');        // …passe derrière la tête et ressort à hauteur du visage
+  K(t + 10.0, s + 1360, 'sine.out');
+  K(t + 11.9, s + 1880, 'sine.in');
+  ['SCENE_02_photo_gauche', 'SCENE_02_photo_centre', 'SCENE_02_photo_droite'].forEach((id, i) => {
+    const el = IN(id), t0 = t + 1.9 + i * 0.4;                         // bandes photo, verticalement, en décalé
+    gsap.set(el, { opacity: 0, y: 440 });
+    tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.3, ...NO }, t0);
+    tl.fromTo(el, { y: 440 }, { y: 0, duration: 0.9, ease: 'back.out(1.2)', ...NO }, t0);
+  });
+  fadeUp(IN('SCENE_02_titre'), t + 4.0, 1.0, 50);                   // MONT ROYAL apparaît derrière
+  lift($('POPOUT_SCENE_02_tete_homme'), t + 5.2);
+  type('SCENE_02_legende', t + 5.8, 15);
+  write($('SCENE_02_annot_l1'), t + CUE.MR_REVE + 0.3, 0.9);
+  write($('SCENE_02_annot_l2'), t + CUE.MR_REVE + 1.25, 1.0);
+  land(IN('SCENE_02_photo_lande'), t + CUE.MR_REVE + 1.6, { rot: 6, y: -60 });
+}
+
+/* ---- 27–45 SCENE_03 D'UNE MER À L'AUTRE ---- */
+{
+  const t = TC.DEUX_MERS, s = X.SCENE_03;
+  K(t + TRAVEL, s + 55, 'power2.inOut');
+  K(t + 3.9, s + 55, 'none');
+  K(t + 4.3, s + 520, 'power1.in');                  // derrière la photo… la ligne repart du galet
+  K(t + CUE.MERS_RHB, s + 1170);                     // avance lentement jusqu'à Robin Hood's Bay
+  K(t + CUE.MERS_RHB + 0.7, s + 1660, 'sine.in');
+  K(t + 17.9, s + 1890);
+  land(IN('SCENE_03_photo_gauche'), t + 2.1, { rot: -3 });
+  const hand = $('POPOUT_SCENE_03_main_galet');                       // la main avance avec le galet
+  gsap.set(hand, { x: 0, y: 0, scale: 1, filter: SH0 });
+  tl.fromTo(hand, { x: 0, y: 0, scale: 1, filter: SH0 }, { x: 12, y: -12.4, scale: 1.05, filter: SH1, duration: 1.0, ease: 'power2.inOut', ...NO }, t + 3.0);
+  stamp($('SCENE_03_titre_ligne1'), t + 5.0);
+  stamp($('SCENE_03_titre_ligne2'), t + 6.0);
+  type('SCENE_03_legende_gauche', t + 5.6, 15);
+  type('SCENE_03_km', t + 6.8, 9);
+  land(IN('SCENE_03_photo_droite'), t + CUE.MERS_RHB - 0.5, { rot: 4, y: -60 });
+  gsap.set(IN('SCENE_03_titre'), { x: 0 });                          // la fin du titre glisse derrière la photo
+  tl.fromTo(IN('SCENE_03_titre'), { x: 0 }, { x: 30, duration: 1.4, ease: 'power2.inOut', ...NO }, t + CUE.MERS_RHB - 0.2);
+  type('SCENE_03_legende_droite', t + CUE.MERS_RHB + 0.8, 16);
+}
+
+/* ---- 45–63 CARTE « la prise de conscience » ---- */
+{
+  const t = TC.PRISE, s = X.CARTE_PRISE;
+  K(t + TRAVEL, s + 40, 'power2.inOut');             // la ligne avance en hésitant
+  K(t + 2.6, s + 210, 'power2.out');
+  K(t + 3.3, s + 215, 'none');
+  K(t + 3.9, s + 380, 'power2.inOut');
+  K(t + 4.6, s + 392, 'none');
+  K(t + 5.1, s + 520, 'power2.out');
+  K(t + 5.9, s + 530, 'none');
+  K(t + 6.6, s + 700, 'power1.inOut');
+  K(t + 11.0, s + 1100);
+  K(t + 17.9, s + 1880);
+  land(IN('SCENE_04_interview'), t + CUE.PRISE_INTERVIEW, { rot: -3, y: -50 });
+  const end = type('CARTE_PRISE_phrase', t + CUE.PRISE_PHRASE, 17);
+  $('CARTE_PRISE_phrase').querySelectorAll('.w:not(.keep)').forEach((w, i) => {   // seul « date » reste
+    tl.fromTo(w, { opacity: 1 }, { opacity: 0, duration: 0.7, ease: 'power1.inOut', ...NO }, end + 1.0 + i * 0.07);
+  });
+}
+
+/* ---- 63–79 SCENE_04 SANS ---- */
+{
+  const t = TC.SANS, s = X.SCENE_04;
+  K(t + CUE.SANS_STOP, s + 294, 'expo.out');         // ralentit et s'arrête net…
+  const dot = $('SCENE_04_point_rouge');             // …terminée par un point rouge plein
+  gsap.set(dot, { scale: 0 });
+  tl.fromTo(dot, { scale: 0 }, { scale: 1, duration: 0.16, ease: 'back.out(2.2)', ...NO }, t + CUE.SANS_STOP - 0.04);
+  type('SCENE_04_40ans', t + 1.6, 9);
+  const t1 = t + CUE.SANS_STOP + 1.5;                // silence graphique 1,5 s
+  write($('SCENE_04_pas_trop_jeune'), t1, 1.6);
+  draw($('SCENE_04_trait'), t1 + 1.9, 0.5, 'power2.inOut');
+  stamp(IN('SCENE_04_titre'), t + CUE.SANS_MOT, 1.06);
+  ['S1', 'A', 'N', 'S2'].forEach((l, i) => {         // chaque lettre s'ouvre sur sa photo
+    const f = $('SCENE_04_lettre_' + l).querySelector('.fill'), t0 = t + CUE.SANS_MOT + 1.4 + i * 1.1;
+    gsap.set(f, { clipPath: 'inset(100% 0% 0% 0%)', backgroundSize: 'auto 115%' });
+    tl.fromTo(f, { clipPath: 'inset(100% 0% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.8, ease: 'power2.out', ...NO }, t0);
+    tl.fromTo(f, { backgroundSize: 'auto 115%' }, { backgroundSize: 'auto 104%', duration: 4.0, ease: 'power1.out', ...NO }, t0);
+  });
+}
+
+/* ---- 79–84 CARTE « C'EST DÉCIDÉ » ---- */
+{
+  const t = TC.DECIDE, s = X.CARTE_DECIDE;
+  K(t, X.SCENE_04 + 294, 'none');                    // la ligne repart du point, droite et rapide
+  K(t + 1.4, s + 1500, 'power2.inOut');
+  K(t + 4.95, s + 1880, 'sine.out');
+  stamp(IN('CARTE_DECIDE_titre'), t + 2.0);
+  type('CARTE_DECIDE_texte', t + 2.7, 15);
+}
+
+/* ---- 84–96 SCENE_05 MAIS PAS SEUL ---- */
+{
+  const t = TC.SEUL, s = X.SCENE_05;
+  K(t + TRAVEL, s + 110, 'power2.inOut');
+  K(t + CUE.SEUL_FILS, s + 640);                     // la ligne avance seule sous le titre
+  K(t + CUE.SEUL_FILS + 1.6, SPLIT, 'sine.in');      // passe derrière la photo…
+  K(t + 11.9, s + 1880);                             // …et ressort en deux lignes parallèles
+  stamp($('SCENE_05_titre_ligne1'), t + 1.0);
+  stamp($('SCENE_05_titre_ligne2'), t + 1.8);
+  const ph = IN('SCENE_05_photo_rafa');              // la photo tombe avec un rebond
+  gsap.set(ph, { opacity: 0, y: -1000, rotation: -8 });
+  tl.set(ph, { opacity: 1 }, t + CUE.SEUL_FILS);
+  tl.fromTo(ph, { y: -1000, rotation: -8 }, { y: 0, rotation: 0, duration: 0.95, ease: 'back.out(1.4)', ...NO }, t + CUE.SEUL_FILS);
+  lift($('POPOUT_SCENE_05_bras_ballon'), t + CUE.SEUL_FILS + 0.9, -14);
+  land(IN('SCENE_05_badge'), t + CUE.SEUL_FILS + 2.3, { rot: -4, y: -40 });
+  type('SCENE_05_badge_texte', t + CUE.SEUL_FILS + 2.8, 18);
+  write($('SCENE_05_annot_fils'), t + CUE.SEUL_FILS + 5.0, 0.8);
+  draw($('SCENE_05_fleche'), t + CUE.SEUL_FILS + 5.7, 0.6);
+  draw($('SCENE_05_fleche_pointe'), t + CUE.SEUL_FILS + 6.3, 0.15);
+}
+
+/* ---- 96–108 CARTE « 20 jours / moins de 10 » ---- */
+{
+  const t = TC.VINGT_JOURS, s = X.CARTE_20_JOURS;
+  K(t + TRAVEL, s + 420, 'power2.inOut');
+  K(t + 11.9, s + 1500);
+  stamp(IN('CARTE_20_JOURS_titre'), t + 2.0);
+  const t1 = type('CARTE_20_JOURS_txt1', t + CUE.VINGT_COMPTEURS, 15);
+  show($('CARTE_20_JOURS_compteur'), t1);
+  ['CARTE_20_JOURS_dizaines', 'CARTE_20_JOURS_unites'].forEach((id) => {   // le chiffre défile de 0 à 20
+    gsap.set($(id), { yPercent: 0 });
+    tl.fromTo($(id), { yPercent: 0 }, { yPercent: -100 * 20 / 21, duration: 1.5, ease: 'steps(20)', ...NO }, t1 + 0.1);
+  });
+  type('CARTE_20_JOURS_txt2', t1 + 1.7, 15);
+  const t2 = type('CARTE_20_JOURS_txt3', t + CUE.VINGT_COMPTEURS + 3.5, 15);
+  stamp($('CARTE_20_JOURS_10'), t2 + 0.35, 1.12);
+}
+
+/* ---- 108–118 TITRE FINAL ---- */
+{
+  const t = TC.FINAL, s = X.TITRE_FINAL;
+  K(t + TRAVEL, s + 1100, 'power2.inOut');
+  K(t + TRAVEL + 2.6, s + 1160);                     // pause sur les deux lignes seules
+  K(t + TRAVEL + 4.4, XEND, 'power2.in');            // elles filent et sortent du cadre
+  const ti = IN('TITRE_FINAL_titre');
+  gsap.set(ti, { opacity: 0, scale: 1.05 });
+  tl.fromTo(ti, { opacity: 0, scale: 1.05 }, { opacity: 1, scale: 1, duration: 0.7, ease: 'power2.out', ...NO }, t + TRAVEL + 1.0);
+  stamp(IN('TITRE_FINAL_sous_titre'), t + TRAVEL + 1.8);
+}
+
+/* ---------- construction des tweens de la ligne ---------- */
+main.setAttribute('stroke-dashoffset', mainOff(TIP[0][1]));
+dbl.forEach((p) => p.setAttribute('stroke-dashoffset', DBL_LEN));
+for (let i = 1; i < TIP.length; i++) {
+  const [t0, x0] = TIP[i - 1], [t1, x1, ease] = TIP[i];
+  const duration = Math.max(0.001, t1 - t0);
+  if (mainOff(x0) !== mainOff(x1))
+    tl.fromTo(main, { attr: { 'stroke-dashoffset': mainOff(x0) } }, { attr: { 'stroke-dashoffset': mainOff(x1) }, duration, ease, ...NO }, t0);
+  if (dblOff(x0) !== dblOff(x1))
+    tl.fromTo(dbl, { attr: { 'stroke-dashoffset': dblOff(x0) } }, { attr: { 'stroke-dashoffset': dblOff(x1) }, duration, ease, ...NO }, t0);
+}
+
+/* ---------- flottement continu (1 à 2 px) sur tous les calques ---------- */
+document.querySelectorAll('.layer').forEach((el, i) => {
+  const a = 1 + ((i * 7) % 5) / 5, d = 2.6 + ((i * 13) % 9) / 6;
+  gsap.set(el, { y: -a });
+  tl.fromTo(el, { y: -a }, { y: a, duration: d, ease: 'sine.inOut', repeat: Math.max(0, Math.floor(TC.FIN / d) - 1), yoyo: true, ...NO }, 0);
+});
+
+tl.set({}, {}, TC.FIN);   // cale la durée de la timeline sur TC.FIN
+tl.seek(0);
+window.__timelines = window.__timelines || {};
+window.__timelines['coast-to-coast-intro'] = tl;
+</script>
+</body>
+</html>
